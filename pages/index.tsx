@@ -7,12 +7,21 @@ import {
   MapPin,
   Truck,
   Check,
-  Store,
-  ExternalLink,
+  Wallet,
+  Flame,
+  X,
   Plus,
   Minus,
-  X,
 } from "lucide-react";
+
+type Product = {
+  id: string;
+  name: string;
+  price: number | string;
+  sku?: string; // “Units” from Excel
+  stock?: number; // taken from your file if present; otherwise we default to 10
+  img?: string;
+};
 
 const BRAND = {
   name: "Mastermind Electricals & Electronics",
@@ -21,68 +30,98 @@ const BRAND = {
 };
 
 const CONTACT = {
-  domain: process.env.NEXT_PUBLIC_BRAND_DOMAIN || "www.mastermindelectricals.com",
-  email: process.env.NEXT_PUBLIC_BRAND_EMAIL || "sales@mastermindelectricals.com",
+  domain:
+    process.env.NEXT_PUBLIC_BRAND_DOMAIN || "www.mastermindelectricals.com",
+  email:
+    process.env.NEXT_PUBLIC_BRAND_EMAIL || "sales@mastermindelectricals.com",
   phone: "0715151010",
-  till: process.env.NEXT_PUBLIC_TILL || "8636720",
-  mapsUrl: "https://maps.app.goo.gl/7P2okRB5ssLFMkUT8",
+  maps: "https://maps.app.goo.gl/7P2okRB5ssLFMkUT8",
   hours: "Open Mon–Sun • 8:00am – 9:00pm",
 };
 
-const currency = (n: number) =>
+const currency = (kes: number) =>
   new Intl.NumberFormat("en-KE", {
     style: "currency",
     currency: "KES",
     maximumFractionDigits: 0,
-  }).format(n);
-const num = (v: any, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
-
-function useCart() {
-  const [items, setItems] = useState<Record<string, number>>({});
-  const add = (id: string, q = 1) => setItems((s) => ({ ...s, [id]: (s[id] || 0) + q }));
-  const sub = (id: string, q = 1) => setItems((s) => ({ ...s, [id]: Math.max(0, (s[id] || 0) - q) }));
-  const remove = (id: string) => setItems((s) => { const { [id]:_, ...r } = s; return r; });
-  const clear = () => setItems({});
-  return { items, add, sub, remove, clear };
-}
+  }).format(kes);
 
 export default function Home() {
-  const cart = useCart();
-  const [showCart, setShowCart] = useState(false);
-  const [products, setProducts] = useState<any[]>([]);
+  // ---------------- State ----------------
+  const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
+  const [showCart, setShowCart] = useState(false);
   const [mpesaPhone, setMpesaPhone] = useState("");
-  const [delivery, setDelivery] = useState("pickup");
 
+  // Cart as id -> qty
+  const [cart, setCart] = useState<Record<string, number>>({});
+
+  // ---------------- Effects ----------------
   useEffect(() => {
     fetch("/products.json")
       .then((r) => r.json())
-      .then((list) =>
-        setProducts((Array.isArray(list) ? list : []).map((p: any) => ({ ...p, stock: p?.stock ?? 1 })))
-      )
+      .then((list: any[]) => {
+        // normalize numbers & add fallback stock
+        const normalized = list.map((p) => ({
+          ...p,
+          price: Number(p.price) || 0,
+          stock:
+            typeof p.stock === "number"
+              ? p.stock
+              : Number((p as any).Stock) || 10,
+        }));
+        setProducts(normalized);
+      })
       .catch(() => {});
   }, []);
 
-  const lines = useMemo(
-    () =>
-      Object.entries(cart.items)
-        .filter(([_, q]) => (q as number) > 0)
-        .map(([id, qty]) => ({ product: products.find((p) => String(p.id) === String(id)), qty: qty as number }))
-        .filter((l) => !!l.product),
-    [cart.items, products]
-  );
-  const total = useMemo(() => lines.reduce((s, l) => s + num(l.product?.price) * l.qty, 0), [lines]);
+  // ---------------- Cart helpers ----------------
+  const add = (id: string) =>
+    setCart((s) => ({ ...s, [id]: Math.min((s[id] || 0) + 1, 999) }));
+  const sub = (id: string) =>
+    setCart((s) => {
+      const next = Math.max((s[id] || 0) - 1, 0);
+      const copy = { ...s };
+      if (next <= 0) delete copy[id];
+      else copy[id] = next;
+      return copy;
+    });
+  const remove = (id: string) =>
+    setCart((s) => {
+      const { [id]: _, ...rest } = s;
+      return rest;
+    });
+  const clear = () => setCart({});
 
+  // ---------------- Derived ----------------
   const filtered = useMemo(() => {
-    let list = products;
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      list = list.filter((p: any) => `${p.name || ""} ${p.sku || ""}`.toLowerCase().includes(q));
-    }
-    return list;
+    const q = query.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) =>
+      `${p.name} ${p.sku || ""}`.toLowerCase().includes(q)
+    );
   }, [products, query]);
 
-  async function requestStkPush() {
+  const lines = useMemo(
+    () =>
+      Object.entries(cart)
+        .filter(([_, qty]) => qty > 0)
+        .map(([id, qty]) => ({
+          product: products.find((p) => String(p.id) === String(id)),
+          qty,
+        }))
+        .filter((l) => !!l.product),
+    [cart, products]
+  );
+
+  const total = useMemo(
+    () =>
+      lines.reduce((s, l) => s + (Number(l.product!.price) || 0) * l.qty, 0),
+    [lines]
+  );
+
+  // ---------------- Actions ----------------
+  async function stkPush() {
     if (!/^0?7\d{8}$/.test(mpesaPhone)) {
       alert("Enter valid Safaricom number, e.g., 07XXXXXXXX");
       return;
@@ -91,93 +130,111 @@ export default function Home() {
       alert("Your cart is empty.");
       return;
     }
-    const resp = await fetch("/api/mpesa", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        phone: mpesaPhone,
-        amount: Math.round(total),
-        items: lines.map((l) => ({ id: l.product.id, qty: l.qty })),
-        delivery,
-      }),
-    });
-    const data = await resp.json();
-    if (data?.ok) {
-      alert(`STK Push sent (Till ${CONTACT.till}). Enter your M-Pesa PIN.`);
-      cart.clear();
-      setShowCart(false);
-    } else {
-      alert("Payment error: " + (data?.error || "unknown"));
+    try {
+      const resp = await fetch("/api/mpesa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: mpesaPhone,
+          amount: Math.round(total),
+          items: lines.map((l) => ({
+            id: l.product!.id,
+            qty: l.qty,
+          })),
+        }),
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        alert(
+          "STK Push sent. Check your phone and enter your M-Pesa PIN to pay."
+        );
+      } else {
+        alert("Payment error: " + (data.error || "unknown"));
+      }
+    } catch (e: any) {
+      alert("Network error: " + e?.message);
     }
   }
 
-  const PLACEHOLDER =
-    "data:image/svg+xml;utf8," +
-    encodeURIComponent(
-      `<svg xmlns='http://www.w3.org/2000/svg' width='600' height='360'>
-        <rect width='100%' height='100%' fill='#f4f4f5'/>
-        <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle'
-              font-family='Arial' font-size='14' fill='#9ca3af'>No Image</text>
-      </svg>`
-    );
-
+  // ---------------- UI ----------------
   return (
     <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
       <Head>
         <title>Mastermind Electricals & Electronics</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1"
+        />
       </Head>
 
-      {/* Top bar (email + cart) */}
-      <div
+      {/* Top Bar (brand + cart only) */}
+      <header
         style={{
           background: BRAND.dark,
-          color: "white",
-          padding: "10px 12px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
-          flexWrap: "wrap",
+          color: "#fff",
+          padding: "12px 16px",
         }}
       >
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <div style={{ height: 28, width: 8, borderRadius: 4, background: BRAND.primary }} />
-          <div>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>Welcome to</div>
-            <div style={{ fontWeight: 600 }}>{BRAND.name}</div>
-          </div>
-        </div>
-        <a href={`mailto:${CONTACT.email}`} style={{ color: "#fff", textDecoration: "none" }}>
-          {CONTACT.email}
-        </a>
-        <button
-          onClick={() => setShowCart(true)}
+        <div
           style={{
-            background: "white",
-            color: "#111",
-            padding: "6px 10px",
-            borderRadius: 14,
+            maxWidth: 1200,
+            margin: "0 auto",
             display: "flex",
             alignItems: "center",
-            gap: 6,
-            border: "none",
-            cursor: "pointer",
+            justifyContent: "space-between",
+            gap: 12,
           }}
-          title="Cart"
         >
-          <ShoppingCart size={16} />
-          Cart: {lines.length}
-        </button>
-      </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {/* simple brand mark circle */}
+            <div
+              style={{
+                height: 28,
+                width: 8,
+                borderRadius: 4,
+                background: BRAND.primary,
+              }}
+            />
+            <div style={{ fontWeight: 700 }}>
+              {BRAND.name}
+            </div>
+          </div>
 
-      {/* Hero + Visit card */}
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "16px" }}>
-        <div style={{ display: "grid", gap: 16 }}>
+          <button
+            onClick={() => setShowCart(true)}
+            style={{
+              background: "#fff",
+              color: "#111",
+              borderRadius: 14,
+              padding: "8px 12px",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              border: "none",
+              cursor: "pointer",
+            }}
+            aria-label="Open cart"
+          >
+            <ShoppingCart size={16} />
+            Cart: {lines.length}
+          </button>
+        </div>
+      </header>
+
+      {/* Hero + Shop Info */}
+      <section style={{ maxWidth: 1200, margin: "0 auto", padding: 16 }}>
+        <div
+          style={{
+            display: "grid",
+            gap: 16,
+            gridTemplateColumns: "1fr",
+          }}
+        >
+          {/* Hero */}
           <div
             style={{
               background: "#fff",
-              border: "1px solid #e5e5e5",
+              border: "1px solid #eee",
               borderRadius: 16,
               padding: 16,
               position: "relative",
@@ -185,29 +242,54 @@ export default function Home() {
             }}
           >
             <div
-              aria-hidden
               style={{
                 position: "absolute",
-                right: -40,
-                top: -40,
-                height: 160,
-                width: 160,
-                borderRadius: 80,
+                right: -50,
+                top: -50,
+                height: 180,
+                width: 180,
+                borderRadius: 90,
                 background: BRAND.primary,
                 opacity: 0.15,
               }}
             />
-            <div style={{ textTransform: "uppercase", fontSize: 12, letterSpacing: 1, color: "#111" }}>
+            <div
+              style={{
+                textTransform: "uppercase",
+                fontSize: 12,
+                letterSpacing: 1,
+                color: "#111",
+              }}
+            >
               Trusted in Sotik
             </div>
-            <h1 style={{ margin: "8px 0 0", fontSize: 26, fontWeight: 800, color: "#111", lineHeight: 1.2 }}>
+            <h1
+              style={{
+                margin: "8px 0 0",
+                fontSize: 28,
+                fontWeight: 800,
+                color: "#111",
+                lineHeight: 1.15,
+              }}
+            >
               Quality Electronics, Lighting & Gas — Fast Delivery
             </h1>
             <p style={{ marginTop: 8, color: "#555" }}>
-              Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay via M-Pesa. Pickup or same-day delivery.
+              Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay via
+              M-Pesa. Pickup or same-day delivery.
             </p>
-            <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <div
+
+            {/* badges */}
+            <div
+              style={{
+                marginTop: 12,
+                display: "flex",
+                gap: 8,
+                alignItems: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              <span
                 style={{
                   background: BRAND.primary,
                   color: "#111",
@@ -221,8 +303,8 @@ export default function Home() {
               >
                 <Truck size={12} />
                 Same-day delivery
-              </div>
-              <div
+              </span>
+              <span
                 style={{
                   border: "1px solid #e5e5e5",
                   fontSize: 12,
@@ -235,199 +317,251 @@ export default function Home() {
               >
                 <Check size={12} />
                 1-Year TV Warranty
-              </div>
-              <div
+              </span>
+              <span
                 style={{
-                  background: "#22c55e",
-                  color: "#0a0a0a",
+                  border: "1px solid #e5e5e5",
                   fontSize: 12,
                   padding: "4px 8px",
                   borderRadius: 12,
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 6,
-                  fontWeight: 700,
                 }}
               >
+                <Wallet size={12} />
                 M-Pesa Available
-              </div>
+              </span>
+              <span
+                style={{
+                  border: "1px solid #e5e5e5",
+                  fontSize: 12,
+                  padding: "4px 8px",
+                  borderRadius: 12,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <Flame size={12} />
+                Gas Refills Available
+              </span>
             </div>
           </div>
 
+          {/* Shop info card */}
           <div
             style={{
               background: "#111",
-              color: "white",
+              color: "#fff",
               borderRadius: 16,
               padding: 16,
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
             }}
           >
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <Store size={18} />
+              <MapPin size={18} />
               <span style={{ fontWeight: 600 }}>Visit Our Shop</span>
             </div>
-            <div style={{ opacity: 0.9, fontSize: 14 }}>
+            <div style={{ marginTop: 8, opacity: 0.9, fontSize: 14 }}>
               Mastermind Electricals & Electronics, Sotik Town
             </div>
-            <div style={{ opacity: 0.85, fontSize: 14 }}>{CONTACT.hours}</div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+            <div style={{ marginTop: 6, opacity: 0.85, fontSize: 14 }}>
+              {CONTACT.hours}
+            </div>
+
+            <div
+              style={{
+                marginTop: 12,
+                display: "grid",
+                gridTemplateColumns: "1fr",
+                gap: 10,
+              }}
+            >
               <a
-                href={CONTACT.mapsUrl}
+                href={CONTACT.maps}
                 target="_blank"
                 rel="noreferrer"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 6,
-                  padding: "6px 10px",
+                  gap: 8,
                   background: BRAND.primary,
                   color: "#111",
-                  borderRadius: 10,
+                  padding: "10px 12px",
+                  borderRadius: 12,
                   textDecoration: "none",
-                  fontWeight: 600,
+                  justifyContent: "center",
                 }}
               >
                 <MapPin size={16} />
-                View on Maps <ExternalLink size={14} />
+                View on Maps
               </a>
+
               <a
-                href={`tel:+254715151010`}
+                href={`tel:${CONTACT.phone}`}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 6,
-                  padding: "6px 10px",
-                  background: "#fff",
-                  color: "#111",
-                  borderRadius: 10,
+                  gap: 8,
+                  background: "#222",
+                  color: "#fff",
+                  padding: "10px 12px",
+                  borderRadius: 12,
                   textDecoration: "none",
-                  fontWeight: 600,
+                  justifyContent: "center",
                 }}
               >
                 <Phone size={16} /> {CONTACT.phone}
               </a>
-            </div>
-            <div style={{ marginTop: 6 }}>
-              <a href={`mailto:${CONTACT.email}`} style={{ color: "#fff", textDecoration: "none" }}>
+
+              <a
+                href={`mailto:${CONTACT.email}`}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: "#222",
+                  color: "#fff",
+                  padding: "10px 12px",
+                  borderRadius: 12,
+                  textDecoration: "none",
+                  justifyContent: "center",
+                }}
+              >
                 {CONTACT.email}
               </a>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Search only (no filter/sort) */}
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 16px 8px" }}>
+      {/* Search */}
+      <section style={{ maxWidth: 1200, margin: "0 auto", padding: "0 16px" }}>
         <div style={{ position: "relative" }}>
-          <Search size={16} style={{ position: "absolute", left: 10, top: 10, color: "#999" }} />
+          <Search
+            size={16}
+            style={{ position: "absolute", left: 12, top: 12, color: "#999" }}
+          />
           <input
-            placeholder='Search "43 TV" or "bulb"'
+            placeholder={`Search products, e.g., "43 TV" or "bulb"`}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             style={{
               width: "100%",
-              padding: "8px 12px 8px 32px",
+              padding: "10px 12px 10px 36px",
               border: "1px solid #ddd",
               borderRadius: 8,
               background: "#fff",
             }}
           />
         </div>
-      </div>
+      </section>
 
-      {/* Product grid */}
+      {/* Product Grid */}
       <section style={{ maxWidth: 1200, margin: "0 auto", padding: "8px 16px 20px" }}>
         <div
+          className="grid"
           style={{
             display: "grid",
             gap: 16,
             gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
           }}
         >
-          {filtered.map((p: any) => {
-            const price = num(p.price);
-            const stock = num(p.stock, 0);
-            const img = p.img || PLACEHOLDER;
+          {filtered.map((p) => {
+            const price = Number(p.price) || 0;
+            const soldOut = (p.stock ?? 0) <= 0;
             return (
-              <article
+              <div
                 key={String(p.id)}
                 style={{
                   background: "#fff",
-                  border: "1px solid #e5e5e5",
-                  borderRadius: 14,
+                  border: "1px solid #eee",
+                  borderRadius: 16,
                   overflow: "hidden",
+                  display: "flex",
+                  flexDirection: "column",
                 }}
               >
-                <div style={{ position: "relative", width: "100%", height: 160, background: "#f6f6f6" }}>
-                  <img
-                    src={img}
-                    alt={p.name || "Product"}
-                    loading="lazy"
-                    onError={(e) => ((e.currentTarget as HTMLImageElement).src = PLACEHOLDER)}
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      display: "block",
-                      background: "#f6f6f6",
-                    }}
-                  />
+                <div
+                  style={{
+                    height: 160,
+                    background: "#f3f3f3",
+                    display: "grid",
+                    placeItems: "center",
+                    color: "#9a9a9a",
+                    fontSize: 12,
+                  }}
+                >
+                  {p.img ? (
+                    <img
+                      src={p.img}
+                      alt={p.name}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                  ) : (
+                    "No Image"
+                  )}
                 </div>
+
                 <div style={{ padding: 12 }}>
-                  <div style={{ fontSize: 12, color: "#777" }}>{p.sku ? String(p.sku) : ""}</div>
+                  {p.sku ? (
+                    <div style={{ fontSize: 12, color: "#777" }}>{p.sku}</div>
+                  ) : null}
+                  <div style={{ fontWeight: 700 }}>{p.name}</div>
                   <div
                     style={{
-                      fontWeight: 700,
-                      color: "#111",
-                      lineHeight: 1.2,
-                      minHeight: 32,
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical" as any,
-                      overflow: "hidden",
+                      marginTop: 10,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
                     }}
-                    title={p.name}
                   >
-                    {p.name}
-                  </div>
-                  <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: "#111" }}>{currency(price)}</div>
-                    <button
-                      onClick={() => cart.add(String(p.id))}
-                      disabled={stock <= 0}
+                    <div
                       style={{
-                        background: BRAND.primary,
+                        fontSize: 18,
+                        fontWeight: 800,
                         color: "#111",
-                        padding: "6px 10px",
-                        borderRadius: 10,
-                        opacity: stock <= 0 ? 0.6 : 1,
-                        border: "none",
-                        fontWeight: 700,
-                        cursor: "pointer",
                       }}
                     >
-                      {stock > 0 ? "Add" : "Out of stock"}
+                      {currency(price)}
+                    </div>
+                    <button
+                      onClick={() => add(String(p.id))}
+                      disabled={soldOut}
+                      style={{
+                        minWidth: 68,
+                        padding: "6px 10px",
+                        borderRadius: 10,
+                        background: soldOut ? "#ddd" : BRAND.primary,
+                        color: "#111",
+                        border: "none",
+                        cursor: soldOut ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {soldOut ? "Out" : "Add"}
                     </button>
                   </div>
-                  <div style={{ marginTop: 6, fontSize: 12, color: "#666" }}>Stock: {stock}</div>
+                  <div style={{ marginTop: 6, fontSize: 12, color: "#666" }}>
+                    Stock: {p.stock ?? 0}
+                  </div>
                 </div>
-              </article>
+              </div>
             );
           })}
         </div>
       </section>
 
       {/* Footer */}
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 16px 24px" }}>
+      <footer style={{ background: "#fff", borderTop: "1px solid #eee" }}>
         <div
           style={{
-            borderTop: "1px solid #eee",
-            paddingTop: 16,
+            maxWidth: 1200,
+            margin: "0 auto",
+            padding: "16px",
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
             gap: 16,
@@ -435,168 +569,278 @@ export default function Home() {
           }}
         >
           <div>
-            <div style={{ fontWeight: 700, color: "#111" }}>{BRAND.name}</div>
-            <div style={{ marginTop: 8, color: "#555" }}>Genuine stock, fair prices, friendly support.</div>
+            <div style={{ fontWeight: 600, color: "#111" }}>{BRAND.name}</div>
+            <div style={{ marginTop: 8, color: "#555" }}>
+              Genuine stock, fair prices, friendly support.
+            </div>
           </div>
+
           <div>
-            <div style={{ fontWeight: 700 }}>Contact</div>
+            <div style={{ fontWeight: 600 }}>Shop</div>
             <ul style={{ marginTop: 8, color: "#555", paddingLeft: 16 }}>
-              <li>
-                Email:{" "}
-                <a href={`mailto:${CONTACT.email}`} style={{ color: "#111" }}>
-                  {CONTACT.email}
-                </a>
-              </li>
-              <li>Website: {CONTACT.domain}</li>
-              <li>
-                <a href={CONTACT.mapsUrl} target="_blank" rel="noreferrer" style={{ color: "#111" }}>
-                  Sotik Town (View on Maps)
-                </a>
-              </li>
+              <li>TVs & Screens</li>
+              <li>Woofers & Audio</li>
+              <li>Bulbs & Lighting</li>
+              <li>Gas Refills</li>
             </ul>
           </div>
+
           <div>
-            <div style={{ fontWeight: 700 }}>Payments</div>
+            <div style={{ fontWeight: 600 }}>Contact</div>
             <ul style={{ marginTop: 8, color: "#555", paddingLeft: 16 }}>
-              <li>M-Pesa Till {CONTACT.till}</li>
+              <li>Email: {CONTACT.email}</li>
+              <li>Website: {CONTACT.domain}</li>
+              <li>M-Pesa Till: 8636720</li>
+              <li>Sotik Town, Bomet County</li>
+            </ul>
+          </div>
+
+          <div>
+            <div style={{ fontWeight: 600 }}>Payments</div>
+            <ul style={{ marginTop: 8, color: "#555", paddingLeft: 16 }}>
+              <li>M-Pesa Till 8636720</li>
               <li>Cash on Delivery (local)</li>
               <li>In-store M-Pesa Agent</li>
             </ul>
           </div>
         </div>
-        <div style={{ textAlign: "center", color: "#999", fontSize: 12, padding: "16px 0" }}>
-          © {new Date().getFullYear()} {BRAND.name}. All rights reserved.
+        <div
+          style={{
+            textAlign: "center",
+            color: "#999",
+            fontSize: 12,
+            padding: "16px 0",
+          }}
+        >
+          © {new Date().getFullYear()} Mastermind Electricals & Electronics. All
+          rights reserved.
         </div>
-      </div>
+      </footer>
 
-      {/* Cart modal */}
+      {/* CART OVERLAY (fixed, slides from right) */}
+      {/* Backdrop */}
       {showCart && (
         <div
-          role="dialog"
-          aria-modal="true"
+          onClick={() => setShowCart(false)}
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,.5)",
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "center",
+            background: "rgba(0,0,0,0.45)",
             zIndex: 50,
           }}
-          onClick={() => setShowCart(false)}
+        />
+      )}
+      <aside
+        style={{
+          position: "fixed",
+          top: 0,
+          right: 0,
+          height: "100vh",
+          width: "92vw",
+          maxWidth: 420,
+          background: "#fff",
+          borderLeft: "1px solid #ddd",
+          borderTopLeftRadius: 16,
+          borderBottomLeftRadius: 16,
+          boxShadow:
+            "0 10px 30px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.04) inset",
+          zIndex: 60,
+          transform: showCart ? "translateX(0)" : "translateX(100%)",
+          transition: "transform .28s ease",
+          display: "flex",
+          flexDirection: "column",
+        }}
+        aria-hidden={!showCart}
+      >
+        {/* header */}
+        <div
+          style={{
+            padding: 12,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            borderBottom: "1px solid #eee",
+          }}
+        >
+          <div style={{ fontWeight: 800, fontSize: 18 }}>Your Cart</div>
+          <button
+            onClick={() => setShowCart(false)}
+            aria-label="Close cart"
+            style={{
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              padding: 6,
+            }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* body */}
+        <div style={{ padding: "10px 12px", overflowY: "auto", flex: 1 }}>
+          {lines.length === 0 ? (
+            <div style={{ padding: "24px 0", color: "#666" }}>
+              Your cart is empty.
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 12 }}>
+              {lines.map((l) => {
+                const p = l.product!;
+                return (
+                  <div
+                    key={String(p.id)}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr auto",
+                      gap: 8,
+                      alignItems: "center",
+                      borderBottom: "1px solid #eee",
+                      paddingBottom: 8,
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 700 }}>{p.name}</div>
+                      <div style={{ color: "#666", fontSize: 12 }}>
+                        {currency(Number(p.price) || 0)}
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        justifyContent: "flex-end",
+                      }}
+                    >
+                      <button
+                        onClick={() => sub(String(p.id))}
+                        aria-label="Decrease"
+                        style={{
+                          border: "1px solid #ddd",
+                          borderRadius: 8,
+                          padding: "4px 6px",
+                          background: "#fff",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <Minus size={16} />
+                      </button>
+                      <div style={{ minWidth: 20, textAlign: "center" }}>
+                        {l.qty}
+                      </div>
+                      <button
+                        onClick={() => add(String(p.id))}
+                        aria-label="Increase"
+                        style={{
+                          border: "1px solid #ddd",
+                          borderRadius: 8,
+                          padding: "4px 6px",
+                          background: "#fff",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <Plus size={16} />
+                      </button>
+                      <button
+                        onClick={() => remove(String(p.id))}
+                        aria-label="Remove item"
+                        style={{
+                          marginLeft: 6,
+                          border: "1px solid #f3d",
+                          borderRadius: 8,
+                          padding: "4px 6px",
+                          background: "#fff0f7",
+                          color: "#b00",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* footer */}
+        <div
+          style={{
+            padding: 12,
+            borderTop: "1px solid #eee",
+            display: "grid",
+            gap: 10,
+          }}
         >
           <div
             style={{
-              width: "100%",
-              maxWidth: 560,
-              background: "#fff",
-              borderTopLeftRadius: 16,
-              borderTopRightRadius: 16,
-              padding: 16,
-              maxHeight: "85vh",
-              overflow: "auto",
+              display: "flex",
+              justifyContent: "space-between",
+              fontWeight: 800,
             }}
-            onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontWeight: 800, fontSize: 18 }}>Your Cart</div>
-              <button
-                onClick={() => setShowCart(false)}
-                style={{ background: "transparent", border: "none", padding: 6, cursor: "pointer" }}
-                aria-label="Close cart"
-              >
-                <X />
-              </button>
-            </div>
-
-            {lines.length === 0 ? (
-              <div style={{ padding: "24px 0", color: "#666" }}>Your cart is empty.</div>
-            ) : (
-              <>
-                <div style={{ display: "grid", gap: 12, marginTop: 12 }}>
-                  {lines.map((l) => (
-                    <div
-                      key={String(l.product.id)}
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr auto",
-                        gap: 8,
-                        alignItems: "center",
-                        borderBottom: "1px solid #eee",
-                        paddingBottom: 8,
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: 700 }}>{l.product.name}</div>
-                        <div style={{ color: "#666", fontSize: 12 }}>{currency(num(l.product.price))}</div>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <button
-                          onClick={() => cart.sub(String(l.product.id))}
-                          style={{ border: "1px solid #ddd", borderRadius: 8, padding: "4px 6px", background: "#fff", cursor: "pointer" }}
-                          aria-label="Decrease"
-                        >
-                          <Minus size={16} />
-                        </button>
-                        <div style={{ minWidth: 20, textAlign: "center" }}>{l.qty}</div>
-                        <button
-                          onClick={() => cart.add(String(l.product.id))}
-                          style={{ border: "1px solid #ddd", borderRadius: 8, padding: "4px 6px", background: "#fff", cursor: "pointer" }}
-                          aria-label="Increase"
-                        >
-                          <Plus size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800 }}>
-                    <span>Total</span>
-                    <span>{currency(Math.round(total))}</span>
-                  </div>
-
-                  <label style={{ fontSize: 12, color: "#555", marginTop: 8 }}>M-Pesa Phone (07XXXXXXXX)</label>
-                  <input
-                    value={mpesaPhone}
-                    onChange={(e) => setMpesaPhone(e.target.value)}
-                    placeholder="07XXXXXXXX"
-                    inputMode="numeric"
-                    style={{ width: "100%", padding: "8px 12px", border: "1px solid #ddd", borderRadius: 8 }}
-                  />
-
-                  <label style={{ fontSize: 12, color: "#555", marginTop: 8 }}>Delivery Option</label>
-                  <select
-                    value={delivery}
-                    onChange={(e) => setDelivery(e.target.value)}
-                    style={{ padding: "8px 12px", border: "1px solid #ddd", borderRadius: 8 }}
-                  >
-                    <option value="pickup">Pickup</option>
-                    <option value="delivery">Same-day Delivery (local)</option>
-                  </select>
-
-                  <button
-                    onClick={requestStkPush}
-                    style={{
-                      marginTop: 10,
-                      background: BRAND.primary,
-                      color: "#111",
-                      fontWeight: 800,
-                      padding: "10px 14px",
-                      borderRadius: 12,
-                      border: "none",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Pay with M-Pesa
-                  </button>
-                </div>
-              </>
-            )}
+            <span>Total</span>
+            <span>{currency(Math.round(total))}</span>
           </div>
+
+          <label
+            style={{
+              fontSize: 12,
+              color: "#555",
+              marginTop: 2,
+            }}
+          >
+            M-Pesa Phone (07XXXXXXXX)
+          </label>
+          <input
+            value={mpesaPhone}
+            onChange={(e) => setMpesaPhone(e.target.value)}
+            placeholder="07XXXXXXXX"
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              border: "1px solid #ddd",
+              borderRadius: 10,
+              outline: "none",
+            }}
+          />
+
+          <button
+            onClick={stkPush}
+            disabled={total <= 0}
+            style={{
+              marginTop: 6,
+              width: "100%",
+              background: total > 0 ? BRAND.primary : "#ddd",
+              color: "#111",
+              padding: "12px",
+              borderRadius: 12,
+              fontWeight: 800,
+              border: "none",
+              cursor: total > 0 ? "pointer" : "not-allowed",
+            }}
+          >
+            Pay with M-Pesa
+          </button>
+
+          <button
+            onClick={clear}
+            style={{
+              background: "#fff",
+              color: "#333",
+              border: "1px solid #ddd",
+              padding: "10px 12px",
+              borderRadius: 10,
+              cursor: "pointer",
+            }}
+          >
+            Clear cart
+          </button>
         </div>
-      )}
+      </aside>
     </div>
   );
 }
