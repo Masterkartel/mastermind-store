@@ -18,8 +18,8 @@ type Product = {
   id: string;
   name: string;
   price: number | string;
-  sku?: string;     // Units from your Excel (optional)
-  stock?: number;   // optional, if present will show/disable Add when 0
+  sku?: string;     // Units from your Excel
+  stock?: number;   // optional; if missing we default to 10
   img?: string;
 };
 
@@ -54,6 +54,13 @@ export default function Home() {
   const [showGasMenu, setShowGasMenu] = useState(false);
   const [mpesaPhone, setMpesaPhone] = useState("");
 
+  // Contact form state
+  const [cName, setCName] = useState("");
+  const [cContact, setCContact] = useState(""); // phone or email
+  const [cMsg, setCMsg] = useState("");
+  const [cBusy, setCBusy] = useState(false);
+  const [cDone, setCDone] = useState<null | "ok" | "err">(null);
+
   // Cart as id -> qty
   const [cart, setCart] = useState<Record<string, number>>({});
 
@@ -62,14 +69,13 @@ export default function Home() {
     fetch("/products.json")
       .then((r) => r.json())
       .then((list: any[]) => {
-        // Normalize numbers & fallback stock
         const normalized = (list || []).map((p: any) => ({
           ...p,
           price: Number(p.price) || 0,
           stock:
             typeof p.stock === "number"
               ? p.stock
-              : Number(p.Stock) || 10, // if your JSON has "Stock" use it; else default 10
+              : Number(p.Stock) || 10, // if JSON has "Stock", use it; else default 10
         }));
         setProducts(normalized);
       })
@@ -154,6 +160,8 @@ export default function Home() {
           amount: Math.round(total),
           items: lines.map((l) => ({
             id: l.product!.id,
+            name: l.product!.name,
+            price: Number(l.product!.price) || 0,
             qty: l.qty,
           })),
         }),
@@ -168,6 +176,40 @@ export default function Home() {
       }
     } catch (e: any) {
       alert("Network error: " + e?.message);
+    }
+  }
+
+  async function submitContact(e: React.FormEvent) {
+    e.preventDefault();
+    if (!cName.trim() || !cContact.trim() || !cMsg.trim()) {
+      setCDone("err");
+      return;
+    }
+    try {
+      setCBusy(true);
+      setCDone(null);
+      const r = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: cName,
+          contact: cContact,
+          message: cMsg,
+        }),
+      });
+      const j = await r.json();
+      if (j.ok) {
+        setCDone("ok");
+        setCName("");
+        setCContact("");
+        setCMsg("");
+      } else {
+        setCDone("err");
+      }
+    } catch {
+      setCDone("err");
+    } finally {
+      setCBusy(false);
     }
   }
 
@@ -257,7 +299,7 @@ export default function Home() {
             border-radius: 12px;
             box-shadow: 0 10px 30px rgba(0,0,0,.12);
             padding: 10px;
-            width: 240px;
+            width: 260px;
             z-index: 30;
           }
           .gasMenu button {
@@ -592,6 +634,94 @@ export default function Home() {
               </div>
             );
           })}
+        </div>
+      </section>
+
+      {/* Contact form */}
+      <section style={{ background: "#fff", borderTop: "1px solid #eee" }}>
+        <div
+          style={{
+            maxWidth: 900,
+            margin: "0 auto",
+            padding: 16,
+          }}
+        >
+          <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>
+            Leave us a message
+          </h2>
+          <p style={{ color: "#666", marginBottom: 12 }}>
+            Have a question or want to place an order? Leave your details and we’ll call you back.
+          </p>
+
+          <form
+            onSubmit={submitContact}
+            style={{
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            <input
+              value={cName}
+              onChange={(e) => setCName(e.target.value)}
+              placeholder="Your name"
+              required
+              style={{
+                padding: "10px 12px",
+                border: "1px solid #ddd",
+                borderRadius: 10,
+              }}
+            />
+            <input
+              value={cContact}
+              onChange={(e) => setCContact(e.target.value)}
+              placeholder="Phone (07XXXXXXXX) or Email"
+              required
+              style={{
+                padding: "10px 12px",
+                border: "1px solid #ddd",
+                borderRadius: 10,
+              }}
+            />
+            <textarea
+              value={cMsg}
+              onChange={(e) => setCMsg(e.target.value)}
+              placeholder="Your message"
+              rows={4}
+              required
+              style={{
+                padding: "10px 12px",
+                border: "1px solid #ddd",
+                borderRadius: 10,
+                resize: "vertical",
+              }}
+            />
+            <button
+              type="submit"
+              disabled={cBusy}
+              style={{
+                background: cBusy ? "#ddd" : BRAND.primary,
+                color: "#111",
+                padding: "12px",
+                borderRadius: 12,
+                fontWeight: 800,
+                border: "none",
+                cursor: cBusy ? "not-allowed" : "pointer",
+              }}
+            >
+              {cBusy ? "Sending..." : "Send message"}
+            </button>
+
+            {cDone === "ok" && (
+              <div style={{ color: "green", fontWeight: 600 }}>
+                Thanks! We’ve received your message.
+              </div>
+            )}
+            {cDone === "err" && (
+              <div style={{ color: "crimson", fontWeight: 600 }}>
+                Could not send. Please try again or call {CONTACT.phone}.
+              </div>
+            )}
+          </form>
         </div>
       </section>
 
