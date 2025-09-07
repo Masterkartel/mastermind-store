@@ -68,7 +68,6 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("popular");
 
-  // cart checkout fields live in the modal
   const [mpesaPhone, setMpesaPhone] = useState("");
   const [delivery, setDelivery] = useState("pickup");
 
@@ -218,6 +217,7 @@ export default function Home() {
             alignItems: "center",
             gap: 6,
             border: "none",
+            cursor: "pointer",
           }}
           title="Cart"
         >
@@ -315,7 +315,6 @@ export default function Home() {
                 <Check size={12} />
                 1-Year TV Warranty
               </div>
-              {/* New: M-Pesa Available badge */}
               <div
                 style={{
                   background: "#22c55e",
@@ -394,7 +393,6 @@ export default function Home() {
               </a>
             </div>
 
-            {/* Email beneath buttons */}
             <div style={{ marginTop: 6 }}>
               <a
                 href={`mailto:${CONTACT.email}`}
@@ -526,6 +524,7 @@ export default function Home() {
                         opacity: stock <= 0 ? 0.6 : 1,
                         border: "none",
                         fontWeight: 700,
+                        cursor: "pointer",
                       }}
                     >
                       {stock > 0 ? "Add" : "Out of stock"}
@@ -624,7 +623,7 @@ export default function Home() {
               <div style={{ fontWeight: 800, fontSize: 18 }}>Your Cart</div>
               <button
                 onClick={() => setShowCart(false)}
-                style={{ background: "transparent", border: "none", padding: 6 }}
+                style={{ background: "transparent", border: "none", padding: 6, cursor: "pointer" }}
                 aria-label="Close cart"
               >
                 <X />
@@ -635,4 +634,5 @@ export default function Home() {
               <div style={{ padding: "24px 0", color: "#666" }}>Your cart is empty.</div>
             ) : (
               <>
-                <div style={{ display: "grid", gap: 12, 
+                <div style={{ display: "grid", gap: 12, marginTop: 12 }}>
+                  {lines.
