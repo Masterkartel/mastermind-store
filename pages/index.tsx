@@ -9,7 +9,10 @@ import {
   Truck,
   Check,
   Store,
-  ExternalLink
+  ExternalLink,
+  Plus,
+  Minus,
+  X,
 } from "lucide-react";
 
 const BRAND = {
@@ -21,7 +24,7 @@ const BRAND = {
 const CONTACT = {
   domain: process.env.NEXT_PUBLIC_BRAND_DOMAIN || "www.mastermindelectricals.com",
   email: process.env.NEXT_PUBLIC_BRAND_EMAIL || "sales@mastermindelectricals.com",
-  phone: "0715151010", // tap-to-call below
+  phone: "0715151010",
   till: process.env.NEXT_PUBLIC_TILL || "8636720",
   mapsUrl: "https://maps.app.goo.gl/7P2okRB5ssLFMkUT8",
   hours: "Open Mon–Sun • 8:00am – 9:00pm",
@@ -34,7 +37,6 @@ function currency(kes: number) {
     maximumFractionDigits: 0,
   }).format(kes);
 }
-
 function safeNumber(n: any, fallback = 0) {
   const x = Number(n);
   return Number.isFinite(x) ? x : fallback;
@@ -44,34 +46,40 @@ function useCart() {
   const [items, setItems] = useState<Record<string, number>>({});
   const add = (id: string, qty = 1) =>
     setItems((s) => ({ ...s, [id]: (s[id] || 0) + qty }));
+  const sub = (id: string, qty = 1) =>
+    setItems((s) => {
+      const next = Math.max(0, (s[id] || 0) - qty);
+      return { ...s, [id]: next };
+    });
   const remove = (id: string) =>
     setItems((s) => {
       const { [id]: _, ...rest } = s;
       return rest;
     });
-  const setQty = (id: string, qty: number) =>
-    setItems((s) => ({ ...s, [id]: Math.max(0, qty) }));
-  return { items, add, remove, setQty };
+  const clear = () => setItems({});
+  return { items, add, sub, remove, clear };
 }
 
 export default function Home() {
   const cart = useCart();
+  const [showCart, setShowCart] = useState(false);
+
   const [products, setProducts] = useState<any[]>([]);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("popular");
-  const [phone, setPhone] = useState("");
+
+  // cart checkout fields live in the modal
+  const [mpesaPhone, setMpesaPhone] = useState("");
   const [delivery, setDelivery] = useState("pickup");
 
   useEffect(() => {
-    // load products.json
     fetch("/products.json")
       .then((r) => r.json())
       .then((list) => {
-        // normalize a bit: ensure stock
         const normalized = Array.isArray(list)
           ? list.map((p: any) => ({
               ...p,
-              stock: p?.stock ?? 1, // if missing, assume available
+              stock: p?.stock ?? 1,
             }))
           : [];
         setProducts(normalized);
@@ -79,7 +87,6 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
-  // cart lines
   const lines = useMemo(() => {
     return Object.entries(cart.items)
       .filter(([_, q]: any) => q > 0)
@@ -95,7 +102,6 @@ export default function Home() {
     [lines]
   );
 
-  // filtering (no categories now)
   const filtered = useMemo(() => {
     let list = products;
     if (query.trim()) {
@@ -111,13 +117,12 @@ export default function Home() {
       case "price-desc":
         list = list.slice().sort((a: any, b: any) => safeNumber(b.price) - safeNumber(a.price));
         break;
-      // "popular" is default; no-op
     }
     return list;
   }, [products, query, sort]);
 
   async function requestStkPush() {
-    if (!/^0?7\d{8}$/.test(phone)) {
+    if (!/^0?7\d{8}$/.test(mpesaPhone)) {
       alert("Enter valid Safaricom number, e.g., 07XXXXXXXX");
       return;
     }
@@ -129,26 +134,22 @@ export default function Home() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        phone,
+        phone: mpesaPhone,
         amount: Math.round(total),
-        items: lines.map((l) => ({
-          id: l.product.id,
-          qty: l.qty,
-        })),
+        items: lines.map((l) => ({ id: l.product.id, qty: l.qty })),
         delivery,
       }),
     });
     const data = await resp.json();
     if (data?.ok) {
-      alert(
-        `STK Push sent via Safaricom Daraja (Till ${CONTACT.till}). Enter your M-Pesa PIN.`
-      );
+      alert(`STK Push sent (Till ${CONTACT.till}). Enter your M-Pesa PIN.`);
+      cart.clear();
+      setShowCart(false);
     } else {
       alert("Payment error: " + (data?.error || "unknown"));
     }
   }
 
-  // simple image placeholder
   const PLACEHOLDER =
     "data:image/svg+xml;utf8," +
     encodeURIComponent(
@@ -166,7 +167,7 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      {/* Top bar */}
+      {/* TOP BAR — email only */}
       <div
         style={{
           background: BRAND.dark,
@@ -194,31 +195,20 @@ export default function Home() {
           </div>
         </div>
 
-        <div
+        <a
+          href={`mailto:${CONTACT.email}`}
           style={{
+            color: "#fff",
+            textDecoration: "none",
             display: "flex",
-            gap: 16,
-            fontSize: 14,
             alignItems: "center",
-            flexWrap: "wrap",
           }}
         >
-          <a
-            href={`mailto:${CONTACT.email}`}
-            style={{ color: "#fff", textDecoration: "none", display: "flex", gap: 6, alignItems: "center" }}
-          >
-            {CONTACT.email}
-          </a>
-          <a
-            href={`tel:+254715151010`}
-            style={{ color: "#fff", textDecoration: "none", display: "flex", gap: 6, alignItems: "center" }}
-            aria-label="Call us"
-          >
-            <Phone size={16} /> {CONTACT.phone}
-          </a>
-        </div>
+          {CONTACT.email}
+        </a>
 
         <button
+          onClick={() => setShowCart(true)}
           style={{
             background: "white",
             color: "#111",
@@ -236,16 +226,10 @@ export default function Home() {
         </button>
       </div>
 
-      {/* Hero + Visit Card */}
+      {/* HERO + VISIT CARD */}
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "16px" }}>
-        <div
-          style={{
-            display: "grid",
-            gap: 16,
-            gridTemplateColumns: "1fr",
-          }}
-        >
-          {/* hero */}
+        <div style={{ display: "grid", gap: 16 }}>
+          {/* Hero */}
           <div
             style={{
               background: "#fff",
@@ -291,8 +275,7 @@ export default function Home() {
               Quality Electronics, Lighting & Gas — Fast Delivery
             </h1>
             <p style={{ marginTop: 8, color: "#555" }}>
-              Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay via
-              M-Pesa. Pickup or same-day delivery.
+              Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay via M-Pesa. Pickup or same-day delivery.
             </p>
             <div
               style={{
@@ -332,6 +315,23 @@ export default function Home() {
                 <Check size={12} />
                 1-Year TV Warranty
               </div>
+              {/* New: M-Pesa Available badge */}
+              <div
+                style={{
+                  background: "#22c55e",
+                  color: "#0a0a0a",
+                  fontSize: 12,
+                  padding: "4px 8px",
+                  borderRadius: 12,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontWeight: 700,
+                }}
+                title="Pay with M-Pesa"
+              >
+                M-Pesa Available
+              </div>
             </div>
           </div>
 
@@ -355,6 +355,7 @@ export default function Home() {
               Mastermind Electricals & Electronics, Sotik Town
             </div>
             <div style={{ opacity: 0.85, fontSize: 14 }}>{CONTACT.hours}</div>
+
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
               <a
                 href={CONTACT.mapsUrl}
@@ -392,6 +393,16 @@ export default function Home() {
                 <Phone size={16} /> {CONTACT.phone}
               </a>
             </div>
+
+            {/* Email beneath buttons */}
+            <div style={{ marginTop: 6 }}>
+              <a
+                href={`mailto:${CONTACT.email}`}
+                style={{ color: "#fff", textDecoration: "none" }}
+              >
+                {CONTACT.email}
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -417,7 +428,12 @@ export default function Home() {
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value)}
-            style={{ padding: "8px 12px", border: "1px solid #ddd", borderRadius: 8, background: "#fff" }}
+            style={{
+              padding: "8px 12px",
+              border: "1px solid #ddd",
+              borderRadius: 8,
+              background: "#fff",
+            }}
           >
             <option value="popular">Popular</option>
             <option value="price-asc">Price: Low → High</option>
@@ -429,7 +445,6 @@ export default function Home() {
       {/* Product Grid */}
       <section style={{ maxWidth: 1200, margin: "0 auto", padding: "8px 16px 20px" }}>
         <div
-          className="grid"
           style={{
             display: "grid",
             gap: 16,
@@ -451,7 +466,6 @@ export default function Home() {
                 }}
               >
                 <div style={{ position: "relative", width: "100%", height: 160, background: "#f6f6f6" }}>
-                  {/* Stable image box to avoid “text glitching” */}
                   <img
                     src={imgSrc}
                     alt={p.name || "Product"}
@@ -543,7 +557,7 @@ export default function Home() {
           <div>
             <div style={{ fontWeight: 700, color: "#111" }}>{BRAND.name}</div>
             <div style={{ marginTop: 8, color: "#555" }}>
-              Tibet Yellow & Black brand. Genuine stock, fair prices, friendly support.
+              Genuine stock, fair prices, friendly support.
             </div>
           </div>
           <div>
@@ -555,14 +569,7 @@ export default function Home() {
                   {CONTACT.email}
                 </a>
               </li>
-              <li>
-                Phone:{" "}
-                <a href={`tel:+254715151010`} style={{ color: "#111" }}>
-                  {CONTACT.phone}
-                </a>
-              </li>
               <li>Website: {CONTACT.domain}</li>
-              <li>M-Pesa Till: {CONTACT.till}</li>
               <li>
                 <a href={CONTACT.mapsUrl} target="_blank" rel="noreferrer" style={{ color: "#111" }}>
                   Sotik Town (View on Maps)
@@ -573,16 +580,59 @@ export default function Home() {
           <div>
             <div style={{ fontWeight: 700 }}>Payments</div>
             <ul style={{ marginTop: 8, color: "#555", paddingLeft: 16 }}>
-              <li>M-Pesa Till {CONTACT.till} (Daraja STK Push)</li>
+              <li>M-Pesa Till {CONTACT.till}</li>
               <li>Cash on Delivery (local)</li>
               <li>In-store M-Pesa Agent</li>
             </ul>
           </div>
         </div>
         <div style={{ textAlign: "center", color: "#999", fontSize: 12, padding: "16px 0" }}>
-          © {new Date().getFullYear()} Mastermind Electricals & Electronics. All rights reserved.
+          © {new Date().getFullYear()} {BRAND.name}. All rights reserved.
         </div>
       </div>
-    </div>
-  );
-}
+
+      {/* CART MODAL */}
+      {showCart && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,.5)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            zIndex: 50,
+          }}
+          onClick={() => setShowCart(false)}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 560,
+              background: "#fff",
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              padding: 16,
+              maxHeight: "85vh",
+              overflow: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontWeight: 800, fontSize: 18 }}>Your Cart</div>
+              <button
+                onClick={() => setShowCart(false)}
+                style={{ background: "transparent", border: "none", padding: 6 }}
+                aria-label="Close cart"
+              >
+                <X />
+              </button>
+            </div>
+
+            {lines.length === 0 ? (
+              <div style={{ padding: "24px 0", color: "#666" }}>Your cart is empty.</div>
+            ) : (
+              <>
+                <div style={{ display: "grid", gap: 12, 
