@@ -1,15 +1,20 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import Head from 'next/head';
-import { ShoppingCart, Search, Phone, MapPin, Truck, Check, X } from 'lucide-react';
+import { ShoppingCart, Search, Phone, MapPin, Truck, Check, X, ExternalLink } from 'lucide-react';
 
 const BRAND = { name:'Mastermind Electricals & Electronics', primary:'#F2C300', dark:'#111111' };
 const CONTACT = {
   domain: process.env.NEXT_PUBLIC_BRAND_DOMAIN || 'www.mastermindelectricals.com',
   email: process.env.NEXT_PUBLIC_BRAND_EMAIL || 'sales@mastermindelectricals.com',
+  phone: '0715151010',
   till: process.env.NEXT_PUBLIC_TILL || '8636720',
+  mapsUrl: 'https://maps.app.goo.gl/7P2okRB5ssLFMkUT8',
+  hours: '8:00am – 9:00pm',
 };
 
-function currency(kes:number){ return new Intl.NumberFormat('en-KE',{ style:'currency', currency:'KES', maximumFractionDigits:0 }).format(kes); }
+function currency(kes:number){ 
+  return new Intl.NumberFormat('en-KE',{ style:'currency', currency:'KES', maximumFractionDigits:0 }).format(kes); 
+}
 
 function useCart(){
   const [items, setItems] = useState<Record<string, number>>({});
@@ -27,22 +32,22 @@ export default function Home(){
   const [cartOpen, setCartOpen] = useState(false);
   const [paying, setPaying] = useState(false);
 
-  // Load and normalize products
+  // Load + normalize products
   useEffect(()=>{
     fetch('/products.json')
       .then(r=>r.json())
       .then((data)=>{
         const clean = (Array.isArray(data) ? data : []).map((p:any)=>{
           const cleanName = String(p.name ?? "")
-            .replace(/\u00A0/g, " ")   // remove NBSP from Excel
-            .replace(/\s+/g, " ")      // collapse multiple spaces
+            .replace(/\u00A0/g, " ")   // non-breaking spaces from Excel
+            .replace(/\s+/g, " ")
             .trim();
 
           return {
             ...p,
             name: cleanName,
             price: Number(p.price)||0,
-            stock: typeof p.stock === 'number' ? p.stock : (Number(p.stock)||1), // default 1 to avoid "Out of stock" if missing
+            stock: typeof p.stock === 'number' ? p.stock : (Number(p.stock)||1), // default to 1 so not “Out of stock”
             sku: typeof p.sku === 'string' ? p.sku : (p.sku ?? ''),
           };
         });
@@ -51,7 +56,7 @@ export default function Home(){
       .catch(()=> setProducts([]));
   },[]);
 
-  // Cart lines & total
+  // Cart
   const lines = useMemo(()=> Object.entries(cart.items)
     .filter(([_,qty])=> (qty as number) > 0)
     .map(([id,qty])=>{
@@ -63,7 +68,7 @@ export default function Home(){
 
   const total = useMemo(()=> lines.reduce((s,l)=> s + (Number(l.product?.price)||0) * (Number(l.qty)||0), 0), [lines]);
 
-  // Search filter (no categories)
+  // Search (no categories)
   const filtered = useMemo(()=>{
     let list = products.slice();
     if (q.trim()){
@@ -100,7 +105,7 @@ export default function Home(){
       }
 
       let data: any = {};
-      try { data = await resp.json(); } catch { /* ignore parse errors */ }
+      try { data = await resp.json(); } catch { /* ignore */ }
 
       if (resp.ok && data?.ok) {
         alert(`STK Push sent (Till ${CONTACT.till}). Enter your M-Pesa PIN on your phone.`);
@@ -108,7 +113,7 @@ export default function Home(){
         const msg = data?.error || `Payment error (HTTP ${resp.status}). Ensure Daraja keys & callback URL are set.`;
         alert(msg);
       }
-    } catch (e:any) {
+    } catch {
       alert('Network error calling /api/mpesa. Are you online and is the API route deployed?');
     } finally {
       setPaying(false);
@@ -130,7 +135,7 @@ export default function Home(){
             </div>
           </div>
           <div className="hide-sm" style={{display:'flex', gap:16, alignItems:'center', fontSize:14, opacity:.9}}>
-            <div style={{display:'flex', gap:6, alignItems:'center'}}><Phone size={16}/><span>{CONTACT.email}</span></div>
+            <div style={{display:'flex', gap:6, alignItems:'center'}}><Phone size={16}/><span>{CONTACT.phone}</span></div>
             <div style={{display:'flex', gap:6, alignItems:'center'}}><MapPin size={16}/><span>Sotik Town, Bomet</span></div>
           </div>
           <button onClick={()=>setCartOpen(true)} aria-label="Open cart"
@@ -147,21 +152,30 @@ export default function Home(){
             <div style={{position:'absolute', right:-40, top:-40, height:160, width:160, borderRadius:999, background:BRAND.primary, opacity:.15}}/>
             <div style={{textTransform:'uppercase', fontSize:12, letterSpacing:1}}>Trusted in Sotik</div>
             <h1 style={{margin:'8px 0 0', fontSize:28, fontWeight:800}}>Quality Electronics, Lighting & Gas — Fast Delivery</h1>
-            <p style={{marginTop:8, color:'#555'}}>Shop TVs, woofers, LED bulbs, Cables and 6kg/13kg gas refills. Pay via M-Pesa. Pickup or same-day delivery.</p>
+            <p style={{marginTop:8, color:'#555'}}>Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay via M-Pesa. Pickup or same-day delivery.</p>
             <div style={{marginTop:12, display:'flex', gap:8, alignItems:'center', flexWrap:'wrap'}}>
               <div style={{background:BRAND.primary, color:'#111', fontSize:12, padding:'4px 8px', borderRadius:12, display:'inline-flex', alignItems:'center', gap:6}}><Truck size={12}/>Same-day delivery</div>
               <div style={{border:'1px solid #e5e5e5', fontSize:12, padding:'4px 8px', borderRadius:12, display:'inline-flex', alignItems:'center', gap:6}}><Check size={12}/>1-Year TV Warranty</div>
             </div>
           </div>
-          <div style={{background:'#111', color:'#fff', borderRadius:16, padding:16, display:'flex', flexDirection:'column', justifyContent:'center'}}>
-            <div style={{display:'flex', gap:8, alignItems:'center', fontWeight:600}}>Visit Our Shop</div>
-            <div style={{marginTop:8, opacity:.9, fontSize:14}}>Mastermind Electricals & Electronics, Sotik Town</div>
-            <div style={{marginTop:8, opacity:.75, fontSize:14}}>Open Mon-Sun • 8:00am – 9:00pm</div>
+
+          {/* Visit card with phone, hours, and map link */}
+          <div style={{background:'#111', color:'#fff', borderRadius:16, padding:16, display:'flex', flexDirection:'column', justifyContent:'center', gap:8}}>
+            <div style={{display:'flex', gap:8, alignItems:'center', fontWeight:600}}>
+              <MapPin size={18}/> Visit Our Shop
+            </div>
+            <div style={{opacity:.9, fontSize:14}}>Mastermind Electricals & Electronics, Sotik Town</div>
+            <div style={{opacity:.9, fontSize:14}}>Open Mon-Sun • {CONTACT.hours}</div>
+            <a href={CONTACT.mapsUrl} target="_blank" rel="noopener noreferrer"
+               style={{marginTop:8, display:'inline-flex', alignItems:'center', gap:6, background:BRAND.primary, color:'#111',
+                       padding:'8px 12px', borderRadius:12, fontWeight:700, width:'fit-content'}}>
+              Open in Google Maps <ExternalLink size={16}/>
+            </a>
           </div>
         </div>
       </section>
 
-      {/* Search only (no categories) */}
+      {/* Search (no categories) */}
       <section style={{maxWidth:1200, margin:'0 auto', padding:'0 16px 8px'}}>
         <div style={{position:'relative'}}>
           <Search size={16} style={{position:'absolute', left:10, top:10, color:'#999'}}/>
@@ -174,7 +188,7 @@ export default function Home(){
         </div>
       </section>
 
-      {/* Product Grid (equal-height cards + lazy images + 2-line name clamp) */}
+      {/* Product Grid */}
       <section style={{maxWidth:1200, margin:'0 auto', padding:'8px 16px 20px'}}>
         <div className="grid" style={{display:'grid', gap:16, gridTemplateColumns:'repeat(auto-fill, minmax(180px, 1fr))'}}>
           {filtered.map((p:any)=> {
@@ -217,7 +231,7 @@ export default function Home(){
                         WebkitLineClamp: 2,
                         WebkitBoxOrient: 'vertical',
                         overflow:'hidden',
-                        minHeight: '2.5em' // ~2 lines reserved to stop jitter
+                        minHeight: '2.5em'
                       }}
                       title={p.name}
                     >
@@ -255,6 +269,7 @@ export default function Home(){
             <div style={{marginTop:8, color:'#555'}}>Genuine stock, fair prices, friendly support.</div></div>
           <div><div style={{fontWeight:700}}>Contact</div>
             <ul style={{marginTop:8, color:'#555', paddingLeft:16}}>
+              <li>Phone: {CONTACT.phone}</li>
               <li>Email: {CONTACT.email}</li>
               <li>Website: {CONTACT.domain}</li>
               <li>M-Pesa Till: {CONTACT.till}</li>
@@ -344,7 +359,7 @@ export default function Home(){
         </aside>
       </div>
 
-      {/* Mobile adjustments */}
+      {/* Responsive tweaks */}
       <style jsx>{`
         @media (max-width: 860px) {
           .hero-grid { grid-template-columns: 1fr; }
