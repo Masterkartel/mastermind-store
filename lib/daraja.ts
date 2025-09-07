@@ -1,14 +1,12 @@
-import type { NextApiRequest, NextApiResponse } from "next";
+// /lib/daraja.ts
+// Minimal Daraja STK Push helper used by pages/api/mpesa.ts
 
-const consumerKey = process.env.DARAJA_CONSUMER_KEY as string;
-const consumerSecret = process.env.DARAJA_CONSUMER_SECRET as string;
-const shortCode = process.env.DARAJA_SHORTCODE as string;
-const passKey = process.env.DARAJA_PASSKEY as string;
-const callbackUrl = `${process.env.NEXT_PUBLIC_BRAND_DOMAIN}/api/mpesa-callback`;
+function baseUrl() {
+  return (process.env.DARAJA_ENV || "").toUpperCase() === "PRODUCTION"
+    ? "https://api.safaricom.co.ke"
+    : "https://sandbox.safaricom.co.ke";
+}
 
-/**
- * Generate Safaricom timestamp (YYYYMMDDHHMMSS)
- */
 function makeTimestamp(): string {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -18,68 +16,64 @@ function makeTimestamp(): string {
   );
 }
 
-/**
- * Get OAuth token from Safaricom
- */
 async function getToken(): Promise<string> {
-  const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString("base64");
-
+  const key = process.env.DARAJA_CONSUMER_KEY || "";
+  const secret = process.env.DARAJA_CONSUMER_SECRET || "";
+  if (!key || !secret) throw new Error("Missing DARAJA_CONSUMER_KEY/SECRET");
+  const auth = Buffer.from(`${key}:${secret}`).toString("base64");
   const res = await fetch(
-    "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials",
-    {
-      headers: {
-        Authorization: `Basic ${auth}`,
-      },
-    }
+    `${baseUrl()}/oauth/v1/generate?grant_type=client_credentials`,
+    { headers: { Authorization: `Basic ${auth}` } }
   );
-
-  const data = await res.json();
-  return data.access_token;
+  if (!res.ok) throw new Error(`Token error: ${await res.text()}`);
+  const { access_token } = (await res.json()) as { access_token: string };
+  return access_token;
 }
 
-/**
- * Initiate STK Push (Lipa na M-Pesa Online)
- */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+export async function stkPush(phone: string, amount: number) {
+  const shortcode = process.env.DARAJA_SHORTCODE || "";
+  const passkey = process.env.DARAJA_PASSKEY || "";
+  if (!shortcode || !passkey) throw new Error("Missing DARAJA_SHORTCODE/PASSKEY");
 
-  try {
-    const { phone, amount } = req.body;
+  const ts = makeTimestamp();
+  const password = Buffer.from(shortcode + passkey + ts).toString("base64");
+  const token = await getToken();
+  const to254 = (p: string) => (p.startsWith("0") ? p.replace(/^0/, "254") : p);
 
-    const timestamp = makeTimestamp();
-    const password = Buffer.from(shortCode + passKey + timestamp).toString("base64");
-    const token = await getToken();
+  const callback =
+    process.env.NEXT_PUBLIC_BRAND_DOMAIN
+      ? `https://${process.env.NEXT_PUBLIC_BRAND_DOMAIN}/api/mpesa-callback`
+      : "https://example.com/api/mpesa-callback";
 
-    const response = await fetch(
-      "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          BusinessShortCode: shortCode,
-          Password: password,
-          Timestamp: timestamp,
-          TransactionType: "CustomerPayBillOnline",
-          Amount: amount,
-          PartyA: phone,
-          PartyB: shortCode,
-          PhoneNumber: phone,
-          CallBackURL: callbackUrl,
-          AccountReference: "MastermindStore",
-          TransactionDesc: "Payment for goods",
-        }),
-      }
+  const payload = {
+    BusinessShortCode: Number(shortcode),
+    Password: password,
+    Timestamp: ts,
+    TransactionType: "CustomerBuyGoodsOnline",
+    Amount: Math.round(amount),
+    PartyA: to254(phone),
+    PartyB: Number(shortcode),
+    PhoneNumber: to254(phone),
+    CallBackURL: callback,
+    AccountReference: "Mastermind Order",
+    TransactionDesc: "Mastermind Store Checkout",
+  };
+
+  const resp = await fetch(`${baseUrl()}/mpesa/stkpush/v1/processrequest`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await resp.json();
+  if (!resp.ok) {
+    throw new Error(
+      (data && (data.errorMessage || data.error || JSON.stringify(data))) ||
+        "Daraja STK error"
     );
-
-    const data = await response.json();
-    return res.status(200).json(data);
-  } catch (err: any) {
-    console.error("Daraja STK error:", err);
-    return res.status(500).json({ error: err.message });
   }
+  return data;
 }
