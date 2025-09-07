@@ -27,18 +27,25 @@ export default function Home(){
   const [cartOpen, setCartOpen] = useState(false);
   const [paying, setPaying] = useState(false);
 
-  // Load products.json
+  // Load and normalize products
   useEffect(()=>{
     fetch('/products.json')
       .then(r=>r.json())
       .then((data)=>{
-        // normalize: ensure numeric price/stock; default stock=1 if missing
-        const clean = (Array.isArray(data) ? data : []).map((p:any)=>({
-          ...p,
-          price: Number(p.price)||0,
-          stock: typeof p.stock === 'number' ? p.stock : (Number(p.stock)||1),
-          sku: typeof p.sku === 'string' ? p.sku : (p.sku ?? ''),
-        }));
+        const clean = (Array.isArray(data) ? data : []).map((p:any)=>{
+          const cleanName = String(p.name ?? "")
+            .replace(/\u00A0/g, " ")   // remove NBSP from Excel
+            .replace(/\s+/g, " ")      // collapse multiple spaces
+            .trim();
+
+          return {
+            ...p,
+            name: cleanName,
+            price: Number(p.price)||0,
+            stock: typeof p.stock === 'number' ? p.stock : (Number(p.stock)||1), // default 1 to avoid "Out of stock" if missing
+            sku: typeof p.sku === 'string' ? p.sku : (p.sku ?? ''),
+          };
+        });
         setProducts(clean);
       })
       .catch(()=> setProducts([]));
@@ -56,7 +63,7 @@ export default function Home(){
 
   const total = useMemo(()=> lines.reduce((s,l)=> s + (Number(l.product?.price)||0) * (Number(l.qty)||0), 0), [lines]);
 
-  // Search filter
+  // Search filter (no categories)
   const filtered = useMemo(()=>{
     let list = products.slice();
     if (q.trim()){
@@ -82,7 +89,6 @@ export default function Home(){
         }),
       });
 
-      // Clearer errors when API route is missing or misconfigured
       if (resp.status === 404) {
         alert('Payment endpoint not found (/api/mpesa). Please add pages/api/mpesa.ts and redeploy.');
         return;
@@ -141,7 +147,7 @@ export default function Home(){
             <div style={{position:'absolute', right:-40, top:-40, height:160, width:160, borderRadius:999, background:BRAND.primary, opacity:.15}}/>
             <div style={{textTransform:'uppercase', fontSize:12, letterSpacing:1}}>Trusted in Sotik</div>
             <h1 style={{margin:'8px 0 0', fontSize:28, fontWeight:800}}>Quality Electronics, Lighting & Gas — Fast Delivery</h1>
-            <p style={{marginTop:8, color:'#555'}}>Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay via M-Pesa. Pickup or same-day delivery.</p>
+            <p style={{marginTop:8, color:'#555'}}>Shop TVs, woofers, LED bulbs, Cables and 6kg/13kg gas refills. Pay via M-Pesa. Pickup or same-day delivery.</p>
             <div style={{marginTop:12, display:'flex', gap:8, alignItems:'center', flexWrap:'wrap'}}>
               <div style={{background:BRAND.primary, color:'#111', fontSize:12, padding:'4px 8px', borderRadius:12, display:'inline-flex', alignItems:'center', gap:6}}><Truck size={12}/>Same-day delivery</div>
               <div style={{border:'1px solid #e5e5e5', fontSize:12, padding:'4px 8px', borderRadius:12, display:'inline-flex', alignItems:'center', gap:6}}><Check size={12}/>1-Year TV Warranty</div>
@@ -150,7 +156,7 @@ export default function Home(){
           <div style={{background:'#111', color:'#fff', borderRadius:16, padding:16, display:'flex', flexDirection:'column', justifyContent:'center'}}>
             <div style={{display:'flex', gap:8, alignItems:'center', fontWeight:600}}>Visit Our Shop</div>
             <div style={{marginTop:8, opacity:.9, fontSize:14}}>Mastermind Electricals & Electronics, Sotik Town</div>
-            <div style={{marginTop:8, opacity:.75, fontSize:14}}>Open Mon-Sun • 7:30am – 8:00pm</div>
+            <div style={{marginTop:8, opacity:.75, fontSize:14}}>Open Mon-Sun • 8:00am – 9:00pm</div>
           </div>
         </div>
       </section>
@@ -168,7 +174,7 @@ export default function Home(){
         </div>
       </section>
 
-      {/* Product Grid (equal-height cards + lazy images) */}
+      {/* Product Grid (equal-height cards + lazy images + 2-line name clamp) */}
       <section style={{maxWidth:1200, margin:'0 auto', padding:'8px 16px 20px'}}>
         <div className="grid" style={{display:'grid', gap:16, gridTemplateColumns:'repeat(auto-fill, minmax(180px, 1fr))'}}>
           {filtered.map((p:any)=> {
@@ -193,16 +199,33 @@ export default function Home(){
                     onError={(e)=>{ (e.currentTarget as HTMLImageElement).src='https://via.placeholder.com/600x360?text=Product'; }}
                     alt={p.name}
                     loading="lazy"
+                    decoding="async"
                     style={{height:140, width:'100%', objectFit:'cover', display:'block'}}
                   />
                 </div>
                 <div style={{padding:12, flex:1, display:'flex', flexDirection:'column', justifyContent:'space-between'}}>
                   <div>
-                    <div style={{fontSize:12, color:'#777'}}>SKU: {p.sku || '—'}</div>
-                    <div style={{fontWeight:700, lineHeight:1.2, marginTop:2}}>{p.name}</div>
+                    <div style={{fontSize:12, color:'#777', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                      SKU: {p.sku || '—'}
+                    </div>
+                    <div
+                      style={{
+                        marginTop:2,
+                        fontWeight:700,
+                        lineHeight:1.25,
+                        display:'-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow:'hidden',
+                        minHeight: '2.5em' // ~2 lines reserved to stop jitter
+                      }}
+                      title={p.name}
+                    >
+                      {p.name}
+                    </div>
                   </div>
                   <div style={{marginTop:10}}>
-                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:8}}>
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:8'}}>
                       <div style={{fontSize:18, fontWeight:800, color:'#111'}}>{currency(price)}</div>
                       <button
                         onClick={()=> cart.add(p.id)}
@@ -334,4 +357,4 @@ export default function Home(){
       `}</style>
     </div>
   );
-                }
+}
