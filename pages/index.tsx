@@ -51,6 +51,19 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
   const [showCart, setShowCart] = useState(false);
+  const [showGasMenu, setShowGasMenu] = useState(false);
+
+  // Quick-add safety: ensure these product IDs exist in public/products.json
+  function addGas(id: "gas-6kg" | "gas-13kg") {
+    const exists = products.some(p => String(p.id) === id);
+    if (!exists) {
+      alert(`Product ${id} not found in products.json. Please add it (id must be "${id}")`);
+      return;
+    }
+    add(id);
+    setShowGasMenu(false);
+    setShowCart(true);
+  }
   const [mpesaPhone, setMpesaPhone] = useState("");
 
   // Cart as id -> qty
