@@ -18,8 +18,8 @@ type Product = {
   id: string;
   name: string;
   price: number | string;
-  sku?: string; // “Units” from Excel
-  stock?: number; // taken from your file if present; otherwise we default to 10
+  sku?: string;     // Units from your Excel (optional)
+  stock?: number;   // optional, if present will show/disable Add when 0
   img?: string;
 };
 
@@ -52,18 +52,6 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [showCart, setShowCart] = useState(false);
   const [showGasMenu, setShowGasMenu] = useState(false);
-
-  // Quick-add safety: ensure these product IDs exist in public/products.json
-  function addGas(id: "gas-6kg" | "gas-13kg") {
-    const exists = products.some(p => String(p.id) === id);
-    if (!exists) {
-      alert(`Product ${id} not found in products.json. Please add it (id must be "${id}")`);
-      return;
-    }
-    add(id);
-    setShowGasMenu(false);
-    setShowCart(true);
-  }
   const [mpesaPhone, setMpesaPhone] = useState("");
 
   // Cart as id -> qty
@@ -74,14 +62,14 @@ export default function Home() {
     fetch("/products.json")
       .then((r) => r.json())
       .then((list: any[]) => {
-        // normalize numbers & add fallback stock
-        const normalized = list.map((p) => ({
+        // Normalize numbers & fallback stock
+        const normalized = (list || []).map((p: any) => ({
           ...p,
           price: Number(p.price) || 0,
           stock:
             typeof p.stock === "number"
               ? p.stock
-              : Number((p as any).Stock) || 10,
+              : Number(p.Stock) || 10, // if your JSON has "Stock" use it; else default 10
         }));
         setProducts(normalized);
       })
@@ -105,6 +93,20 @@ export default function Home() {
       return rest;
     });
   const clear = () => setCart({});
+
+  // Quick-add for gas
+  function addGas(id: "gas-6kg" | "gas-13kg") {
+    const exists = products.some((p) => String(p.id) === id);
+    if (!exists) {
+      alert(
+        `Product ${id} not found in products.json. Please add it (id must be "${id}")`
+      );
+      return;
+    }
+    add(id);
+    setShowGasMenu(false);
+    setShowCart(true);
+  }
 
   // ---------------- Derived ----------------
   const filtered = useMemo(() => {
@@ -174,10 +176,7 @@ export default function Home() {
     <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
       <Head>
         <title>Mastermind Electricals & Electronics</title>
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1"
-        />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
       {/* Top Bar (brand + cart only) */}
@@ -199,7 +198,6 @@ export default function Home() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {/* simple brand mark circle */}
             <div
               style={{
                 height: 28,
@@ -208,9 +206,7 @@ export default function Home() {
                 background: BRAND.primary,
               }}
             />
-            <div style={{ fontWeight: 700 }}>
-              {BRAND.name}
-            </div>
+            <div style={{ fontWeight: 700 }}>{BRAND.name}</div>
           </div>
 
           <button
@@ -234,15 +230,50 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Hero + Shop Info */}
-      <section style={{ maxWidth: 1200, margin: "0 auto", padding: 16 }}>
-        <div
-          style={{
-            display: "grid",
-            gap: 16,
-            gridTemplateColumns: "1fr",
-          }}
-        >
+      {/* Hero + Shop Info (two columns on desktop) */}
+      <section className="twoColWrap" style={{ maxWidth: 1200, margin: "0 auto", padding: 16 }}>
+        <style jsx>{`
+          .twoCol {
+            display: grid;
+            gap: 16px;
+            grid-template-columns: 1fr; /* phone default */
+            align-items: stretch;
+          }
+          @media (min-width: 920px) {
+            .twoCol {
+              grid-template-columns: 2fr 1fr; /* desktop: two columns */
+            }
+          }
+          .badges {
+            display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+            position: relative; /* for the gas menu popover */
+          }
+          .gasMenu {
+            position: absolute;
+            top: 42px; /* below badges row */
+            left: 0;
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,.12);
+            padding: 10px;
+            width: 240px;
+            z-index: 30;
+          }
+          .gasMenu button {
+            width: 100%;
+            background: #111;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 12px;
+            cursor: pointer;
+            margin-top: 6px;
+            font-weight: 700;
+          }
+        `}</style>
+
+        <div className="twoCol">
           {/* Hero */}
           <div
             style={{
@@ -288,20 +319,11 @@ export default function Home() {
               Quality Electronics, Lighting & Gas — Fast Delivery
             </h1>
             <p style={{ marginTop: 8, color: "#555" }}>
-              Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay via
-              M-Pesa. Pickup or same-day delivery.
+              Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay via M-Pesa. Pickup or same-day delivery.
             </p>
 
-            {/* badges */}
-            <div
-              style={{
-                marginTop: 12,
-                display: "flex",
-                gap: 8,
-                alignItems: "center",
-                flexWrap: "wrap",
-              }}
-            >
+            {/* badges (with gas popover) */}
+            <div className="badges">
               <span
                 style={{
                   background: BRAND.primary,
@@ -317,6 +339,7 @@ export default function Home() {
                 <Truck size={12} />
                 Same-day delivery
               </span>
+
               <span
                 style={{
                   border: "1px solid #e5e5e5",
@@ -331,6 +354,7 @@ export default function Home() {
                 <Check size={12} />
                 1-Year TV Warranty
               </span>
+
               <span
                 style={{
                   border: "1px solid #e5e5e5",
@@ -345,7 +369,10 @@ export default function Home() {
                 <Wallet size={12} />
                 M-Pesa Available
               </span>
-              <span
+
+              {/* Gas button now clickable */}
+              <button
+                onClick={() => setShowGasMenu((v) => !v)}
                 style={{
                   border: "1px solid #e5e5e5",
                   fontSize: 12,
@@ -354,93 +381,92 @@ export default function Home() {
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 6,
+                  background: "#fff",
+                  cursor: "pointer",
                 }}
+                aria-haspopup="menu"
+                aria-expanded={showGasMenu}
               >
                 <Flame size={12} />
                 Gas Refills Available
-              </span>
+              </button>
+
+              {/* Popover with quick add */}
+              {showGasMenu && (
+                <div className="gasMenu" onMouseLeave={() => setShowGasMenu(false)}>
+                  <div style={{ fontWeight: 800, marginBottom: 6 }}>Quick Add (Gas)</div>
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <button onClick={() => addGas("gas-6kg")}>Add 6KG — KES 1,150</button>
+                    <button onClick={() => addGas("gas-13kg")}>Add 13KG — KES 2,550</button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Shop info card */}
+          {/* Visit Our Shop card */}
           <div
             style={{
               background: "#111",
               color: "#fff",
               borderRadius: 16,
               padding: 16,
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
             }}
           >
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <MapPin size={18} />
               <span style={{ fontWeight: 600 }}>Visit Our Shop</span>
             </div>
-            <div style={{ marginTop: 8, opacity: 0.9, fontSize: 14 }}>
+            <div style={{ opacity: 0.9, fontSize: 14 }}>
               Mastermind Electricals & Electronics, Sotik Town
             </div>
-            <div style={{ marginTop: 6, opacity: 0.85, fontSize: 14 }}>
-              {CONTACT.hours}
-            </div>
+            <div style={{ opacity: 0.85, fontSize: 14 }}>{CONTACT.hours}</div>
 
-            <div
-              style={{
-                marginTop: 12,
-                display: "grid",
-                gridTemplateColumns: "1fr",
-                gap: 10,
-              }}
-            >
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
               <a
                 href={CONTACT.maps}
                 target="_blank"
                 rel="noreferrer"
                 style={{
+                  background: BRAND.primary,
+                  color: "#111",
+                  fontWeight: 700,
+                  padding: "10px 12px",
+                  borderRadius: 12,
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 8,
-                  background: BRAND.primary,
-                  color: "#111",
-                  padding: "10px 12px",
-                  borderRadius: 12,
                   textDecoration: "none",
-                  justifyContent: "center",
                 }}
               >
                 <MapPin size={16} />
                 View on Maps
               </a>
-
               <a
                 href={`tel:${CONTACT.phone}`}
                 style={{
+                  background: "white",
+                  color: "#111",
+                  fontWeight: 700,
+                  padding: "10px 12px",
+                  borderRadius: 12,
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 8,
-                  background: "#222",
-                  color: "#fff",
-                  padding: "10px 12px",
-                  borderRadius: 12,
                   textDecoration: "none",
-                  justifyContent: "center",
                 }}
               >
-                <Phone size={16} /> {CONTACT.phone}
+                <Phone size={16} />
+                {CONTACT.phone}
               </a>
+            </div>
 
-              <a
-                href={`mailto:${CONTACT.email}`}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  background: "#222",
-                  color: "#fff",
-                  padding: "10px 12px",
-                  borderRadius: 12,
-                  textDecoration: "none",
-                  justifyContent: "center",
-                }}
-              >
+            <div style={{ marginTop: 6, fontSize: 14, opacity: 0.9 }}>
+              Email:{" "}
+              <a href={`mailto:${CONTACT.email}`} style={{ color: BRAND.primary }}>
                 {CONTACT.email}
               </a>
             </div>
@@ -514,6 +540,7 @@ export default function Home() {
                         height: "100%",
                         objectFit: "cover",
                       }}
+                      loading="lazy"
                     />
                   ) : (
                     "No Image"
@@ -625,13 +652,11 @@ export default function Home() {
             padding: "16px 0",
           }}
         >
-          © {new Date().getFullYear()} Mastermind Electricals & Electronics. All
-          rights reserved.
+          © {new Date().getFullYear()} Mastermind Electricals & Electronics. All rights reserved.
         </div>
       </footer>
 
       {/* CART OVERLAY (fixed, slides from right) */}
-      {/* Backdrop */}
       {showCart && (
         <div
           onClick={() => setShowCart(false)}
