@@ -29,25 +29,19 @@ const CONTACT = {
   hours: "Open Mon–Sun • 8:00am – 9:00pm",
 };
 
-function currency(n: number) {
-  return new Intl.NumberFormat("en-KE", {
+const currency = (n: number) =>
+  new Intl.NumberFormat("en-KE", {
     style: "currency",
     currency: "KES",
     maximumFractionDigits: 0,
   }).format(n);
-}
 const num = (v: any, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
 
 function useCart() {
   const [items, setItems] = useState<Record<string, number>>({});
   const add = (id: string, q = 1) => setItems((s) => ({ ...s, [id]: (s[id] || 0) + q }));
-  const sub = (id: string, q = 1) =>
-    setItems((s) => ({ ...s, [id]: Math.max(0, (s[id] || 0) - q) }));
-  const remove = (id: string) =>
-    setItems((s) => {
-      const { [id]: _, ...rest } = s;
-      return rest;
-    });
+  const sub = (id: string, q = 1) => setItems((s) => ({ ...s, [id]: Math.max(0, (s[id] || 0) - q) }));
+  const remove = (id: string) => setItems((s) => { const { [id]:_, ...r } = s; return r; });
   const clear = () => setItems({});
   return { items, add, sub, remove, clear };
 }
@@ -57,7 +51,6 @@ export default function Home() {
   const [showCart, setShowCart] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState("popular");
   const [mpesaPhone, setMpesaPhone] = useState("");
   const [delivery, setDelivery] = useState("pickup");
 
@@ -65,12 +58,7 @@ export default function Home() {
     fetch("/products.json")
       .then((r) => r.json())
       .then((list) =>
-        setProducts(
-          (Array.isArray(list) ? list : []).map((p: any) => ({
-            ...p,
-            stock: p?.stock ?? 1,
-          }))
-        )
+        setProducts((Array.isArray(list) ? list : []).map((p: any) => ({ ...p, stock: p?.stock ?? 1 })))
       )
       .catch(() => {});
   }, []);
@@ -79,31 +67,20 @@ export default function Home() {
     () =>
       Object.entries(cart.items)
         .filter(([_, q]) => (q as number) > 0)
-        .map(([id, qty]) => ({
-          product: products.find((p) => String(p.id) === String(id)),
-          qty: qty as number,
-        }))
+        .map(([id, qty]) => ({ product: products.find((p) => String(p.id) === String(id)), qty: qty as number }))
         .filter((l) => !!l.product),
     [cart.items, products]
   );
-
-  const total = useMemo(
-    () => lines.reduce((s, l) => s + num(l.product?.price) * l.qty, 0),
-    [lines]
-  );
+  const total = useMemo(() => lines.reduce((s, l) => s + num(l.product?.price) * l.qty, 0), [lines]);
 
   const filtered = useMemo(() => {
     let list = products;
     if (query.trim()) {
       const q = query.toLowerCase();
-      list = list.filter((p: any) =>
-        `${p.name || ""} ${p.sku || ""}`.toLowerCase().includes(q)
-      );
+      list = list.filter((p: any) => `${p.name || ""} ${p.sku || ""}`.toLowerCase().includes(q));
     }
-    if (sort === "price-asc") list = list.slice().sort((a, b) => num(a.price) - num(b.price));
-    if (sort === "price-desc") list = list.slice().sort((a, b) => num(b.price) - num(a.price));
     return list;
-  }, [products, query, sort]);
+  }, [products, query]);
 
   async function requestStkPush() {
     if (!/^0?7\d{8}$/.test(mpesaPhone)) {
@@ -171,10 +148,7 @@ export default function Home() {
             <div style={{ fontWeight: 600 }}>{BRAND.name}</div>
           </div>
         </div>
-        <a
-          href={`mailto:${CONTACT.email}`}
-          style={{ color: "#fff", textDecoration: "none", display: "flex", alignItems: "center" }}
-        >
+        <a href={`mailto:${CONTACT.email}`} style={{ color: "#fff", textDecoration: "none" }}>
           {CONTACT.email}
         </a>
         <button
@@ -345,33 +319,22 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Search + sort */}
+      {/* Search only (no filter/sort) */}
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 16px 8px" }}>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <div style={{ position: "relative", flex: 1 }}>
-            <Search size={16} style={{ position: "absolute", left: 10, top: 10, color: "#999" }} />
-            <input
-              placeholder='Search "43 TV" or "bulb"'
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "8px 12px 8px 32px",
-                border: "1px solid #ddd",
-                borderRadius: 8,
-                background: "#fff",
-              }}
-            />
-          </div>
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            style={{ padding: "8px 12px", border: "1px solid #ddd", borderRadius: 8, background: "#fff" }}
-          >
-            <option value="popular">Popular</option>
-            <option value="price-asc">Price: Low → High</option>
-            <option value="price-desc">Price: High → Low</option>
-          </select>
+        <div style={{ position: "relative" }}>
+          <Search size={16} style={{ position: "absolute", left: 10, top: 10, color: "#999" }} />
+          <input
+            placeholder='Search "43 TV" or "bulb"'
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "8px 12px 8px 32px",
+              border: "1px solid #ddd",
+              borderRadius: 8,
+              background: "#fff",
+            }}
+          />
         </div>
       </div>
 
@@ -565,9 +528,7 @@ export default function Home() {
                     >
                       <div>
                         <div style={{ fontWeight: 700 }}>{l.product.name}</div>
-                        <div style={{ color: "#666", fontSize: 12 }}>
-                          {currency(num(l.product.price))}
-                        </div>
+                        <div style={{ color: "#666", fontSize: 12 }}>{currency(num(l.product.price))}</div>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <button
@@ -579,4 +540,63 @@ export default function Home() {
                         </button>
                         <div style={{ minWidth: 20, textAlign: "center" }}>{l.qty}</div>
                         <button
-          
+                          onClick={() => cart.add(String(l.product.id))}
+                          style={{ border: "1px solid #ddd", borderRadius: 8, padding: "4px 6px", background: "#fff", cursor: "pointer" }}
+                          aria-label="Increase"
+                        >
+                          <Plus size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800 }}>
+                    <span>Total</span>
+                    <span>{currency(Math.round(total))}</span>
+                  </div>
+
+                  <label style={{ fontSize: 12, color: "#555", marginTop: 8 }}>M-Pesa Phone (07XXXXXXXX)</label>
+                  <input
+                    value={mpesaPhone}
+                    onChange={(e) => setMpesaPhone(e.target.value)}
+                    placeholder="07XXXXXXXX"
+                    inputMode="numeric"
+                    style={{ width: "100%", padding: "8px 12px", border: "1px solid #ddd", borderRadius: 8 }}
+                  />
+
+                  <label style={{ fontSize: 12, color: "#555", marginTop: 8 }}>Delivery Option</label>
+                  <select
+                    value={delivery}
+                    onChange={(e) => setDelivery(e.target.value)}
+                    style={{ padding: "8px 12px", border: "1px solid #ddd", borderRadius: 8 }}
+                  >
+                    <option value="pickup">Pickup</option>
+                    <option value="delivery">Same-day Delivery (local)</option>
+                  </select>
+
+                  <button
+                    onClick={requestStkPush}
+                    style={{
+                      marginTop: 10,
+                      background: BRAND.primary,
+                      color: "#111",
+                      fontWeight: 800,
+                      padding: "10px 14px",
+                      borderRadius: 12,
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Pay with M-Pesa
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
