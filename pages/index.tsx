@@ -1,5 +1,4 @@
-// pages/index.tsx
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import {
   ShoppingCart,
@@ -30,27 +29,20 @@ const CONTACT = {
   hours: "Open Mon–Sun • 8:00am – 9:00pm",
 };
 
-function currency(kes: number) {
+function currency(n: number) {
   return new Intl.NumberFormat("en-KE", {
     style: "currency",
     currency: "KES",
     maximumFractionDigits: 0,
-  }).format(kes);
+  }).format(n);
 }
-function safeNumber(n: any, fallback = 0) {
-  const x = Number(n);
-  return Number.isFinite(x) ? x : fallback;
-}
+const num = (v: any, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
 
 function useCart() {
   const [items, setItems] = useState<Record<string, number>>({});
-  const add = (id: string, qty = 1) =>
-    setItems((s) => ({ ...s, [id]: (s[id] || 0) + qty }));
-  const sub = (id: string, qty = 1) =>
-    setItems((s) => {
-      const next = Math.max(0, (s[id] || 0) - qty);
-      return { ...s, [id]: next };
-    });
+  const add = (id: string, q = 1) => setItems((s) => ({ ...s, [id]: (s[id] || 0) + q }));
+  const sub = (id: string, q = 1) =>
+    setItems((s) => ({ ...s, [id]: Math.max(0, (s[id] || 0) - q) }));
   const remove = (id: string) =>
     setItems((s) => {
       const { [id]: _, ...rest } = s;
@@ -63,41 +55,40 @@ function useCart() {
 export default function Home() {
   const cart = useCart();
   const [showCart, setShowCart] = useState(false);
-
   const [products, setProducts] = useState<any[]>([]);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("popular");
-
   const [mpesaPhone, setMpesaPhone] = useState("");
   const [delivery, setDelivery] = useState("pickup");
 
   useEffect(() => {
     fetch("/products.json")
       .then((r) => r.json())
-      .then((list) => {
-        const normalized = Array.isArray(list)
-          ? list.map((p: any) => ({
-              ...p,
-              stock: p?.stock ?? 1,
-            }))
-          : [];
-        setProducts(normalized);
-      })
+      .then((list) =>
+        setProducts(
+          (Array.isArray(list) ? list : []).map((p: any) => ({
+            ...p,
+            stock: p?.stock ?? 1,
+          }))
+        )
+      )
       .catch(() => {});
   }, []);
 
-  const lines = useMemo(() => {
-    return Object.entries(cart.items)
-      .filter(([_, q]: any) => q > 0)
-      .map(([id, qty]: any) => ({
-        product: products.find((p) => String(p.id) === String(id)),
-        qty,
-      }))
-      .filter((l) => !!l.product);
-  }, [cart.items, products]);
+  const lines = useMemo(
+    () =>
+      Object.entries(cart.items)
+        .filter(([_, q]) => (q as number) > 0)
+        .map(([id, qty]) => ({
+          product: products.find((p) => String(p.id) === String(id)),
+          qty: qty as number,
+        }))
+        .filter((l) => !!l.product),
+    [cart.items, products]
+  );
 
   const total = useMemo(
-    () => lines.reduce((s, l) => s + safeNumber(l.product?.price) * l.qty, 0),
+    () => lines.reduce((s, l) => s + num(l.product?.price) * l.qty, 0),
     [lines]
   );
 
@@ -106,17 +97,11 @@ export default function Home() {
     if (query.trim()) {
       const q = query.toLowerCase();
       list = list.filter((p: any) =>
-        `${p.name || ""} ${p.sku || ""} ${p.code || ""}`.toLowerCase().includes(q)
+        `${p.name || ""} ${p.sku || ""}`.toLowerCase().includes(q)
       );
     }
-    switch (sort) {
-      case "price-asc":
-        list = list.slice().sort((a: any, b: any) => safeNumber(a.price) - safeNumber(b.price));
-        break;
-      case "price-desc":
-        list = list.slice().sort((a: any, b: any) => safeNumber(b.price) - safeNumber(a.price));
-        break;
-    }
+    if (sort === "price-asc") list = list.slice().sort((a, b) => num(a.price) - num(b.price));
+    if (sort === "price-desc") list = list.slice().sort((a, b) => num(b.price) - num(a.price));
     return list;
   }, [products, query, sort]);
 
@@ -153,10 +138,10 @@ export default function Home() {
     "data:image/svg+xml;utf8," +
     encodeURIComponent(
       `<svg xmlns='http://www.w3.org/2000/svg' width='600' height='360'>
-         <rect width='100%' height='100%' fill='#f4f4f5'/>
-         <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle'
-               font-family='Arial' font-size='14' fill='#9ca3af'>No Image</text>
-       </svg>`
+        <rect width='100%' height='100%' fill='#f4f4f5'/>
+        <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle'
+              font-family='Arial' font-size='14' fill='#9ca3af'>No Image</text>
+      </svg>`
     );
 
   return (
@@ -166,7 +151,7 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      {/* TOP BAR — email only */}
+      {/* Top bar (email + cart) */}
       <div
         style={{
           background: BRAND.dark,
@@ -180,32 +165,18 @@ export default function Home() {
         }}
       >
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <div
-            style={{
-              height: 28,
-              width: 8,
-              borderRadius: 4,
-              background: BRAND.primary,
-            }}
-          />
+          <div style={{ height: 28, width: 8, borderRadius: 4, background: BRAND.primary }} />
           <div>
             <div style={{ fontSize: 12, opacity: 0.8 }}>Welcome to</div>
             <div style={{ fontWeight: 600 }}>{BRAND.name}</div>
           </div>
         </div>
-
         <a
           href={`mailto:${CONTACT.email}`}
-          style={{
-            color: "#fff",
-            textDecoration: "none",
-            display: "flex",
-            alignItems: "center",
-          }}
+          style={{ color: "#fff", textDecoration: "none", display: "flex", alignItems: "center" }}
         >
           {CONTACT.email}
         </a>
-
         <button
           onClick={() => setShowCart(true)}
           style={{
@@ -226,10 +197,9 @@ export default function Home() {
         </button>
       </div>
 
-      {/* HERO + VISIT CARD */}
+      {/* Hero + Visit card */}
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "16px" }}>
         <div style={{ display: "grid", gap: 16 }}>
-          {/* Hero */}
           <div
             style={{
               background: "#fff",
@@ -253,39 +223,16 @@ export default function Home() {
                 opacity: 0.15,
               }}
             />
-            <div
-              style={{
-                textTransform: "uppercase",
-                fontSize: 12,
-                letterSpacing: 1,
-                color: "#111",
-              }}
-            >
+            <div style={{ textTransform: "uppercase", fontSize: 12, letterSpacing: 1, color: "#111" }}>
               Trusted in Sotik
             </div>
-            <h1
-              style={{
-                margin: "8px 0 0",
-                fontSize: 26,
-                fontWeight: 800,
-                color: "#111",
-                lineHeight: 1.2,
-              }}
-            >
+            <h1 style={{ margin: "8px 0 0", fontSize: 26, fontWeight: 800, color: "#111", lineHeight: 1.2 }}>
               Quality Electronics, Lighting & Gas — Fast Delivery
             </h1>
             <p style={{ marginTop: 8, color: "#555" }}>
               Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay via M-Pesa. Pickup or same-day delivery.
             </p>
-            <div
-              style={{
-                marginTop: 12,
-                display: "flex",
-                gap: 8,
-                alignItems: "center",
-                flexWrap: "wrap",
-              }}
-            >
+            <div style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <div
                 style={{
                   background: BRAND.primary,
@@ -327,14 +274,12 @@ export default function Home() {
                   gap: 6,
                   fontWeight: 700,
                 }}
-                title="Pay with M-Pesa"
               >
                 M-Pesa Available
               </div>
             </div>
           </div>
 
-          {/* Visit card */}
           <div
             style={{
               background: "#111",
@@ -354,7 +299,6 @@ export default function Home() {
               Mastermind Electricals & Electronics, Sotik Town
             </div>
             <div style={{ opacity: 0.85, fontSize: 14 }}>{CONTACT.hours}</div>
-
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
               <a
                 href={CONTACT.mapsUrl}
@@ -392,12 +336,8 @@ export default function Home() {
                 <Phone size={16} /> {CONTACT.phone}
               </a>
             </div>
-
             <div style={{ marginTop: 6 }}>
-              <a
-                href={`mailto:${CONTACT.email}`}
-                style={{ color: "#fff", textDecoration: "none" }}
-              >
+              <a href={`mailto:${CONTACT.email}`} style={{ color: "#fff", textDecoration: "none" }}>
                 {CONTACT.email}
               </a>
             </div>
@@ -405,7 +345,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Search + Sort */}
+      {/* Search + sort */}
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 16px 8px" }}>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <div style={{ position: "relative", flex: 1 }}>
@@ -426,12 +366,7 @@ export default function Home() {
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value)}
-            style={{
-              padding: "8px 12px",
-              border: "1px solid #ddd",
-              borderRadius: 8,
-              background: "#fff",
-            }}
+            style={{ padding: "8px 12px", border: "1px solid #ddd", borderRadius: 8, background: "#fff" }}
           >
             <option value="popular">Popular</option>
             <option value="price-asc">Price: Low → High</option>
@@ -440,7 +375,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Product Grid */}
+      {/* Product grid */}
       <section style={{ maxWidth: 1200, margin: "0 auto", padding: "8px 16px 20px" }}>
         <div
           style={{
@@ -450,9 +385,9 @@ export default function Home() {
           }}
         >
           {filtered.map((p: any) => {
-            const price = safeNumber(p.price, 0);
-            const stock = safeNumber(p.stock, 0);
-            const imgSrc = p.img || PLACEHOLDER;
+            const price = num(p.price);
+            const stock = num(p.stock, 0);
+            const img = p.img || PLACEHOLDER;
             return (
               <article
                 key={String(p.id)}
@@ -465,12 +400,10 @@ export default function Home() {
               >
                 <div style={{ position: "relative", width: "100%", height: 160, background: "#f6f6f6" }}>
                   <img
-                    src={imgSrc}
+                    src={img}
                     alt={p.name || "Product"}
                     loading="lazy"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = PLACEHOLDER;
-                    }}
+                    onError={(e) => ((e.currentTarget as HTMLImageElement).src = PLACEHOLDER)}
                     style={{
                       position: "absolute",
                       inset: 0,
@@ -483,9 +416,7 @@ export default function Home() {
                   />
                 </div>
                 <div style={{ padding: 12 }}>
-                  <div style={{ fontSize: 12, color: "#777" }}>
-                    {p.sku ? String(p.sku) : ""}
-                  </div>
+                  <div style={{ fontSize: 12, color: "#777" }}>{p.sku ? String(p.sku) : ""}</div>
                   <div
                     style={{
                       fontWeight: 700,
@@ -501,18 +432,8 @@ export default function Home() {
                   >
                     {p.name}
                   </div>
-
-                  <div
-                    style={{
-                      marginTop: 10,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <div style={{ fontSize: 18, fontWeight: 800, color: "#111" }}>
-                      {currency(price)}
-                    </div>
+                  <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: "#111" }}>{currency(price)}</div>
                     <button
                       onClick={() => cart.add(String(p.id))}
                       disabled={stock <= 0}
@@ -530,10 +451,7 @@ export default function Home() {
                       {stock > 0 ? "Add" : "Out of stock"}
                     </button>
                   </div>
-
-                  <div style={{ marginTop: 6, fontSize: 12, color: "#666" }}>
-                    Stock: {stock}
-                  </div>
+                  <div style={{ marginTop: 6, fontSize: 12, color: "#666" }}>Stock: {stock}</div>
                 </div>
               </article>
             );
@@ -555,9 +473,7 @@ export default function Home() {
         >
           <div>
             <div style={{ fontWeight: 700, color: "#111" }}>{BRAND.name}</div>
-            <div style={{ marginTop: 8, color: "#555" }}>
-              Genuine stock, fair prices, friendly support.
-            </div>
+            <div style={{ marginTop: 8, color: "#555" }}>Genuine stock, fair prices, friendly support.</div>
           </div>
           <div>
             <div style={{ fontWeight: 700 }}>Contact</div>
@@ -590,7 +506,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* CART MODAL */}
+      {/* Cart modal */}
       {showCart && (
         <div
           role="dialog"
@@ -635,4 +551,32 @@ export default function Home() {
             ) : (
               <>
                 <div style={{ display: "grid", gap: 12, marginTop: 12 }}>
-                  {lines.
+                  {lines.map((l) => (
+                    <div
+                      key={String(l.product.id)}
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr auto",
+                        gap: 8,
+                        alignItems: "center",
+                        borderBottom: "1px solid #eee",
+                        paddingBottom: 8,
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 700 }}>{l.product.name}</div>
+                        <div style={{ color: "#666", fontSize: 12 }}>
+                          {currency(num(l.product.price))}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <button
+                          onClick={() => cart.sub(String(l.product.id))}
+                          style={{ border: "1px solid #ddd", borderRadius: 8, padding: "4px 6px", background: "#fff", cursor: "pointer" }}
+                          aria-label="Decrease"
+                        >
+                          <Minus size={16} />
+                        </button>
+                        <div style={{ minWidth: 20, textAlign: "center" }}>{l.qty}</div>
+                        <button
+          
