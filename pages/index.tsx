@@ -12,13 +12,13 @@ const CONTACT = {
   hours: '8:00am – 9:00pm',
 };
 
-function currency(kes:number){ 
-  return new Intl.NumberFormat('en-KE',{ style:'currency', currency:'KES', maximumFractionDigits:0 }).format(kes); 
+function kes(amount:number){
+  return new Intl.NumberFormat('en-KE',{ style:'currency', currency:'KES', maximumFractionDigits:0 }).format(amount);
 }
 
 function useCart(){
   const [items, setItems] = useState<Record<string, number>>({});
-  const add = (id:string, qty=1)=> setItems(s=>({ ...s, [id]:(s[id]||0)+qty }));
+  const add    = (id:string, qty=1)=> setItems(s=>({ ...s, [id]:(s[id]||0)+qty }));
   const remove = (id:string)=> setItems(s=>{ const { [id]:_, ...r } = s; return r; });
   const setQty = (id:string, qty:number)=> setItems(s=>({ ...s, [id]:Math.max(0, qty) }));
   return { items, add, remove, setQty };
@@ -27,27 +27,23 @@ function useCart(){
 export default function Home(){
   const cart = useCart();
   const [products, setProducts] = useState<any[]>([]);
-  const [q, setQ] = useState('');
+  const [query, setQuery] = useState('');
   const [phone, setPhone] = useState('');
   const [cartOpen, setCartOpen] = useState(false);
   const [paying, setPaying] = useState(false);
 
-  // Load + normalize products
+  // Load and normalize products
   useEffect(()=>{
     fetch('/products.json')
       .then(r=>r.json())
-      .then((data)=>{
-        const clean = (Array.isArray(data) ? data : []).map((p:any)=>{
-          const cleanName = String(p.name ?? "")
-            .replace(/\u00A0/g, " ")   // non-breaking spaces from Excel
-            .replace(/\s+/g, " ")
-            .trim();
-
+      .then((data:any[])=>{
+        const clean = (Array.isArray(data)?data:[]).map(p=>{
+          const name = String(p.name ?? '').replace(/\u00A0/g,' ').replace(/\s+/g,' ').trim();
           return {
             ...p,
-            name: cleanName,
+            name,
             price: Number(p.price)||0,
-            stock: typeof p.stock === 'number' ? p.stock : (Number(p.stock)||1), // default to 1 so not “Out of stock”
+            stock: typeof p.stock === 'number' ? p.stock : (Number(p.stock)||1), // default to 1 so not OOS
             sku: typeof p.sku === 'string' ? p.sku : (p.sku ?? ''),
           };
         });
@@ -56,27 +52,25 @@ export default function Home(){
       .catch(()=> setProducts([]));
   },[]);
 
-  // Cart
-  const lines = useMemo(()=> Object.entries(cart.items)
-    .filter(([_,qty])=> (qty as number) > 0)
-    .map(([id,qty])=>{
-      const product = products.find(p=>p.id===id);
-      return product ? { product, qty: Number(qty) } : null;
-    })
-    .filter(Boolean) as {product:any, qty:number}[]
-  , [cart.items, products]);
+  // Cart lines + total
+  const lines = useMemo(()=>{
+    return Object.entries(cart.items)
+      .filter(([_,q])=> Number(q) > 0)
+      .map(([id,qty])=>{
+        const product = products.find(p=>p.id===id);
+        return product ? { product, qty:Number(qty) } : null;
+      })
+      .filter(Boolean) as {product:any, qty:number}[];
+  }, [cart.items, products]);
 
-  const total = useMemo(()=> lines.reduce((s,l)=> s + (Number(l.product?.price)||0) * (Number(l.qty)||0), 0), [lines]);
+  const total = useMemo(()=> lines.reduce((s,l)=> s + (Number(l.product?.price)||0)*(Number(l.qty)||0), 0), [lines]);
 
-  // Search (no categories)
+  // Filter (no categories)
   const filtered = useMemo(()=>{
-    let list = products.slice();
-    if (q.trim()){
-      const s = q.toLowerCase();
-      list = list.filter((p:any)=>`${p.name ?? ''} ${p.sku ?? ''}`.toLowerCase().includes(s));
-    }
-    return list;
-  }, [products, q]);
+    if (!query.trim()) return products;
+    const q = query.toLowerCase();
+    return products.filter((p:any)=> `${p.name ?? ''} ${p.sku ?? ''}`.toLowerCase().includes(q));
+  }, [products, query]);
 
   async function requestStkPush(){
     if (!/^0?7\d{8}$/.test(phone)) { alert('Enter valid Safaricom number, e.g., 07XXXXXXXX'); return; }
@@ -91,30 +85,25 @@ export default function Home(){
           phone,
           amount: total,
           items: lines.map(l=>({ id:l.product.id, name:l.product.name, price:l.product.price, qty:l.qty }))
-        }),
+        })
       });
 
       if (resp.status === 404) {
-        alert('Payment endpoint not found (/api/mpesa). Please add pages/api/mpesa.ts and redeploy.');
-        return;
-      }
-      if (resp.status === 500) {
-        const txt = await resp.text();
-        alert('Payment server error (500). Check your Daraja env vars and server logs.\n\n' + txt);
+        alert('Payment endpoint not found (/api/mpesa). Add pages/api/mpesa.ts and redeploy.');
         return;
       }
 
       let data: any = {};
-      try { data = await resp.json(); } catch { /* ignore */ }
+      try { data = await resp.json(); } catch { /* ignore bad JSON */ }
 
       if (resp.ok && data?.ok) {
-        alert(`STK Push sent (Till ${CONTACT.till}). Enter your M-Pesa PIN on your phone.`);
+        alert(`STK Push sent (Till ${CONTACT.till}). Enter your M-Pesa PIN.`);
       } else {
-        const msg = data?.error || `Payment error (HTTP ${resp.status}). Ensure Daraja keys & callback URL are set.`;
+        const msg = data?.error || `Payment error (HTTP ${resp.status}). Check Daraja env vars & logs.`;
         alert(msg);
       }
     } catch {
-      alert('Network error calling /api/mpesa. Are you online and is the API route deployed?');
+      alert('Network error calling /api/mpesa.');
     } finally {
       setPaying(false);
     }
@@ -159,7 +148,7 @@ export default function Home(){
             </div>
           </div>
 
-          {/* Visit card with phone, hours, and map link */}
+          {/* Visit card */}
           <div style={{background:'#111', color:'#fff', borderRadius:16, padding:16, display:'flex', flexDirection:'column', justifyContent:'center', gap:8}}>
             <div style={{display:'flex', gap:8, alignItems:'center', fontWeight:600}}>
               <MapPin size={18}/> Visit Our Shop
@@ -175,14 +164,14 @@ export default function Home(){
         </div>
       </section>
 
-      {/* Search (no categories) */}
+      {/* Search */}
       <section style={{maxWidth:1200, margin:'0 auto', padding:'0 16px 8px'}}>
         <div style={{position:'relative'}}>
           <Search size={16} style={{position:'absolute', left:10, top:10, color:'#999'}}/>
           <input
             placeholder='Search products, e.g., "43 TV" or "bulb"'
-            value={q}
-            onChange={e=>setQ(e.target.value)}
+            value={query}
+            onChange={e=>setQuery(e.target.value)}
             style={{width:'100%', padding:'10px 12px 10px 34px', border:'1px solid #ddd', borderRadius:10, background:'#fff'}}
           />
         </div>
@@ -191,26 +180,17 @@ export default function Home(){
       {/* Product Grid */}
       <section style={{maxWidth:1200, margin:'0 auto', padding:'8px 16px 20px'}}>
         <div className="grid" style={{display:'grid', gap:16, gridTemplateColumns:'repeat(auto-fill, minmax(180px, 1fr))'}}>
-          {filtered.map((p:any)=> {
-            const price = Number(p.price) || 0;
+          {filtered.map((p:any)=>{
+            const price = Number(p.price)||0;
             const stock = typeof p.stock === 'number' ? p.stock : (Number(p.stock)||1);
             return (
-              <div
-                key={p.id}
-                style={{
-                  background:'#fff',
-                  border:'1px solid #e5e5e5',
-                  borderRadius:16,
-                  overflow:'hidden',
-                  display:'flex',
-                  flexDirection:'column',
-                  minHeight: 300
-                }}
-              >
+              <div key={p.id}
+                   style={{background:'#fff', border:'1px solid #e5e5e5', borderRadius:16, overflow:'hidden',
+                           display:'flex', flexDirection:'column', minHeight:300}}>
                 <div style={{position:'relative', flexShrink:0}}>
                   <img
                     src={p.img || `/images/${p.id}.jpg`}
-                    onError={(e)=>{ (e.currentTarget as HTMLImageElement).src='https://via.placeholder.com/600x360?text=Product'; }}
+                    onError={e=>{ (e.currentTarget as HTMLImageElement).src='https://via.placeholder.com/600x360?text=Product'; }}
                     alt={p.name}
                     loading="lazy"
                     decoding="async"
@@ -219,38 +199,26 @@ export default function Home(){
                 </div>
                 <div style={{padding:12, flex:1, display:'flex', flexDirection:'column', justifyContent:'space-between'}}>
                   <div>
-                    <div style={{fontSize:12, color:'#777', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
-                      SKU: {p.sku || '—'}
-                    </div>
+                    <div style={{fontSize:12, color:'#777', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>SKU: {p.sku || '—'}</div>
                     <div
                       style={{
-                        marginTop:2,
-                        fontWeight:700,
-                        lineHeight:1.25,
-                        display:'-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow:'hidden',
-                        minHeight: '2.5em'
+                        marginTop:2, fontWeight:700, lineHeight:1.25,
+                        display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical',
+                        overflow:'hidden', minHeight:'2.5em'
                       }}
                       title={p.name}
-                    >
-                      {p.name}
-                    </div>
+                    >{p.name}</div>
                   </div>
                   <div style={{marginTop:10}}>
-                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:8'}}>
-                      <div style={{fontSize:18, fontWeight:800, color:'#111'}}>{currency(price)}</div>
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:8}}>
+                      <div style={{fontSize:18, fontWeight:800}}>{kes(price)}</div>
                       <button
-                        onClick={()=> cart.add(p.id)}
-                        disabled={stock <= 0}
-                        style={{
-                          background:BRAND.primary, color:'#111', padding:'6px 10px', borderRadius:10,
-                          opacity: stock <= 0 ? 0.6 : 1, whiteSpace:'nowrap'
-                        }}
-                        aria-disabled={stock <= 0}
+                        onClick={()=>cart.add(p.id)}
+                        disabled={stock<=0}
+                        aria-disabled={stock<=0}
+                        style={{background:BRAND.primary, color:'#111', padding:'6px 10px', borderRadius:10, opacity:stock<=0?0.6:1}}
                       >
-                        {stock > 0 ? 'Add' : 'Out of stock'}
+                        {stock>0?'Add':'Out of stock'}
                       </button>
                     </div>
                     <div style={{marginTop:6, fontSize:12, color:'#666'}}>Stock: {stock}</div>
@@ -265,9 +233,12 @@ export default function Home(){
       {/* Footer */}
       <footer style={{maxWidth:1200, margin:'0 auto', padding:'16px'}}>
         <div style={{borderTop:'1px solid #eee', paddingTop:16, display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px,1fr))', gap:16, fontSize:14}}>
-          <div><div style={{fontWeight:700, color:'#111'}}>{BRAND.name}</div>
-            <div style={{marginTop:8, color:'#555'}}>Genuine stock, fair prices, friendly support.</div></div>
-          <div><div style={{fontWeight:700}}>Contact</div>
+          <div>
+            <div style={{fontWeight:700}}>{BRAND.name}</div>
+            <div style={{marginTop:8, color:'#555'}}>Genuine stock, fair prices, friendly support.</div>
+          </div>
+          <div>
+            <div style={{fontWeight:700}}>Contact</div>
             <ul style={{marginTop:8, color:'#555', paddingLeft:16}}>
               <li>Phone: {CONTACT.phone}</li>
               <li>Email: {CONTACT.email}</li>
@@ -276,7 +247,8 @@ export default function Home(){
               <li>Sotik Town, Bomet County</li>
             </ul>
           </div>
-          <div><div style={{fontWeight:700}}>Payments</div>
+          <div>
+            <div style={{fontWeight:700}}>Payments</div>
             <ul style={{marginTop:8, color:'#555', paddingLeft:16}}>
               <li>M-Pesa Till {CONTACT.till} (Daraja STK Push)</li>
               <li>Cash on Delivery (local)</li>
@@ -287,28 +259,26 @@ export default function Home(){
       </footer>
 
       {/* Cart Drawer */}
-      <div aria-hidden={!cartOpen} style={{
-        position:'fixed', inset:0, background:'rgba(0,0,0,.45)', display: cartOpen ? 'block' : 'none', zIndex:50
-      }} onClick={(e)=>{ if (e.target===e.currentTarget) setCartOpen(false); }}>
+      <div aria-hidden={!cartOpen}
+           onClick={(e)=>{ if (e.target===e.currentTarget) setCartOpen(false); }}
+           style={{position:'fixed', inset:0, background:'rgba(0,0,0,.45)', display:cartOpen?'block':'none', zIndex:50}}>
         <aside role="dialog" aria-label="Shopping cart"
-          style={{
-            position:'absolute', right:0, top:0, bottom:0, width:'92vw', maxWidth:420,
-            background:'#fff', padding:16, overflow:'auto', boxShadow:'-10px 0 30px rgba(0,0,0,.15)'
-          }}>
+               style={{position:'absolute', right:0, top:0, bottom:0, width:'92vw', maxWidth:420, background:'#fff',
+                       padding:16, overflow:'auto', boxShadow:'-10px 0 30px rgba(0,0,0,.15)'}}>
           <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
             <h2 style={{fontWeight:800, fontSize:18}}>Your Cart</h2>
             <button aria-label="Close cart" onClick={()=>setCartOpen(false)} style={{background:'none', border:'none'}}><X/></button>
           </div>
 
           <div style={{marginTop:12}}>
-            {lines.length === 0 && <div style={{color:'#666', fontSize:14}}>Your cart is empty.</div>}
+            {lines.length===0 && <div style={{color:'#666', fontSize:14}}>Your cart is empty.</div>}
             {lines.map(({product, qty})=>(
               <div key={product.id} style={{display:'flex', gap:10, alignItems:'center', padding:'10px 0', borderBottom:'1px solid #eee'}}>
                 <img
                   src={product.img || `/images/${product.id}.jpg`}
                   alt={product.name}
                   loading="lazy"
-                  onError={(e)=>{ (e.currentTarget as HTMLImageElement).src='https://via.placeholder.com/120x120?text=Item'; }}
+                  onError={e=>{ (e.currentTarget as HTMLImageElement).src='https://via.placeholder.com/120x120?text=Item'; }}
                   style={{height:60, width:60, borderRadius:8, objectFit:'cover'}}
                 />
                 <div style={{flex:1, minWidth:0}}>
@@ -321,7 +291,7 @@ export default function Home(){
                     <button onClick={()=>cart.remove(product.id)} style={{marginLeft:'auto', background:'none', border:'1px solid #eee', borderRadius:8, padding:'4px 8px'}}>Remove</button>
                   </div>
                 </div>
-                <div style={{fontWeight:700}}>{currency((Number(product.price)||0) * (Number(qty)||0))}</div>
+                <div style={{fontWeight:700}}>{kes((Number(product.price)||0)*(Number(qty)||0))}</div>
               </div>
             ))}
           </div>
@@ -329,7 +299,7 @@ export default function Home(){
           <div style={{borderTop:'1px solid #eee', marginTop:12, paddingTop:12}}>
             <div style={{display:'flex', justifyContent:'space-between', marginBottom:8}}>
               <div style={{color:'#666'}}>Subtotal</div>
-              <div style={{fontWeight:800}}>{currency(total)}</div>
+              <div style={{fontWeight:800}}>{kes(total)}</div>
             </div>
             <div style={{fontSize:12, color:'#666'}}>Delivery: Pickup (Free) or local delivery available.</div>
 
@@ -347,10 +317,8 @@ export default function Home(){
             <button
               onClick={requestStkPush}
               disabled={paying}
-              style={{
-                marginTop:12, width:'100%', height:44, background:BRAND.primary, color:'#111',
-                borderRadius:12, fontWeight:800, opacity: paying ? .7 : 1
-              }}
+              style={{marginTop:12, width:'100%', height:44, background:BRAND.primary, color:'#111',
+                      borderRadius:12, fontWeight:800, opacity: paying ? .7 : 1}}
             >
               {paying ? 'Sending STK…' : 'Pay with M-Pesa'}
             </button>
