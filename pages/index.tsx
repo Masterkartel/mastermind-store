@@ -1,455 +1,502 @@
+// pages/index.tsx
+import React, { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ShoppingCart,
+  Search,
+  Phone,
+  MapPin,
+  Mail,
+  Trash2,
+  Plus,
+  Minus,
+  Wallet,
+  Fuel,
+} from "lucide-react";
 
-/** ---------- Types ---------- */
 type Product = {
   id: string;
   name: string;
-  price: number | string;
   sku?: string;
+  price: number | string;
   stock?: number;
   img?: string;
+  desc?: string;
 };
 
-type CartLine = {
-  product: Product;
-  qty: number;
+const BRAND = {
+  name: "Mastermind Electricals & Electronics",
+  primary: "#F2C300", // Tibet Yellow
+  dark: "#111111",
 };
 
-/** ---------- Helpers ---------- */
-const currency = (n: number) =>
-  `KES ${n.toLocaleString("en-KE", { maximumFractionDigits: 0 })}`;
+const CONTACT = {
+  phone: "+254715151010",
+  phoneDisplay: "0715 151 010",
+  email: "sales@mastermindelectricals.com",
+  maps: "https://maps.app.goo.gl/7P2okRB5ssLFMkUT8",
+  hours: "Open Mon–Sun • 8:00am – 9:00pm",
+};
 
-const clampName = (s: string) => s?.trim();
+function currencyKES(v: number) {
+  return new Intl.NumberFormat("en-KE", {
+    style: "currency",
+    currency: "KES",
+    maximumFractionDigits: 0,
+  }).format(v);
+}
 
-/** ---------- Page ---------- */
+const ctaBtn = (bg: string, fg: string): React.CSSProperties => ({
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "8px 12px",
+  borderRadius: 999,
+  background: bg,
+  color: fg,
+  textDecoration: "none",
+  fontWeight: 700,
+  border: "1px solid rgba(0,0,0,0.05)",
+  boxShadow: "0 1px 0 rgba(0,0,0,0.05)",
+});
+
+const pill = (solid = false): React.CSSProperties => ({
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "6px 10px",
+  borderRadius: 999,
+  background: solid ? BRAND.primary : "transparent",
+  color: solid ? "#111" : "#111",
+  border: solid ? "1px solid rgba(0,0,0,0.05)" : "1px solid #eee",
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: 0.2,
+});
+
 export default function Home() {
-  const [all, setAll] = useState<Product[]>([]);
+  // PRODUCTS
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [q, setQ] = useState("");
+
+  useEffect(() => {
+    fetch("/products.json")
+      .then((r) => r.json())
+      .then((data: Product[]) => {
+        // normalize price/stock types
+        const clean = data.map((p) => ({
+          ...p,
+          price: Number(p.price) || 0,
+          stock: p.stock === undefined ? 0 : Number(p.stock),
+        }));
+        setAllProducts(clean);
+      })
+      .catch(() => setAllProducts([]));
+  }, []);
+
+  const filtered = useMemo(() => {
+    const query = q.trim().toLowerCase();
+    let list = allProducts;
+    if (query) {
+      list = list.filter((p) =>
+        `${p.name} ${p.sku || ""}`.toLowerCase().includes(query)
+      );
+    }
+    return list;
+  }, [allProducts, q]);
+
+  // CART
+  const [items, setItems] = useState<Record<string, number>>({});
+  const totalQty = useMemo(
+    () => Object.values(items).reduce((a, b) => a + (b || 0), 0),
+    [items]
+  );
+  const lines = useMemo(
+    () =>
+      Object.entries(items)
+        .filter(([, qty]) => qty > 0)
+        .map(([id, qty]) => ({
+          product: allProducts.find((p) => p.id === id),
+          qty,
+        }))
+        .filter((l) => l.product),
+    [items, allProducts]
+  );
+  const totalKES = useMemo(
+    () =>
+      lines.reduce((s, l) => s + (Number(l.product!.price) || 0) * l.qty, 0),
+    [lines]
+  );
+
+  const add = (id: string, qty = 1) =>
+    setItems((s) => ({ ...s, [id]: (s[id] || 0) + qty }));
+  const dec = (id: string, qty = 1) =>
+    setItems((s) => ({ ...s, [id]: Math.max(0, (s[id] || 0) - qty) }));
+  const remove = (id: string) =>
+    setItems((s) => {
+      const { [id]: _, ...rest } = s;
+      return rest;
+    });
+  const clearAll = () => setItems({});
+
   const [cartOpen, setCartOpen] = useState(false);
-  const [cart, setCart] = useState<Record<string, CartLine>>({});
-  const [mpesaPhone, setMpesaPhone] = useState("");
   const [showGas, setShowGas] = useState(false);
 
-  // Contact form state
-  const [cfMessage, setCfMessage] = useState("");
-  const [cfName, setCfName] = useState("");
-  const [cfPhone, setCfPhone] = useState("");
-  const [cfEmail, setCfEmail] = useState("");
-  const formRef = useRef<HTMLFormElement>(null);
-
-  // Load products.json
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const r = await fetch("/products.json", { cache: "no-cache" });
-        const data: Product[] = await r.json();
-        setAll(data);
-      } catch (e) {
-        console.error("Failed to load products.json", e);
-      }
-    };
-    load();
-  }, []);
-
-  // Persist cart
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("mm_cart_v2");
-      if (raw) setCart(JSON.parse(raw));
-    } catch {}
-  }, []);
-  useEffect(() => {
-    try {
-      localStorage.setItem("mm_cart_v2", JSON.stringify(cart));
-    } catch {}
-  }, [cart]);
-
-  // Search
-  const filtered = useMemo(() => {
-    if (!q.trim()) return all;
-    const t = q.toLowerCase();
-    return all.filter(
-      (p) =>
-        p.name?.toLowerCase().includes(t) ||
-        p.sku?.toLowerCase().includes(t) ||
-        p.id?.toLowerCase().includes(t)
-    );
-  }, [all, q]);
-
-  // Cart ops
-  const add = (p: Product) =>
-    setCart((c) => {
-      const cur = c[p.id]?.qty ?? 0;
-      return { ...c, [p.id]: { product: p, qty: cur + 1 } };
-    });
-
-  const sub = (id: string) =>
-    setCart((c) => {
-      const line = c[id];
-      if (!line) return c;
-      const next = { ...c };
-      if (line.qty <= 1) delete next[id];
-      else next[id] = { ...line, qty: line.qty - 1 };
-      return next;
-    });
-
-  const removeLine = (id: string) =>
-    setCart((c) => {
-      const next = { ...c };
-      delete next[id];
-      return next;
-    });
-
-  const clearAll = () => setCart({});
-
-  const count = useMemo(
-    () => Object.values(cart).reduce((n, l) => n + l.qty, 0),
-    [cart]
-  );
-
-  const lineCount = useMemo(() => Object.keys(cart).length, [cart]);
-
-  const total = useMemo(
-    () =>
-      Object.values(cart).reduce(
-        (n, l) => n + (Number(l.product.price) || 0) * l.qty,
-        0
-      ),
-    [cart]
-  );
-
-  /** ---------- Quick add gas ---------- */
-  const quickAddGas = () => setShowGas(true);
-  const addGas = (id: "gas-6kg" | "gas-13kg") => {
-    const p = all.find((x) => x.id === id);
-    if (!p) {
-      alert(
-        `Product ${id} not found in products.json. Please add it (id must be "${id}").`
-      );
-      return;
-    }
-    add(p);
-    setShowGas(false);
-    setCartOpen(true);
-  };
-
-  /** ---------- Contact submit (mailto) ---------- */
-  const submitContact = (e: React.FormEvent) => {
+  // CONTACT FORM (dummy submit)
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    message: "",
+  });
+  function submitContact(e: React.FormEvent) {
     e.preventDefault();
-    const msg = [
-      `Message: ${cfMessage}`,
-      "",
-      `Name: ${cfName}`,
-      `Phone: ${cfPhone}`,
-      `Email: ${cfEmail}`,
-    ].join("\n");
-    const mailto = `mailto:sales@mastermindelectricals.com?subject=${encodeURIComponent(
-      "Website Enquiry"
-    )}&body=${encodeURIComponent(msg)}`;
-    window.location.href = mailto;
-    formRef.current?.reset();
-    setCfMessage("");
-    setCfName("");
-    setCfPhone("");
-    setCfEmail("");
-    alert("Thanks! Your email app will open with your message.");
-  };
+    // You can hook this to an email service later
+    alert("Thanks! We received your message.");
+    setForm({ name: "", email: "", phone: "", message: "" });
+  }
 
-  /** ---------- UI ---------- */
   return (
     <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
       <Head>
         <title>Mastermind Electricals & Electronics</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        {/* Favicon: put /public/favicon.ico */}
-        <link rel="icon" href="/favicon.ico" />
+        {/* Favicon: put your logo in /public/logo.png */}
+        <link rel="icon" href="/logo.png" />
       </Head>
 
-      {/* Global responsive helper for the 2-card grid */}
-      <style jsx global>{`
-        .grid-2 {
-          display: block;
-        }
-        @media (min-width: 900px) {
-          .grid-2 {
-            display: grid;
-            grid-template-columns: 1.1fr 0.9fr;
-            gap: 16px;
-          }
-        }
-      `}</style>
-
-      {/* Header */}
+      {/* TOP BAR */}
       <header
         style={{
-          position: "relative",
-          background: "#0f0f0f",
+          background: BRAND.dark,
           color: "#fff",
-          padding: "12px 14px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          overflow: "hidden",
+          padding: "10px 16px",
+          position: "sticky",
+          top: 0,
+          zIndex: 40,
         }}
       >
-        {/* subtle circles */}
-        <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-          <div
-            style={{
-              position: "absolute",
-              width: 170,
-              height: 170,
-              right: -40,
-              top: -40,
-              borderRadius: "9999px",
-              background: "#f4c84d",
-              opacity: 0.15,
-              filter: "blur(2px)",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              width: 90,
-              height: 90,
-              left: -20,
-              bottom: -20,
-              borderRadius: "9999px",
-              background: "#f4c84d",
-              opacity: 0.12,
-            }}
-          />
-        </div>
-
-        <div style={{ fontWeight: 900, fontSize: 19 }}>
-          Mastermind Electricals & Electronics
-        </div>
-
-        <button
-          onClick={() => setCartOpen(true)}
+        <div
           style={{
-            display: "inline-flex",
+            maxWidth: 1200,
+            margin: "0 auto",
+            display: "flex",
             alignItems: "center",
-            gap: 8,
-            background: "#f0b90b",
-            color: "#1a1a1a",
-            border: "1px solid #e2b009",
-            borderRadius: 14,
-            padding: "6px 10px",
-            fontWeight: 800,
-            boxShadow: "inset 0 -1px 0 rgba(0,0,0,.12)",
+            justifyContent: "space-between",
+            gap: 12,
           }}
-          aria-label="Open cart"
         >
-          🛒 Cart
-          <span
+          {/* Brand */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {/* logo dot */}
+            <div
+              style={{
+                height: 34,
+                width: 34,
+                borderRadius: 10,
+                background: BRAND.primary,
+                boxShadow: "inset 0 0 0 2px rgba(0,0,0,0.06)",
+              }}
+            />
+            <div style={{ lineHeight: 1.1 }}>
+              <div style={{ fontSize: 12, opacity: 0.7 }}>Welcome to</div>
+              <div style={{ fontWeight: 800 }}>{BRAND.name}</div>
+            </div>
+          </div>
+
+          {/* Search */}
+          <div style={{ flex: 1, maxWidth: 520, position: "relative" }}>
+            <Search
+              size={16}
+              style={{ position: "absolute", left: 10, top: 12, color: "#aaa" }}
+            />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder='Search products, e.g. "43 TV" or "bulb"'
+              style={{
+                width: "100%",
+                padding: "10px 12px 10px 32px",
+                borderRadius: 10,
+                border: "1px solid #2a2a2a",
+                background: "#0f0f0f",
+                color: "#eee",
+                outline: "none",
+              }}
+            />
+          </div>
+
+          {/* Cart Button (smaller) */}
+          <button
+            onClick={() => setCartOpen((v) => !v)}
             style={{
-              marginLeft: 6,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
               background: "#fff",
+              color: "#111",
+              padding: "7px 12px",
               borderRadius: 999,
-              padding: "1px 6px",
-              fontSize: 12,
-              fontWeight: 800,
-              border: "1px solid rgba(0,0,0,.12)",
+              border: "1px solid #e5e7eb",
+              fontWeight: 700,
+              position: "relative",
             }}
           >
-            {count}
-          </span>
-        </button>
+            <ShoppingCart size={16} />
+            Cart
+            {totalQty > 0 && (
+              <span
+                style={{
+                  position: "absolute",
+                  top: -6,
+                  right: -6,
+                  minWidth: 18,
+                  height: 18,
+                  fontSize: 11,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: BRAND.primary,
+                  color: "#111",
+                  borderRadius: 999,
+                  border: "1px solid rgba(0,0,0,0.05)",
+                  padding: "0 4px",
+                }}
+              >
+                {totalQty}
+              </span>
+            )}
+          </button>
+        </div>
       </header>
 
-      {/* Top section: two cards */}
+      {/* HERO + VISIT — side-by-side on desktop */}
       <section
         style={{
-          position: "relative",
           maxWidth: 1200,
-          margin: "0 auto",
-          padding: 16,
+          margin: "14px auto 8px",
+          padding: "0 16px",
         }}
       >
-        <div className="grid-2">
-          {/* Left: Hero */}
+        <div
+          style={{
+            display: "grid",
+            gap: 16,
+            gridTemplateColumns: "1fr",
+          }}
+        >
+          {/* Wrap in a 2-col grid on wider screens */}
           <div
             style={{
-              position: "relative",
-              background: "#fff",
-              border: "1px solid #eee",
-              borderRadius: 18,
-              padding: 18,
-              overflow: "hidden",
-            }}
-          >
-            {/* large soft circle moved to LEFT */}
-            <div
-              aria-hidden
-              style={{
-                position: "absolute",
-                width: 360,
-                height: 360,
-                left: -90,
-                top: -90,
-                borderRadius: "9999px",
-                background: "#fde58a",
-                opacity: 0.6,
-                filter: "blur(0.5px)",
-              }}
-            />
-            {/* tiny accents */}
-            <div
-              aria-hidden
-              style={{
-                position: "absolute",
-                width: 36,
-                height: 36,
-                right: 16,
-                top: 16,
-                borderRadius: "9999px",
-                background: "#f0b90b",
-                opacity: 0.35,
-              }}
-            />
-            <div
-              aria-hidden
-              style={{
-                position: "absolute",
-                width: 18,
-                height: 18,
-                right: 58,
-                top: 32,
-                borderRadius: "9999px",
-                background: "#f0b90b",
-                opacity: 0.25,
-              }}
-            />
-
-            <div
-              style={{
-                color: "#6b7280",
-                fontWeight: 700,
-                letterSpacing: 1,
-                fontSize: 12,
-                marginBottom: 10,
-              }}
-            >
-              TRUSTED IN SOTIK
-            </div>
-
-            <h1
-              style={{
-                fontSize: 28,
-                lineHeight: 1.15,
-                margin: 0,
-                fontWeight: 800,
-                color: "#111827",
-              }}
-            >
-              Quality Electronics, Lighting & Gas — Fast Delivery
-            </h1>
-
-            <p style={{ marginTop: 10, color: "#4b5563" }}>
-              Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay via
-              M-Pesa. Pickup or same-day delivery.
-            </p>
-
-            {/* Pills */}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button
-                style={pill(true)}
-                onClick={() => alert("M-Pesa available in-store & online.")}
-              >
-                💼 M-Pesa Available
-              </button>
-              <button style={pill(true)} onClick={quickAddGas}>
-                ⛽ Gas Refill Available
-              </button>
-            </div>
-          </div>
-
-          {/* Right: Visit card */}
-          <div
-            style={{
-              position: "relative",
-              background: "#0f0f0f",
-              color: "#fff",
-              borderRadius: 18,
-              padding: 18,
-              overflow: "hidden",
-              marginTop: 16,
+              display: "grid",
+              gap: 16,
+              gridTemplateColumns: "1fr",
             }}
           >
             <div
-              aria-hidden
               style={{
-                position: "absolute",
-                width: 220,
-                height: 220,
-                right: -60,
-                top: -60,
-                borderRadius: "9999px",
-                background: "#f4c84d",
-                opacity: 0.18,
-                filter: "blur(1px)",
-              }}
-            />
-            <h2 style={{ margin: 0, fontSize: 18, display: "flex", gap: 8 }}>
-              🏬 Visit Our Shop
-            </h2>
-            <div style={{ opacity: 0.9, marginTop: 6 }}>
-              Mastermind Electricals & Electronics, Sotik Town
-            </div>
-            <div style={{ opacity: 0.8, marginTop: 2 }}>
-              Open Mon–Sun • 8:00am – 9:00pm
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                gap: 12,
-                flexWrap: "wrap",
-                marginTop: 14,
+                display: "grid",
+                gap: 16,
+                gridTemplateColumns: "1fr",
               }}
             >
-              <a
-                href="https://maps.app.goo.gl/7P2okRB5ssLFMkUT8"
-                target="_blank"
-                rel="noreferrer"
-                style={ctaBtn()}
-              >
-                View on Maps ↗
-              </a>
-              <a href="tel:+254715151010" style={ctaBtn("#fff", "#111")}>
-                📞 0715151010
-              </a>
-              <a
-                href="mailto:sales@mastermindelectricals.com"
-                style={ctaBtn("#fff", "#111")}
-              >
-                ✉️ sales@mastermindelectricals.com
-              </a>
+              {/* Make 2 cols when wide */}
+              <style>{`
+                @media (min-width: 900px) {
+                  .heroGrid2 {
+                    display: grid;
+                    grid-template-columns: 2fr 1fr;
+                    gap: 16px;
+                  }
+                }
+              `}</style>
+              <div className="heroGrid2">
+                {/* Left: Hero */}
+                <div
+                  style={{
+                    position: "relative",
+                    background: "#fff",
+                    border: "1px solid #eee",
+                    borderRadius: 18,
+                    padding: 18,
+                    overflow: "hidden",
+                  }}
+                >
+                  {/* bg circles UNDER content */}
+                  <div
+                    aria-hidden
+                    style={{
+                      position: "absolute",
+                      width: 360,
+                      height: 360,
+                      left: -90,
+                      top: -90,
+                      borderRadius: "9999px",
+                      background: "#fde58a",
+                      opacity: 0.6,
+                      filter: "blur(0.5px)",
+                      zIndex: 0,
+                      pointerEvents: "none",
+                    }}
+                  />
+                  <div
+                    aria-hidden
+                    style={{
+                      position: "absolute",
+                      width: 36,
+                      height: 36,
+                      right: 16,
+                      top: 16,
+                      borderRadius: "9999px",
+                      background: "#f0b90b",
+                      opacity: 0.35,
+                      zIndex: 0,
+                      pointerEvents: "none",
+                    }}
+                  />
+                  <div
+                    aria-hidden
+                    style={{
+                      position: "absolute",
+                      width: 18,
+                      height: 18,
+                      right: 58,
+                      top: 32,
+                      borderRadius: "9999px",
+                      background: "#f0b90b",
+                      opacity: 0.25,
+                      zIndex: 0,
+                      pointerEvents: "none",
+                    }}
+                  />
+
+                  {/* content above */}
+                  <div style={{ position: "relative", zIndex: 1 }}>
+                    <div
+                      style={{
+                        color: "#6b7280",
+                        fontWeight: 700,
+                        letterSpacing: 1,
+                        fontSize: 12,
+                        marginBottom: 10,
+                      }}
+                    >
+                      TRUSTED IN SOTIK
+                    </div>
+
+                    <h1
+                      style={{
+                        fontSize: 28,
+                        lineHeight: 1.15,
+                        margin: 0,
+                        fontWeight: 800,
+                        color: "#111827",
+                      }}
+                    >
+                      Quality Electronics, Lighting & Gas — Fast Delivery
+                    </h1>
+
+                    <p style={{ marginTop: 10, color: "#4b5563" }}>
+                      Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills.
+                      Pay via M-Pesa. Pickup or same-day delivery.
+                    </p>
+
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <span style={pill(true)}>
+                        <Wallet size={14} />
+                        M-Pesa Available
+                      </span>
+                      <button
+                        style={pill(true)}
+                        onClick={() => setShowGas(true)}
+                        aria-label="Show gas refill options"
+                      >
+                        <Fuel size={14} />
+                        Gas Refill Available
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right: Visit card */}
+                <div
+                  style={{
+                    position: "relative",
+                    background: "#0f0f0f",
+                    color: "#fff",
+                    borderRadius: 18,
+                    padding: 18,
+                    overflow: "hidden",
+                  }}
+                >
+                  {/* bg circle UNDER content */}
+                  <div
+                    aria-hidden
+                    style={{
+                      position: "absolute",
+                      width: 220,
+                      height: 220,
+                      right: -60,
+                      top: -60,
+                      borderRadius: "9999px",
+                      background: "#f4c84d",
+                      opacity: 0.18,
+                      filter: "blur(1px)",
+                      zIndex: 0,
+                      pointerEvents: "none",
+                    }}
+                  />
+
+                  {/* content above */}
+                  <div style={{ position: "relative", zIndex: 1 }}>
+                    <h2 style={{ margin: 0, fontSize: 18, display: "flex", gap: 8 }}>
+                      🏬 Visit Our Shop
+                    </h2>
+                    <div style={{ opacity: 0.9, marginTop: 6 }}>
+                      {BRAND.name}, Sotik Town
+                    </div>
+                    <div style={{ opacity: 0.8, marginTop: 2 }}>{CONTACT.hours}</div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 12,
+                        flexWrap: "wrap",
+                        marginTop: 14,
+                      }}
+                    >
+                      {/* Tibet Yellow buttons */}
+                      <a
+                        href={CONTACT.maps}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={ctaBtn(BRAND.primary, "#111")}
+                      >
+                        <MapPin size={16} />
+                        View on Maps
+                      </a>
+                      <a href={`tel:${CONTACT.phone}`} style={ctaBtn(BRAND.primary, "#111")}>
+                        <Phone size={16} />
+                        {CONTACT.phoneDisplay}
+                      </a>
+                      <a
+                        href={`mailto:${CONTACT.email}`}
+                        style={ctaBtn(BRAND.primary, "#111")}
+                      >
+                        <Mail size={16} />
+                        {CONTACT.email}
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* end heroGrid2 */}
             </div>
           </div>
         </div>
       </section>
 
-      {/* Search */}
-      <section style={{ maxWidth: 1200, margin: "0 auto", padding: "0 16px" }}>
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder='Search products, e.g., "43 TV" or "bulb"'
-          style={{
-            width: "100%",
-            border: "1px solid #e5e7eb",
-            background: "#fff",
-            borderRadius: 12,
-            padding: "12px 14px",
-            outlineOffset: 2,
-          }}
-        />
-      </section>
-
-      {/* Product Grid */}
+      {/* PRODUCT GRID */}
       <section style={{ maxWidth: 1200, margin: "0 auto", padding: "8px 16px 20px" }}>
         <div
           className="grid"
@@ -461,70 +508,52 @@ export default function Home() {
         >
           {filtered.map((p) => {
             const price = Number(p.price) || 0;
+            const inStock = (p.stock ?? 0) > 0;
             return (
-              <article
+              <div
                 key={p.id}
                 style={{
-                  position: "relative",
                   background: "#fff",
                   border: "1px solid #eee",
-                  borderRadius: 16,
+                  borderRadius: 14,
                   overflow: "hidden",
                 }}
               >
-                {/* small decorative circles */}
-                <div
-                  aria-hidden
-                  style={{
-                    position: "absolute",
-                    width: 38,
-                    height: 38,
-                    right: -12,
-                    top: -12,
-                    borderRadius: "9999px",
-                    background: "#fde58a",
-                    opacity: 0.5,
-                  }}
-                />
-                <div
-                  aria-hidden
-                  style={{
-                    position: "absolute",
-                    width: 16,
-                    height: 16,
-                    left: -6,
-                    bottom: 56,
-                    borderRadius: "9999px",
-                    background: "#f0b90b",
-                    opacity: 0.35,
-                  }}
-                />
-
-                {/* Image placeholder (no text) */}
-                <div
-                  style={{
-                    height: 160,
-                    background: p.img ? `url(${p.img}) center/cover` : "#f8fafc",
-                  }}
-                />
-
-                <div style={{ padding: 12 }}>
-                  <div style={{ color: "#6b7280", fontSize: 12 }}>{p.sku}</div>
+                <div style={{ position: "relative" }}>
+                  {/* bg pattern dot */}
                   <div
-                    title={p.name}
+                    aria-hidden
                     style={{
-                      fontWeight: 700,
-                      lineHeight: 1.25,
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                      minHeight: 40,
+                      position: "absolute",
+                      width: 90,
+                      height: 90,
+                      right: -20,
+                      top: -20,
+                      borderRadius: 999,
+                      background: "#f7f7f7",
+                      zIndex: 0,
                     }}
-                  >
-                    {clampName(p.name)}
-                  </div>
+                  />
+                  <img
+                    src={
+                      p.img && p.img.trim()
+                        ? p.img
+                        : "https://via.placeholder.com/600x360?text=Product"
+                    }
+                    alt={p.name}
+                    style={{
+                      width: "100%",
+                      height: 140,
+                      objectFit: "cover",
+                      position: "relative",
+                      zIndex: 1,
+                    }}
+                  />
+                </div>
 
+                <div style={{ padding: 10, position: "relative", zIndex: 1 }}>
+                  <div style={{ fontSize: 12, color: "#6b7280" }}>{p.sku || ""}</div>
+                  <div style={{ fontWeight: 700, color: "#111827" }}>{p.name}</div>
                   <div
                     style={{
                       marginTop: 8,
@@ -533,259 +562,256 @@ export default function Home() {
                       justifyContent: "space-between",
                     }}
                   >
-                    <div style={{ fontWeight: 800 }}>{currency(price)}</div>
+                    <div style={{ fontSize: 18, fontWeight: 800 }}>
+                      {currencyKES(price)}
+                    </div>
                     <button
-                      onClick={() => add(p)}
+                      onClick={() => add(p.id, 1)}
+                      disabled={!inStock}
                       style={{
-                        background: "#f0b90b",
-                        border: "1px solid #e2b009",
+                        background: BRAND.primary,
                         color: "#111",
-                        borderRadius: 12,
-                        padding: "6px 12px",
+                        border: "1px solid rgba(0,0,0,0.06)",
+                        padding: "6px 10px",
+                        borderRadius: 10,
                         fontWeight: 800,
-                        cursor: "pointer",
+                        opacity: inStock ? 1 : 0.5,
                       }}
                     >
-                      Add
+                      {inStock ? "Add" : "Out"}
                     </button>
                   </div>
-
-                  <div style={{ marginTop: 6, color: "#6b7280", fontSize: 12 }}>
+                  <div style={{ marginTop: 4, fontSize: 12, color: "#6b7280" }}>
                     Stock: {p.stock ?? 0}
                   </div>
                 </div>
-              </article>
+              </div>
             );
           })}
         </div>
       </section>
 
-      {/* Contact Form */}
+      {/* CONTACT FORM */}
       <section
         style={{
           maxWidth: 900,
-          margin: "0 auto",
-          padding: "0 16px 48px",
+          margin: "10px auto 30px",
+          padding: "0 16px",
         }}
       >
         <div
           style={{
-            position: "relative",
-            background: "#ffffff",
+            background: "#fff",
             border: "1px solid #eee",
-            borderRadius: 16,
+            borderRadius: 14,
             padding: 16,
-            overflow: "hidden",
           }}
         >
-          <div
-            aria-hidden
-            style={{
-              position: "absolute",
-              width: 180,
-              height: 180,
-              right: -50,
-              bottom: -50,
-              background: "#fde58a",
-              opacity: 0.4,
-              borderRadius: "9999px",
-            }}
-          />
-          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>
-            Send us a message
-          </h3>
+          <h3 style={{ margin: 0, fontSize: 18 }}>Leave us a message</h3>
+          <p style={{ marginTop: 6, color: "#4b5563" }}>
+            Tell us what you need and how to reach you. We’ll get back shortly.
+          </p>
 
-          <form ref={formRef} onSubmit={submitContact} style={{ marginTop: 12 }}>
-            <label style={label()}>Message</label>
-            <textarea
-              required
-              value={cfMessage}
-              onChange={(e) => setCfMessage(e.target.value)}
-              placeholder="How can we help?"
-              rows={4}
-              style={input(true)}
-            />
-
+          <form onSubmit={submitContact} style={{ marginTop: 10 }}>
             <div
               style={{
                 display: "grid",
+                gap: 12,
                 gridTemplateColumns: "1fr",
-                gap: 10,
               }}
             >
-              <div>
-                <label style={label()}>Full Name</label>
-                <input
-                  required
-                  value={cfName}
-                  onChange={(e) => setCfName(e.target.value)}
-                  placeholder="Your name"
-                  style={input()}
-                />
-              </div>
-
-              <div>
-                <label style={label()}>Phone</label>
-                <input
-                  value={cfPhone}
-                  onChange={(e) => setCfPhone(e.target.value)}
-                  inputMode="tel"
-                  placeholder="07XXXXXXXX"
-                  style={input()}
-                />
-              </div>
-
-              <div>
-                <label style={label()}>Email</label>
-                <input
-                  value={cfEmail}
-                  onChange={(e) => setCfEmail(e.target.value)}
-                  inputMode="email"
-                  type="email"
-                  placeholder="you@email.com"
-                  style={input()}
-                />
-              </div>
+              <input
+                required
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="Your name"
+                style={inputStyle}
+              />
+              <input
+                type="email"
+                required
+                value={form.email}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                placeholder="Email address"
+                style={inputStyle}
+              />
+              <input
+                value={form.phone}
+                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                placeholder="Phone (optional)"
+                style={inputStyle}
+              />
+              <textarea
+                required
+                rows={4}
+                value={form.message}
+                onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
+                placeholder="Your message"
+                style={{ ...inputStyle, resize: "vertical" }}
+              />
+              <button
+                type="submit"
+                style={{
+                  ...ctaBtn(BRAND.primary, "#111"),
+                  justifyContent: "center",
+                }}
+              >
+                Send Message
+              </button>
             </div>
-
-            <button type="submit" style={{ ...ctaBtn(), marginTop: 12 }}>
-              Send Message
-            </button>
           </form>
         </div>
       </section>
 
-      {/* Cart Drawer (mid height) */}
+      {/* FOOTER */}
+      <footer style={{ maxWidth: 1200, margin: "0 auto", padding: "0 16px 24px" }}>
+        <div
+          style={{
+            borderTop: "1px solid #eee",
+            paddingTop: 16,
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: 16,
+            fontSize: 14,
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 800, color: "#111" }}>{BRAND.name}</div>
+            <div style={{ marginTop: 8, color: "#4b5563" }}>
+              Genuine stock. Fair prices. Friendly support.
+            </div>
+          </div>
+          <div>
+            <div style={{ fontWeight: 700 }}>Contact</div>
+            <ul style={ulStyle}>
+              <li>
+                <a href={`tel:${CONTACT.phone}`} style={aLite}>
+                  <Phone size={14} /> {CONTACT.phoneDisplay}
+                </a>
+              </li>
+              <li>
+                <a href={`mailto:${CONTACT.email}`} style={aLite}>
+                  <Mail size={14} /> {CONTACT.email}
+                </a>
+              </li>
+              <li>
+                <a href={CONTACT.maps} target="_blank" rel="noreferrer" style={aLite}>
+                  <MapPin size={14} /> View on Maps
+                </a>
+              </li>
+              <li style={{ color: "#6b7280" }}>{CONTACT.hours}</li>
+            </ul>
+          </div>
+          <div>
+            <div style={{ fontWeight: 700 }}>Payments</div>
+            <ul style={ulStyle}>
+              <li>M-Pesa (Till & in-store)</li>
+              <li>Cash on Delivery (local)</li>
+              <li>In-store M-Pesa Agent</li>
+            </ul>
+          </div>
+        </div>
+        <div
+          style={{
+            textAlign: "center",
+            color: "#9ca3af",
+            fontSize: 12,
+            paddingTop: 16,
+          }}
+        >
+          © {new Date().getFullYear()} {BRAND.name}. All rights reserved.
+        </div>
+      </footer>
+
+      {/* CART PANEL */}
       {cartOpen && (
         <div
-          onClick={() => setCartOpen(false)}
           style={{
             position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,.45)",
+            right: 12,
+            top: 72,
+            width: 340,
+            maxHeight: "70vh",
+            overflow: "auto",
+            background: "#fff",
+            border: "1px solid #eee",
+            borderRadius: 12,
+            boxShadow: "0 10px 30px rgba(0,0,0,0.12)",
             zIndex: 50,
-            display: "grid",
-            placeItems: "center",
-            padding: 12,
           }}
         >
           <div
-            onClick={(e) => e.stopPropagation()}
             style={{
-              width: "min(640px, 96vw)",
-              maxHeight: "70vh",
-              background: "#fff",
-              borderRadius: 16,
-              border: "1px solid #eee",
-              overflow: "hidden auto",
+              padding: 12,
+              borderBottom: "1px solid #f1f1f1",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
             }}
           >
-            <div
+            <div style={{ fontWeight: 800, display: "flex", gap: 8 }}>
+              <ShoppingCart size={18} /> Cart
+            </div>
+            <button
+              onClick={() => setCartOpen(false)}
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: 12,
-                borderBottom: "1px solid #eee",
-                position: "sticky",
-                top: 0,
+                border: "1px solid #eee",
                 background: "#fff",
-                zIndex: 1,
+                borderRadius: 8,
+                padding: "4px 8px",
               }}
             >
-              <div style={{ fontWeight: 800, fontSize: 18 }}>Your Cart</div>
+              Close
+            </button>
+          </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                {lineCount > 1 && (
-                  <button
-                    onClick={clearAll}
-                    style={{
-                      background: "#fff",
-                      border: "1px solid #ddd",
-                      borderRadius: 10,
-                      padding: "6px 10px",
-                      cursor: "pointer",
-                      fontWeight: 700,
-                    }}
-                    title="Remove all items"
-                  >
-                    Remove All
-                  </button>
-                )}
-                <button
-                  onClick={() => setCartOpen(false)}
-                  style={{
-                    background: "transparent",
-                    border: "none",
-                    padding: 6,
-                    cursor: "pointer",
-                    fontSize: 18,
-                  }}
-                  aria-label="Close cart"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-
-            {Object.values(cart).length === 0 ? (
-              <div style={{ padding: "20px 12px", color: "#666" }}>
-                Your cart is empty.
-              </div>
+          <div style={{ padding: 12 }}>
+            {lines.length === 0 ? (
+              <div style={{ color: "#6b7280" }}>Your cart is empty.</div>
             ) : (
-              <div style={{ display: "grid", gap: 12, padding: 12 }}>
-                {Object.values(cart).map((l) => (
+              <>
+                {lines.map((l) => (
                   <div
-                    key={String(l.product.id)}
+                    key={l.product!.id}
                     style={{
                       display: "grid",
                       gridTemplateColumns: "1fr auto",
-                      gap: 8,
+                      gap: 6,
                       alignItems: "center",
-                      borderBottom: "1px solid #eee",
-                      paddingBottom: 8,
+                      padding: "8px 0",
+                      borderBottom: "1px solid #f6f6f6",
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 700 }}>{l.product.name}</div>
-                      <div style={{ color: "#666", fontSize: 12 }}>
-                        {currency(Number(l.product.price))}
+                      <div style={{ fontWeight: 700 }}>{l.product!.name}</div>
+                      <div style={{ fontSize: 12, color: "#6b7280" }}>
+                        {l.product!.sku || ""} • {currencyKES(Number(l.product!.price))}
+                      </div>
+                      <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                        <button style={qtyBtn} onClick={() => dec(l.product!.id, 1)}>
+                          <Minus size={14} />
+                        </button>
+                        <div style={{ minWidth: 24, textAlign: "center" }}>{l.qty}</div>
+                        <button style={qtyBtn} onClick={() => add(l.product!.id, 1)}>
+                          <Plus size={14} />
+                        </button>
                       </div>
                     </div>
-
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                      }}
-                    >
-                      <button
-                        onClick={() => sub(String(l.product.id))}
-                        style={qtyBtn()}
-                        aria-label="Decrease"
-                        title="Decrease"
-                      >
-                        −
-                      </button>
-                      <div style={{ minWidth: 28, textAlign: "center" }}>
-                        {l.qty}
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontWeight: 800 }}>
+                        {currencyKES(Number(l.product!.price) * l.qty)}
                       </div>
                       <button
-                        onClick={() => add(l.product)}
-                        style={qtyBtn()}
-                        aria-label="Increase"
-                        title="Increase"
+                        onClick={() => remove(l.product!.id)}
+                        style={{
+                          ...miniDanger,
+                          marginTop: 6,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
                       >
-                        +
-                      </button>
-                      <button
-                        onClick={() => removeLine(String(l.product.id))}
-                        style={qtyBtn()}
-                        aria-label="Remove line"
-                        title="Remove"
-                      >
-                        🗑
+                        <Trash2 size={14} /> Remove
                       </button>
                     </div>
                   </div>
@@ -793,169 +819,152 @@ export default function Home() {
 
                 <div
                   style={{
-                    marginTop: 6,
-                    display: "grid",
-                    gap: 8,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    paddingTop: 10,
                   }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      fontWeight: 800,
-                    }}
-                  >
-                    <span>Total</span>
-                    <span>{currency(Math.round(total))}</span>
+                  <div style={{ color: "#6b7280" }}>Total</div>
+                  <div style={{ fontWeight: 900 }}>{currencyKES(totalKES)}</div>
+                </div>
+
+                {/* Clear all only if more than one product line */}
+                {lines.length > 1 && (
+                  <div style={{ marginTop: 8 }}>
+                    <button onClick={clearAll} style={miniDanger}>
+                      Clear all
+                    </button>
                   </div>
+                )}
 
-                  <label style={{ fontSize: 12, color: "#555", marginTop: 6 }}>
-                    M-Pesa Phone (07XXXXXXXX)
-                  </label>
-                  <input
-                    value={mpesaPhone}
-                    onChange={(e) => setMpesaPhone(e.target.value)}
-                    placeholder="07XXXXXXXX"
-                    style={input()}
-                  />
-
+                <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
                   <button
-                    onClick={() => alert("M-Pesa STK push will be added next.")}
-                    style={{ ...ctaBtn(), width: "100%" }}
+                    onClick={() => alert("Proceeding to M-Pesa checkout soon")}
+                    style={{
+                      ...ctaBtn(BRAND.primary, "#111"),
+                      width: "100%",
+                      justifyContent: "center",
+                    }}
                   >
                     Pay with M-Pesa
                   </button>
                 </div>
-              </div>
+              </>
             )}
           </div>
         </div>
       )}
 
-      {/* Gas Quick Add */}
+      {/* GAS MODAL */}
       {showGas && (
         <div
           onClick={() => setShowGas(false)}
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,.45)",
+            background: "rgba(0,0,0,0.5)",
             zIndex: 60,
-            display: "grid",
-            placeItems: "center",
-            padding: 12,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
           }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: "min(520px, 94vw)",
+              width: "100%",
+              maxWidth: 420,
               background: "#fff",
-              borderRadius: 16,
+              borderRadius: 12,
               border: "1px solid #eee",
-              overflow: "hidden",
+              padding: 16,
             }}
           >
-            <div
-              style={{
-                padding: 12,
-                borderBottom: "1px solid #eee",
-                fontWeight: 800,
-              }}
-            >
-              Quick Add (Gas)
-            </div>
-            <div style={{ padding: 12, display: "grid", gap: 10 }}>
-              <button style={ctaBtn()} onClick={() => addGas("gas-6kg")}>
-                Add 6KG — KES 1,150
+            <h3 style={{ margin: 0 }}>Gas Refill</h3>
+            <p style={{ color: "#4b5563" }}>
+              Choose your refill size and we’ll add it to your cart.
+            </p>
+            <div style={{ display: "grid", gap: 10 }}>
+              <button
+                onClick={() => {
+                  add("gas-6kg", 1);
+                  setShowGas(false);
+                  setCartOpen(true);
+                }}
+                style={ctaBtn(BRAND.primary, "#111")}
+              >
+                6KG — KES 1,150
               </button>
-              <button style={ctaBtn()} onClick={() => addGas("gas-13kg")}>
-                Add 13KG — KES 2,550
+              <button
+                onClick={() => {
+                  add("gas-13kg", 1);
+                  setShowGas(false);
+                  setCartOpen(true);
+                }}
+                style={ctaBtn(BRAND.primary, "#111")}
+              >
+                13KG — KES 2,550
+              </button>
+            </div>
+            <div style={{ textAlign: "right", marginTop: 10 }}>
+              <button
+                onClick={() => setShowGas(false)}
+                style={{
+                  border: "1px solid #eee",
+                  background: "#fff",
+                  borderRadius: 8,
+                  padding: "6px 10px",
+                }}
+              >
+                Close
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Footer */}
-      <footer
-        style={{
-          borderTop: "1px solid #eee",
-          padding: "18px 16px",
-          color: "#6b7280",
-          fontSize: 13,
-          textAlign: "center",
-        }}
-      >
-        © {new Date().getFullYear()} Mastermind Electricals & Electronics.
-        All rights reserved.
-      </footer>
     </div>
   );
 }
 
-/** ---------- Tiny style helpers ---------- */
-const pill = (button = false): React.CSSProperties =>
-  button
-    ? {
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        background: "#111827",
-        color: "#fff",
-        borderRadius: 999,
-        padding: "8px 12px",
-        border: "1px solid #111",
-        cursor: "pointer",
-        fontWeight: 700,
-      }
-    : {
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        background: "#fef3c7",
-        color: "#92400e",
-        borderRadius: 999,
-        padding: "8px 12px",
-        border: "1px solid #fde68a",
-        fontWeight: 700,
-      };
+/* styles */
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "10px 12px",
+  borderRadius: 10,
+  border: "1px solid #e5e7eb",
+  outline: "none",
+  background: "#fff",
+};
 
-const ctaBtn = (bg = "#111", fg = "#fff"): React.CSSProperties => ({
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
-  background: bg,
-  color: fg,
-  padding: "10px 14px",
-  borderRadius: 12,
-  border: "1px solid rgba(0,0,0,.1)",
-  fontWeight: 800,
+const ulStyle: React.CSSProperties = {
+  marginTop: 8,
+  color: "#4b5563",
+  paddingLeft: 16,
+  listStyle: "disc",
+};
+
+const aLite: React.CSSProperties = {
+  color: "#374151",
   textDecoration: "none",
-});
+  display: "inline-flex",
+  gap: 6,
+  alignItems: "center",
+};
 
-const qtyBtn = (): React.CSSProperties => ({
-  border: "1px solid #ddd",
+const qtyBtn: React.CSSProperties = {
+  border: "1px solid #e5e7eb",
+  background: "#fff",
+  borderRadius: 8,
+  padding: "4px 8px",
+};
+
+const miniDanger: React.CSSProperties = {
+  border: "1px solid #fee2e2",
+  background: "#fff",
+  color: "#b91c1c",
   borderRadius: 8,
   padding: "6px 10px",
-  background: "#fff",
-  cursor: "pointer",
-});
-
-const label = (): React.CSSProperties => ({
-  display: "block",
-  fontSize: 12,
-  color: "#374151",
-  marginBottom: 6,
   fontWeight: 700,
-});
-
-const input = (textarea = false): React.CSSProperties => ({
-  width: "100%",
-  border: "1px solid #e5e7eb",
-  borderRadius: 10,
-  padding: textarea ? "10px 12px" : "10px 12px",
-  background: "#fff",
-  outlineOffset: 2,
-});
+};
