@@ -268,7 +268,7 @@ export default function Home() {
             gap: 8px;
             align-items: center;
             flex-wrap: wrap;
-            position: relative; /* for the gas menu popover */
+            position: relative; /* popover anchor */
           }
           .gasMenu {
             position: absolute;
@@ -277,10 +277,10 @@ export default function Home() {
             background: #fff;
             border: 1px solid #eee;
             border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,.12);
+            box-shadow: 0 10px 30px rgba(0,0,0,.18);
             padding: 10px;
             width: 260px;
-            z-index: 30;
+            z-index: 1000; /* bring above everything */
           }
           .gasMenu button {
             width: 100%;
@@ -304,7 +304,7 @@ export default function Home() {
               borderRadius: 16,
               padding: 16,
               position: "relative",
-              overflow: "hidden",
+              overflow: "visible", // IMPORTANT: allow gas menu to show
             }}
           >
             {/* light decorative blob */}
@@ -318,6 +318,7 @@ export default function Home() {
                 borderRadius: 90,
                 background: BRAND.primary,
                 opacity: 0.15,
+                pointerEvents: "none",
               }}
             />
             <div
@@ -426,7 +427,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Visit Our Shop (right, black with yellow ring) */}
+          {/* Visit Our Shop (right, black with yellow accent) */}
           <div
             style={{
               background: BRAND.dark,
@@ -440,7 +441,7 @@ export default function Home() {
               overflow: "hidden",
             }}
           >
-            {/* yellow circular accent (on the black card) */}
+            {/* yellow circular accent */}
             <div
               style={{
                 position: "absolute",
@@ -451,6 +452,7 @@ export default function Home() {
                 borderRadius: 120,
                 background: BRAND.primary,
                 opacity: 0.13,
+                pointerEvents: "none",
               }}
             />
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -466,7 +468,7 @@ export default function Home() {
               <a
                 href={CONTACT.maps}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 style={{
                   background: BRAND.primary,
                   color: "#111",
@@ -617,7 +619,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Contact Form (Phone + Email in separate fields) */}
+      {/* Contact Form (Phone + Email + Message) */}
       <section style={{ maxWidth: 800, margin: "0 auto", padding: "20px 16px" }}>
         <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12, textAlign: "center" }}>
           Contact Us
@@ -738,7 +740,7 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* CART OVERLAY (fixed, slides from right) */}
+      {/* CART OVERLAY (dim) */}
       {showCart && (
         <div
           onClick={() => setShowCart(false)}
@@ -746,24 +748,27 @@ export default function Home() {
             position: "fixed",
             inset: 0,
             background: "rgba(0,0,0,0.45)",
-            zIndex: 50,
+            zIndex: 900,
           }}
         />
       )}
+
+      {/* COMPACT FLOATING CART (right, mid-height) */}
       <aside
         style={{
           position: "fixed",
-          top: 0,
+          top: "14vh",
           right: 0,
-          height: "100vh",
+          height: "72vh",
           width: "92vw",
-          maxWidth: 420,
+          maxWidth: 410,
           background: "#fff",
-          borderLeft: "1px solid #ddd",
+          border: "1px solid #ddd",
+          borderRight: "none",
           borderTopLeftRadius: 16,
           borderBottomLeftRadius: 16,
           boxShadow: "0 10px 30px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.04) inset",
-          zIndex: 60,
+          zIndex: 1000,
           transform: showCart ? "translateX(0)" : "translateX(100%)",
           transition: "transform .28s ease",
           display: "flex",
