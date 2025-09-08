@@ -27,8 +27,7 @@ export default function Home() {
         const res = await fetch("/products.json", { cache: "no-store" });
         const data: Product[] = await res.json();
         setProducts(Array.isArray(data) ? data : []);
-      } catch (e) {
-        console.error("Failed to load products.json", e);
+      } catch {
         setProducts([]);
       }
     })();
@@ -108,6 +107,22 @@ export default function Home() {
   const currency = (n: number) =>
     `KES ${Math.round(n).toLocaleString("en-KE")}`;
 
+  // ---- Contact form ----
+  const [cName, setCName] = useState("");
+  const [cPhone, setCPhone] = useState("");
+  const [cEmail, setCEmail] = useState("");
+  const [cMessage, setCMessage] = useState("");
+
+  const submitContact = (e: React.FormEvent) => {
+    e.preventDefault();
+    const to = "sales@mastermindelectricals.com";
+    const subject = encodeURIComponent("Website enquiry");
+    const body = encodeURIComponent(
+      `Message: ${cMessage}\n\nName: ${cName}\nPhone: ${cPhone}\nEmail: ${cEmail}`
+    );
+    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+  };
+
   return (
     <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
       <Head>
@@ -116,51 +131,16 @@ export default function Home() {
           name="viewport"
           content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
-        {/* Favicon you uploaded to /public */}
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      {/* ===== Top Bar (no overlap on mobile) ===== */}
-      <header
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-          background: "#111",
-          color: "#fff",
-          padding: "10px 12px",
-          borderBottom: "1px solid rgba(255,255,255,.08)",
-        }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr auto",
-            alignItems: "center",
-            gap: 8,
-            maxWidth: 1200,
-            margin: "0 auto",
-          }}
-        >
-          <div style={{ fontWeight: 800, letterSpacing: 0.3 }}>
-            Mastermind Electricals & Electronics
-          </div>
-
+      {/* ===== Top Bar ===== */}
+      <header className="topbar">
+        <div className="topbar__inner">
+          <div className="brand">Mastermind Electricals & Electronics</div>
           <button
             onClick={() => setShowCart(true)}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              background: "#f4d03f",
-              color: "#111",
-              border: "none",
-              padding: "8px 12px",
-              borderRadius: 12,
-              fontWeight: 700,
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-            }}
+            className="cartBtn"
             aria-label="Open cart"
           >
             🛒 Cart: {cartCount}
@@ -169,302 +149,120 @@ export default function Home() {
       </header>
 
       {/* ===== Hero ===== */}
-      <section
-        style={{
-          maxWidth: 1200,
-          margin: "12px auto 8px",
-          padding: "0 12px",
-        }}
-      >
-        <div
-          style={{
-            position: "relative",
-            background: "#fff",
-            border: "1px solid #eee",
-            borderRadius: 16,
-            padding: 16,
-            overflow: "hidden",
-          }}
-        >
-          {/* decorative circle tucked behind text */}
-          <div
-            aria-hidden
-            style={{
-              position: "absolute",
-              right: -60,
-              top: -40,
-              width: 240,
-              height: 240,
-              background: "#f4d03f",
-              opacity: 0.35,
-              borderRadius: "9999px",
-              filter: "blur(0.5px)",
-            }}
-          />
-          <div style={{ color: "#666", fontWeight: 700, fontSize: 12 }}>
-            TRUSTED IN SOTIK
-          </div>
-          <h1
-            style={{
-              margin: "6px 0 8px",
-              fontSize: 28,
-              lineHeight: 1.15,
-              letterSpacing: -0.2,
-            }}
-          >
+      <section className="container" style={{ marginTop: 12 }}>
+        <div className="hero">
+          <div className="hero__bubble" aria-hidden />
+          <div className="eyebrow">TRUSTED IN SOTIK</div>
+          <h1 className="h1">
             Quality Electronics, Lighting & Gas — Fast Delivery
           </h1>
-          <p style={{ color: "#444", fontSize: 15 }}>
+          <p className="lead">
             Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay via
             M-Pesa. Pickup or same-day delivery.
           </p>
-
-          {/* badges row */}
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              flexWrap: "wrap",
-              marginTop: 10,
-            }}
-          >
-            <span
-              style={{
-                background: "#ffe9a3",
-                color: "#1a1a1a",
-                border: "1px solid #f3d97b",
-                padding: "6px 10px",
-                borderRadius: 999,
-                fontWeight: 700,
-                fontSize: 13,
-              }}
-            >
-              💳 M-Pesa Available
-            </span>
-            <span
-              style={{
-                background: "#eef7ff",
-                color: "#0a2533",
-                border: "1px solid #d5eaff",
-                padding: "6px 10px",
-                borderRadius: 999,
-                fontWeight: 700,
-                fontSize: 13,
-              }}
-            >
-              🔥 Gas Refill Available
-            </span>
-          </div>
         </div>
 
-        {/* Visit our shop card */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr",
-            gap: 12,
-            marginTop: 12,
-          }}
-        >
-          <div
-            style={{
-              background: "#111",
-              color: "#fff",
-              borderRadius: 16,
-              padding: 16,
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            {/* subtle yellow circle */}
-            <div
-              aria-hidden
-              style={{
-                position: "absolute",
-                left: -50,
-                bottom: -70,
-                width: 180,
-                height: 180,
-                background: "#f4d03f",
-                opacity: 0.25,
-                borderRadius: "9999px",
-              }}
-            />
-            <div style={{ fontWeight: 800, marginBottom: 6 }}>Visit Our Shop</div>
-            <div style={{ opacity: 0.9 }}>
-              Mastermind Electricals & Electronics, Sotik Town
-            </div>
-            <div style={{ marginTop: 4, opacity: 0.9 }}>
-              Open Mon–Sun • 8:00am – 9:00pm
-            </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                flexWrap: "wrap",
-                marginTop: 12,
-              }}
-            >
+        {/* ===== Two cards side-by-side on desktop ===== */}
+        <div className="twoCol">
+          {/* Left: Visit shop (dark) */}
+          <div className="shopCard">
+            <div className="shopCard__bubble" aria-hidden />
+            <div className="shopCard__title">Visit Our Shop</div>
+            <div className="muted">Mastermind Electricals & Electronics, Sotik Town</div>
+            <div className="muted">Open Mon–Sun • 8:00am – 9:00pm</div>
+
+            <div className="actions">
               <a
                 href="https://maps.app.goo.gl/7P2okRB5ssLFMkUT8"
                 target="_blank"
                 rel="noreferrer"
-                style={{
-                  background: "#f4d03f",
-                  color: "#111",
-                  padding: "10px 14px",
-                  borderRadius: 12,
-                  fontWeight: 800,
-                  textDecoration: "none",
-                }}
+                className="btn btn--accent"
               >
                 View on Maps
               </a>
-              <a
-                href="tel:+254715151010"
-                style={{
-                  background: "#fff",
-                  color: "#111",
-                  padding: "10px 14px",
-                  borderRadius: 12,
-                  fontWeight: 800,
-                  textDecoration: "none",
-                }}
-              >
+              <a href="tel:+254715151010" className="btn btn--light">
                 📞 0715151010
               </a>
               <a
                 href="mailto:sales@mastermindelectricals.com"
-                style={{
-                  background: "#fff",
-                  color: "#111",
-                  padding: "10px 14px",
-                  borderRadius: 12,
-                  fontWeight: 800,
-                  textDecoration: "none",
-                }}
+                className="btn btn--light"
               >
                 ✉️ sales@mastermindelectricals.com
               </a>
             </div>
           </div>
+
+          {/* Right: Info / quick actions (light) */}
+          <div className="infoCard">
+            <div className="infoCard__bubble" aria-hidden />
+            <div className="eyebrow">SERVICES</div>
+            <h3 className="h3">Pay with M-Pesa & Refill Gas</h3>
+
+            <div className="badgeRow">
+              <span className="badge badge--mpesa">💳 M-Pesa Available</span>
+              <span className="badge badge--gas">🔥 Gas Refill Available</span>
+            </div>
+
+            <div className="quickAdd">
+              <div className="muted">Quick add gas refill to cart:</div>
+              <div className="quickAdd__row">
+                <button
+                  className="btn btn--ghost"
+                  onClick={() => add("gas-6kg")}
+                >
+                  6KG — KES 1,150
+                </button>
+                <button
+                  className="btn btn--ghost"
+                  onClick={() => add("gas-13kg")}
+                >
+                  13KG — KES 2,550
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ===== Search (now below hero) ===== */}
-      <div style={{ maxWidth: 1200, margin: "10px auto 6px", padding: "0 12px" }}>
+      {/* ===== Search ===== */}
+      <div className="container" style={{ marginTop: 10, marginBottom: 6 }}>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder='Search products, e.g., "43 TV" or "bulb"'
-          style={{
-            width: "100%",
-            height: 44,
-            padding: "0 14px",
-            borderRadius: 12,
-            border: "1px solid #ddd",
-            outline: "none",
-            fontSize: 15,
-            background: "#fff",
-            boxShadow: "0 1px 0 rgba(0,0,0,.02)",
-          }}
+          className="search"
         />
       </div>
 
       {/* ===== Product Grid ===== */}
-      <section style={{ maxWidth: 1200, margin: "0 auto", padding: "0 12px 24px" }}>
-        <div
-          className="grid"
-          style={{
-            display: "grid",
-            gap: 16,
-            gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-          }}
-        >
+      <section className="container" style={{ paddingBottom: 24 }}>
+        <div className="productGrid">
           {filtered.map((p) => {
             const price = Number(p.price) || 0;
             const stock = Number(p.stock) || 0;
             return (
-              <article
-                key={p.id}
-                style={{
-                  background: "#fff",
-                  border: "1px solid #eee",
-                  borderRadius: 16,
-                  padding: 12,
-                  display: "grid",
-                  gap: 10,
-                  boxShadow: "0 1px 0 rgba(0,0,0,.03)",
-                }}
-              >
-                {/* Image (clean placeholder, no text) */}
-                <div
-                  style={{
-                    height: 160,
-                    background: "#f3f3f3",
-                    borderRadius: 14,
-                    overflow: "hidden",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
+              <article key={p.id} className="card">
+                <div className="card__img">
                   {p.img ? (
                     <img
                       src={p.img}
                       alt={p.name}
-                      style={{
-                        maxWidth: "100%",
-                        maxHeight: "100%",
-                        objectFit: "contain",
-                        display: "block",
-                      }}
+                      style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }}
                       loading="lazy"
                     />
                   ) : null}
                 </div>
+                <div className="sku">{p.sku || ""}</div>
+                <div className="name">{p.name}</div>
+                <div className="price">KES {Math.round(price).toLocaleString("en-KE")}</div>
+                <div className="stock">Stock: {stock}</div>
 
-                {/* Text */}
-                <div style={{ color: "#777", fontSize: 12 }}>{p.sku || ""}</div>
-                <div style={{ fontWeight: 800 }}>{p.name}</div>
-                <div style={{ color: "#111", fontWeight: 800 }}>
-                  {currency(price)}
-                </div>
-                <div style={{ color: "#666", fontSize: 12 }}>
-                  Stock: {stock}
-                </div>
-
-                {/* CTA */}
                 {stock > 0 ? (
-                  <button
-                    onClick={() => add(p.id)}
-                    style={{
-                      justifySelf: "end",
-                      border: "none",
-                      background: "#f4d03f",
-                      color: "#111",
-                      borderRadius: 12,
-                      padding: "8px 14px",
-                      fontWeight: 800,
-                      cursor: "pointer",
-                    }}
-                    aria-label={`Add ${p.name}`}
-                  >
+                  <button className="btn btn--accent small" onClick={() => add(p.id)}>
                     Add
                   </button>
                 ) : (
-                  <div
-                    style={{
-                      justifySelf: "end",
-                      padding: "8px 14px",
-                      borderRadius: 12,
-                      background: "#eee",
-                      color: "#888",
-                      fontWeight: 800,
-                    }}
-                  >
-                    Out of stock
-                  </div>
+                  <div className="btn btn--disabled small">Out of stock</div>
                 )}
               </article>
             );
@@ -472,150 +270,114 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ===== Contact Form ===== */}
+      <section className="container" style={{ marginBottom: 28 }}>
+        <div className="contact">
+          <h3 className="h3">Leave us a message</h3>
+          <p className="muted" style={{ marginTop: 6 }}>
+            We’ll get back to you shortly.
+          </p>
+
+          <form onSubmit={submitContact} className="form">
+            <label className="label">Message</label>
+            <textarea
+              className="input"
+              rows={4}
+              value={cMessage}
+              onChange={(e) => setCMessage(e.target.value)}
+              placeholder="How can we help?"
+              required
+            />
+
+            <div className="formRow">
+              <div className="col">
+                <label className="label">Name</label>
+                <input
+                  className="input"
+                  value={cName}
+                  onChange={(e) => setCName(e.target.value)}
+                  placeholder="Your name"
+                  required
+                />
+              </div>
+              <div className="col">
+                <label className="label">Phone</label>
+                <input
+                  className="input"
+                  value={cPhone}
+                  onChange={(e) => setCPhone(e.target.value)}
+                  placeholder="07XXXXXXXX"
+                  inputMode="tel"
+                  required
+                />
+              </div>
+            </div>
+
+            <label className="label">Email</label>
+            <input
+              className="input"
+              type="email"
+              value={cEmail}
+              onChange={(e) => setCEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
+            />
+
+            <button className="btn btn--dark" type="submit" style={{ marginTop: 10 }}>
+              Send message
+            </button>
+          </form>
+        </div>
+      </section>
+
+      {/* ===== Footer ===== */}
+      <footer className="footer">
+        <div className="container" style={{ padding: "10px 12px" }}>
+          <div className="muted" style={{ textAlign: "center" }}>
+            © {new Date().getFullYear()} Mastermind Electricals & Electronics. All rights reserved.
+          </div>
+        </div>
+      </footer>
+
       {/* ===== Cart Drawer ===== */}
       {showCart && (
-        <div
-          onClick={() => setShowCart(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,.45)",
-            zIndex: 60,
-          }}
-        >
-          <aside
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: "fixed",
-              right: 10,
-              top: "12vh",
-              width: "min(440px, 92vw)",
-              maxHeight: "76vh",
-              overflow: "auto",
-              background: "#fff",
-              borderRadius: 16,
-              border: "1px solid #eee",
-              boxShadow: "0 20px 40px rgba(0,0,0,.25)",
-              padding: 12,
-            }}
-            aria-label="Cart"
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <div style={{ fontWeight: 800, fontSize: 18 }}>Your Cart</div>
+        <div className="overlay" onClick={() => setShowCart(false)}>
+          <aside className="drawer" onClick={(e) => e.stopPropagation()} aria-label="Cart">
+            <div className="drawer__top">
+              <div className="h4">Your Cart</div>
               <div style={{ display: "flex", gap: 8 }}>
                 {cartCount > 1 && (
-                  <button
-                    onClick={clear}
-                    style={{
-                      background: "#f1f1f1",
-                      border: "1px solid #e5e5e5",
-                      borderRadius: 10,
-                      padding: "6px 10px",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                    }}
-                    aria-label="Remove all items"
-                  >
+                  <button className="btn btn--light small" onClick={clear} aria-label="Remove all items">
                     Remove all
                   </button>
                 )}
-                <button
-                  onClick={() => setShowCart(false)}
-                  style={{
-                    background: "#111",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: 10,
-                    padding: "6px 10px",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                  }}
-                  aria-label="Close cart"
-                >
+                <button className="btn btn--dark small" onClick={() => setShowCart(false)}>
                   Close
                 </button>
               </div>
             </div>
 
             {cartLines.length === 0 ? (
-              <div style={{ padding: "22px 0", color: "#666" }}>
-                Your cart is empty.
-              </div>
+              <div className="empty">Your cart is empty.</div>
             ) : (
-              <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+              <div className="lines">
                 {cartLines.map((l) => {
                   const price = Number(l.product.price) || 0;
                   return (
-                    <div
-                      key={l.product.id}
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr auto",
-                        gap: 8,
-                        alignItems: "center",
-                        borderBottom: "1px solid #eee",
-                        paddingBottom: 8,
-                      }}
-                    >
+                    <div key={l.product.id} className="line">
                       <div>
-                        <div style={{ fontWeight: 700 }}>{l.product.name}</div>
-                        <div style={{ color: "#666", fontSize: 12 }}>
-                          {currency(price)}
-                        </div>
+                        <div className="line__name">{l.product.name}</div>
+                        <div className="line__price">{currency(price)}</div>
                       </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                        }}
-                      >
-                        <button
-                          onClick={() => sub(l.product.id)}
-                          aria-label="Decrease"
-                          style={{
-                            border: "1px solid #ddd",
-                            background: "#fff",
-                            padding: "6px 10px",
-                            borderRadius: 8,
-                            cursor: "pointer",
-                          }}
-                        >
+                      <div className="qty">
+                        <button className="qtyBtn" onClick={() => sub(l.product.id)} aria-label="Decrease">
                           −
                         </button>
-                        <div style={{ minWidth: 20, textAlign: "center" }}>
-                          {l.qty}
-                        </div>
-                        <button
-                          onClick={() => add(l.product.id)}
-                          aria-label="Increase"
-                          style={{
-                            border: "1px solid #ddd",
-                            background: "#fff",
-                            padding: "6px 10px",
-                            borderRadius: 8,
-                            cursor: "pointer",
-                          }}
-                        >
+                        <div className="qtyNum">{l.qty}</div>
+                        <button className="qtyBtn" onClick={() => add(l.product.id)} aria-label="Increase">
                           +
                         </button>
-                        <button
-                          onClick={() => remove(l.product.id)}
-                          aria-label="Remove line"
-                          style={{
-                            border: "1px solid #ddd",
-                            background: "#fff",
-                            padding: "6px 10px",
-                            borderRadius: 8,
-                            cursor: "pointer",
-                          }}
-                        >
+                        <button className="qtyBtn" onClick={() => remove(l.product.id)}>
                           Remove
                         </button>
                       </div>
@@ -625,59 +387,26 @@ export default function Home() {
               </div>
             )}
 
-            {/* Totals + M-Pesa phone */}
-            <div
-              style={{
-                marginTop: 12,
-                display: "grid",
-                gap: 8,
-                alignItems: "center",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontWeight: 800,
-                }}
-              >
+            <div className="totals">
+              <div className="row">
                 <span>Total</span>
-                <span>{currency(cartTotal)}</span>
+                <span className="strong">{currency(cartTotal)}</span>
               </div>
 
-              <label
-                htmlFor="mpesa"
-                style={{ fontSize: 12, color: "#555", marginTop: 4 }}
-              >
+              <label className="label" style={{ marginTop: 6 }}>
                 M-Pesa Phone (07XXXXXXXX)
               </label>
               <input
-                id="mpesa"
                 value={mpesaPhone}
                 onChange={(e) => setMpesaPhone(e.target.value)}
                 placeholder="07XXXXXXXX"
-                style={{
-                  height: 42,
-                  borderRadius: 10,
-                  border: "1px solid #ddd",
-                  padding: "0 12px",
-                  outline: "none",
-                }}
+                className="input"
                 inputMode="tel"
               />
 
               <button
                 disabled={cartLines.length === 0}
-                style={{
-                  marginTop: 6,
-                  height: 44,
-                  borderRadius: 12,
-                  border: "none",
-                  background: cartLines.length ? "#16a34a" : "#9ca3af",
-                  color: "#fff",
-                  fontWeight: 800,
-                  cursor: cartLines.length ? "pointer" : "not-allowed",
-                }}
+                className={`btn ${cartLines.length ? "btn--pay" : "btn--disabled"}`}
                 onClick={() => alert("Checkout coming soon")}
               >
                 Pay with M-Pesa
@@ -686,6 +415,96 @@ export default function Home() {
           </aside>
         </div>
       )}
+
+      {/* ===== Styles ===== */}
+      <style jsx>{`
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 12px; }
+
+        .topbar { position: sticky; top: 0; z-index: 50; background: #111; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); }
+        .topbar__inner { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 12px; }
+        .brand { font-weight: 800; letter-spacing: .3px; }
+        .cartBtn { background:#f4d03f; color:#111; border:none; padding:8px 12px; border-radius:12px; font-weight:800; cursor:pointer; white-space:nowrap; }
+
+        .hero { position: relative; background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; overflow:hidden; }
+        .hero__bubble { position:absolute; right:-60px; top:-40px; width:240px; height:240px; background:#f4d03f; opacity:.35; border-radius:9999px; }
+        .eyebrow { color:#666; font-weight:700; font-size:12px; }
+        .h1 { margin:6px 0 8px; font-size:28px; line-height:1.15; letter-spacing:-.2px; }
+        .h3 { margin:4px 0 8px; font-size:20px; font-weight:800; }
+        .h4 { font-weight:800; font-size:18px; }
+        .lead { color:#444; font-size:15px; }
+        .muted { color:#888; }
+
+        .twoCol { display:grid; grid-template-columns:1fr; gap:12px; margin-top:12px; }
+        @media (min-width: 900px) {
+          .twoCol { grid-template-columns: 1fr 1fr; }
+        }
+
+        .shopCard { position:relative; background:#111; color:#fff; border-radius:16px; padding:16px; overflow:hidden; }
+        .shopCard__bubble { position:absolute; left:-50px; bottom:-70px; width:180px; height:180px; background:#f4d03f; opacity:.25; border-radius:9999px; }
+        .shopCard__title { font-weight:800; margin-bottom:6px; }
+
+        .infoCard { position:relative; background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; overflow:hidden; }
+        .infoCard__bubble { position:absolute; right:-40px; bottom:-60px; width:160px; height:160px; background:#f4d03f; opacity:.25; border-radius:9999px; }
+
+        .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+        .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:12px; font-weight:800; text-decoration:none; cursor:pointer; }
+        .btn--accent { background:#f4d03f; color:#111; padding:10px 14px; border:none; }
+        .btn--light { background:#fff; color:#111; padding:10px 14px; border:1px solid #eee; }
+        .btn--dark { background:#111; color:#fff; padding:10px 16px; border:none; }
+        .btn--ghost { background:#fff; color:#111; border:1px solid #ddd; padding:8px 12px; border-radius:10px; }
+        .btn--disabled { background:#eee; color:#888; }
+        .btn--pay { background:#16a34a; color:#fff; border:none; padding:12px 16px; border-radius:12px; }
+        .small { padding:8px 14px; }
+
+        .badgeRow { display:flex; gap:10px; flex-wrap:wrap; margin:8px 0 12px; }
+        .badge { padding:6px 10px; border-radius:999px; font-weight:800; font-size:13px; }
+        .badge--mpesa { background:#ffe9a3; border:1px solid #f3d97b; color:#1a1a1a; }
+        .badge--gas { background:#eef7ff; border:1px solid #d5eaff; color:#0a2533; }
+
+        .quickAdd { display:grid; gap:8px; }
+        .quickAdd__row { display:flex; gap:10px; flex-wrap:wrap; }
+
+        .search { width:100%; height:44px; padding:0 14px; border-radius:12px; border:1px solid #ddd; background:#fff; font-size:15px; outline:none; }
+
+        .productGrid { display:grid; gap:16px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+        .card { background:#fff; border:1px solid #eee; border-radius:16px; padding:12px; display:grid; gap:10px; box-shadow:0 1px 0 rgba(0,0,0,.03); }
+        .card__img { height:160px; background:#f3f3f3; border-radius:14px; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+        .sku { color:#777; font-size:12px; }
+        .name { font-weight:800; }
+        .price { color:#111; font-weight:800; }
+        .stock { color:#666; font-size:12px; }
+
+        .footer { border-top:1px solid #eaeaea; padding:12px 0 18px; background:#fafafa; }
+
+        /* Drawer */
+        .overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:60; }
+        .drawer { position:fixed; right:10px; top:12vh; width:min(440px, 92vw); max-height:76vh; overflow:auto; background:#fff; border-radius:16px; border:1px solid #eee; box-shadow:0 20px 40px rgba(0,0,0,.25); padding:12px; }
+        .drawer__top { display:flex; justify-content:space-between; align-items:center; }
+        .empty { padding:22px 0; color:#666; }
+        .lines { display:grid; gap:10px; margin-top:10px; }
+        .line { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; }
+        .line__name { font-weight:700; }
+        .line__price { color:#666; font-size:12px; }
+        .qty { display:flex; align-items:center; gap:8px; }
+        .qtyBtn { border:1px solid #ddd; background:#fff; padding:6px 10px; border-radius:8px; cursor:pointer; }
+        .qtyNum { min-width:20px; text-align:center; }
+
+        .totals { margin-top:12px; display:grid; gap:8px; }
+        .row { display:flex; justify-content:space-between; }
+        .strong { font-weight:800; }
+        .label { font-size:12px; color:#555; margin-top:4px; }
+        .input { width:100%; height:42px; border-radius:10px; border:1px solid #ddd; padding:0 12px; outline:none; background:#fff; }
+        textarea.input { height:auto; padding:10px 12px; }
+
+        /* Contact */
+        .contact { background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; }
+        .form { display:grid; gap:10px; margin-top:8px; }
+        .formRow { display:grid; grid-template-columns:1fr; gap:10px; }
+        .col { display:grid; gap:6px; }
+        @media (min-width: 700px) {
+          .formRow { grid-template-columns: 1fr 1fr; }
+        }
+      `}</style>
     </div>
   );
 }
