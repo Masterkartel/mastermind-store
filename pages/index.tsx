@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Head from "next/head";
 import {
   ShoppingCart,
@@ -18,8 +18,8 @@ type Product = {
   id: string;
   name: string;
   price: number | string;
-  sku?: string;     // Units from your Excel
-  stock?: number;   // optional; if missing we default to 10
+  sku?: string;   // Units from your Excel
+  stock?: number; // optional; if missing we default to 10
   img?: string;
 };
 
@@ -30,10 +30,8 @@ const BRAND = {
 };
 
 const CONTACT = {
-  domain:
-    process.env.NEXT_PUBLIC_BRAND_DOMAIN || "www.mastermindelectricals.com",
-  email:
-    process.env.NEXT_PUBLIC_BRAND_EMAIL || "sales@mastermindelectricals.com",
+  domain: process.env.NEXT_PUBLIC_BRAND_DOMAIN || "www.mastermindelectricals.com",
+  email: process.env.NEXT_PUBLIC_BRAND_EMAIL || "sales@mastermindelectricals.com",
   phone: "0715151010",
   maps: "https://maps.app.goo.gl/7P2okRB5ssLFMkUT8",
   hours: "Open Mon–Sun • 8:00am – 9:00pm",
@@ -47,24 +45,19 @@ const currency = (kes: number) =>
   }).format(kes);
 
 export default function Home() {
-  // ---------------- State ----------------
+  // ---------- State ----------
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
   const [showCart, setShowCart] = useState(false);
   const [showGasMenu, setShowGasMenu] = useState(false);
   const [mpesaPhone, setMpesaPhone] = useState("");
-
-  // Contact form state
-  const [cName, setCName] = useState("");
-  const [cContact, setCContact] = useState(""); // phone or email
-  const [cMsg, setCMsg] = useState("");
-  const [cBusy, setCBusy] = useState(false);
-  const [cDone, setCDone] = useState<null | "ok" | "err">(null);
+  const gasBtnRef = useRef<HTMLButtonElement | null>(null);
+  const gasMenuRef = useRef<HTMLDivElement | null>(null);
 
   // Cart as id -> qty
   const [cart, setCart] = useState<Record<string, number>>({});
 
-  // ---------------- Effects ----------------
+  // ---------- Effects ----------
   useEffect(() => {
     fetch("/products.json")
       .then((r) => r.json())
@@ -75,14 +68,39 @@ export default function Home() {
           stock:
             typeof p.stock === "number"
               ? p.stock
-              : Number(p.Stock) || 10, // if JSON has "Stock", use it; else default 10
+              : Number(p.Stock) || 10, // allow "Stock" from Excel; default 10
         }));
         setProducts(normalized);
       })
       .catch(() => {});
   }, []);
 
-  // ---------------- Cart helpers ----------------
+  // Close gas menu on outside click / ESC
+  useEffect(() => {
+    if (!showGasMenu) return;
+    function onClick(e: MouseEvent) {
+      const t = e.target as Node;
+      if (
+        gasMenuRef.current &&
+        !gasMenuRef.current.contains(t) &&
+        gasBtnRef.current &&
+        !gasBtnRef.current.contains(t)
+      ) {
+        setShowGasMenu(false);
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setShowGasMenu(false);
+    }
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [showGasMenu]);
+
+  // ---------- Cart helpers ----------
   const add = (id: string) =>
     setCart((s) => ({ ...s, [id]: Math.min((s[id] || 0) + 1, 999) }));
   const sub = (id: string) =>
@@ -100,13 +118,11 @@ export default function Home() {
     });
   const clear = () => setCart({});
 
-  // Quick-add for gas
+  // Quick-add gas
   function addGas(id: "gas-6kg" | "gas-13kg") {
     const exists = products.some((p) => String(p.id) === id);
     if (!exists) {
-      alert(
-        `Product ${id} not found in products.json. Please add it (id must be "${id}")`
-      );
+      alert(`Product ${id} not found in products.json. Please add it (id must be "${id}")`);
       return;
     }
     add(id);
@@ -114,13 +130,11 @@ export default function Home() {
     setShowCart(true);
   }
 
-  // ---------------- Derived ----------------
+  // ---------- Derived ----------
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return products;
-    return products.filter((p) =>
-      `${p.name} ${p.sku || ""}`.toLowerCase().includes(q)
-    );
+    return products.filter((p) => `${p.name} ${p.sku || ""}`.toLowerCase().includes(q));
   }, [products, query]);
 
   const lines = useMemo(
@@ -136,12 +150,11 @@ export default function Home() {
   );
 
   const total = useMemo(
-    () =>
-      lines.reduce((s, l) => s + (Number(l.product!.price) || 0) * l.qty, 0),
+    () => lines.reduce((s, l) => s + (Number(l.product!.price) || 0) * l.qty, 0),
     [lines]
   );
 
-  // ---------------- Actions ----------------
+  // ---------- Actions ----------
   async function stkPush() {
     if (!/^0?7\d{8}$/.test(mpesaPhone)) {
       alert("Enter valid Safaricom number, e.g., 07XXXXXXXX");
@@ -168,9 +181,7 @@ export default function Home() {
       });
       const data = await resp.json();
       if (data.ok) {
-        alert(
-          "STK Push sent. Check your phone and enter your M-Pesa PIN to pay."
-        );
+        alert("STK Push sent. Check your phone and enter your M-Pesa PIN to pay.");
       } else {
         alert("Payment error: " + (data.error || "unknown"));
       }
@@ -179,41 +190,7 @@ export default function Home() {
     }
   }
 
-  async function submitContact(e: React.FormEvent) {
-    e.preventDefault();
-    if (!cName.trim() || !cContact.trim() || !cMsg.trim()) {
-      setCDone("err");
-      return;
-    }
-    try {
-      setCBusy(true);
-      setCDone(null);
-      const r = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: cName,
-          contact: cContact,
-          message: cMsg,
-        }),
-      });
-      const j = await r.json();
-      if (j.ok) {
-        setCDone("ok");
-        setCName("");
-        setCContact("");
-        setCMsg("");
-      } else {
-        setCDone("err");
-      }
-    } catch {
-      setCDone("err");
-    } finally {
-      setCBusy(false);
-    }
-  }
-
-  // ---------------- UI ----------------
+  // ---------- UI ----------
   return (
     <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
       <Head>
@@ -221,7 +198,7 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      {/* Top Bar (brand + cart only) */}
+      {/* Top Bar */}
       <header
         style={{
           background: BRAND.dark,
@@ -272,13 +249,13 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Hero + Shop Info (two columns on desktop) */}
-      <section className="twoColWrap" style={{ maxWidth: 1200, margin: "0 auto", padding: 16 }}>
+      {/* Hero + Shop Info (two columns) */}
+      <section style={{ maxWidth: 1200, margin: "0 auto", padding: 16 }}>
         <style jsx>{`
           .twoCol {
             display: grid;
             gap: 16px;
-            grid-template-columns: 1fr; /* phone default */
+            grid-template-columns: 1fr; /* phone */
             align-items: stretch;
           }
           @media (min-width: 920px) {
@@ -287,12 +264,15 @@ export default function Home() {
             }
           }
           .badges {
-            display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
             position: relative; /* for the gas menu popover */
           }
           .gasMenu {
             position: absolute;
-            top: 42px; /* below badges row */
+            top: 42px;
             left: 0;
             background: #fff;
             border: 1px solid #eee;
@@ -316,7 +296,7 @@ export default function Home() {
         `}</style>
 
         <div className="twoCol">
-          {/* Hero */}
+          {/* Hero (left) */}
           <div
             style={{
               background: "#fff",
@@ -327,6 +307,7 @@ export default function Home() {
               overflow: "hidden",
             }}
           >
+            {/* light decorative blob */}
             <div
               style={{
                 position: "absolute",
@@ -364,7 +345,7 @@ export default function Home() {
               Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay via M-Pesa. Pickup or same-day delivery.
             </p>
 
-            {/* badges (with gas popover) */}
+            {/* badges + gas quick add */}
             <div className="badges">
               <span
                 style={{
@@ -412,8 +393,8 @@ export default function Home() {
                 M-Pesa Available
               </span>
 
-              {/* Gas button now clickable */}
               <button
+                ref={gasBtnRef}
                 onClick={() => setShowGasMenu((v) => !v)}
                 style={{
                   border: "1px solid #e5e5e5",
@@ -433,9 +414,8 @@ export default function Home() {
                 Gas Refills Available
               </button>
 
-              {/* Popover with quick add */}
               {showGasMenu && (
-                <div className="gasMenu" onMouseLeave={() => setShowGasMenu(false)}>
+                <div ref={gasMenuRef} className="gasMenu">
                   <div style={{ fontWeight: 800, marginBottom: 6 }}>Quick Add (Gas)</div>
                   <div style={{ display: "grid", gap: 6 }}>
                     <button onClick={() => addGas("gas-6kg")}>Add 6KG — KES 1,150</button>
@@ -446,18 +426,33 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Visit Our Shop card */}
+          {/* Visit Our Shop (right, black with yellow ring) */}
           <div
             style={{
-              background: "#111",
+              background: BRAND.dark,
               color: "#fff",
               borderRadius: 16,
               padding: 16,
               display: "flex",
               flexDirection: "column",
               gap: 8,
+              position: "relative",
+              overflow: "hidden",
             }}
           >
+            {/* yellow circular accent (on the black card) */}
+            <div
+              style={{
+                position: "absolute",
+                left: -60,
+                bottom: -60,
+                height: 220,
+                width: 220,
+                borderRadius: 120,
+                background: BRAND.primary,
+                opacity: 0.13,
+              }}
+            />
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <MapPin size={18} />
               <span style={{ fontWeight: 600 }}>Visit Our Shop</span>
@@ -519,10 +514,7 @@ export default function Home() {
       {/* Search */}
       <section style={{ maxWidth: 1200, margin: "0 auto", padding: "0 16px" }}>
         <div style={{ position: "relative" }}>
-          <Search
-            size={16}
-            style={{ position: "absolute", left: 12, top: 12, color: "#999" }}
-          />
+          <Search size={16} style={{ position: "absolute", left: 12, top: 12, color: "#999" }} />
           <input
             placeholder={`Search products, e.g., "43 TV" or "bulb"`}
             value={query}
@@ -577,11 +569,7 @@ export default function Home() {
                     <img
                       src={p.img}
                       alt={p.name}
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                      }}
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
                       loading="lazy"
                     />
                   ) : (
@@ -590,9 +578,7 @@ export default function Home() {
                 </div>
 
                 <div style={{ padding: 12 }}>
-                  {p.sku ? (
-                    <div style={{ fontSize: 12, color: "#777" }}>{p.sku}</div>
-                  ) : null}
+                  {p.sku ? <div style={{ fontSize: 12, color: "#777" }}>{p.sku}</div> : null}
                   <div style={{ fontWeight: 700 }}>{p.name}</div>
                   <div
                     style={{
@@ -602,13 +588,7 @@ export default function Home() {
                       justifyContent: "space-between",
                     }}
                   >
-                    <div
-                      style={{
-                        fontSize: 18,
-                        fontWeight: 800,
-                        color: "#111",
-                      }}
-                    >
+                    <div style={{ fontSize: 18, fontWeight: 800, color: "#111" }}>
                       {currency(price)}
                     </div>
                     <button
@@ -634,94 +614,6 @@ export default function Home() {
               </div>
             );
           })}
-        </div>
-      </section>
-
-      {/* Contact form */}
-      <section style={{ background: "#fff", borderTop: "1px solid #eee" }}>
-        <div
-          style={{
-            maxWidth: 900,
-            margin: "0 auto",
-            padding: 16,
-          }}
-        >
-          <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>
-            Leave us a message
-          </h2>
-          <p style={{ color: "#666", marginBottom: 12 }}>
-            Have a question or want to place an order? Leave your details and we’ll call you back.
-          </p>
-
-          <form
-            onSubmit={submitContact}
-            style={{
-              display: "grid",
-              gap: 10,
-            }}
-          >
-            <input
-              value={cName}
-              onChange={(e) => setCName(e.target.value)}
-              placeholder="Your name"
-              required
-              style={{
-                padding: "10px 12px",
-                border: "1px solid #ddd",
-                borderRadius: 10,
-              }}
-            />
-            <input
-              value={cContact}
-              onChange={(e) => setCContact(e.target.value)}
-              placeholder="Phone (07XXXXXXXX) or Email"
-              required
-              style={{
-                padding: "10px 12px",
-                border: "1px solid #ddd",
-                borderRadius: 10,
-              }}
-            />
-            <textarea
-              value={cMsg}
-              onChange={(e) => setCMsg(e.target.value)}
-              placeholder="Your message"
-              rows={4}
-              required
-              style={{
-                padding: "10px 12px",
-                border: "1px solid #ddd",
-                borderRadius: 10,
-                resize: "vertical",
-              }}
-            />
-            <button
-              type="submit"
-              disabled={cBusy}
-              style={{
-                background: cBusy ? "#ddd" : BRAND.primary,
-                color: "#111",
-                padding: "12px",
-                borderRadius: 12,
-                fontWeight: 800,
-                border: "none",
-                cursor: cBusy ? "not-allowed" : "pointer",
-              }}
-            >
-              {cBusy ? "Sending..." : "Send message"}
-            </button>
-
-            {cDone === "ok" && (
-              <div style={{ color: "green", fontWeight: 600 }}>
-                Thanks! We’ve received your message.
-              </div>
-            )}
-            {cDone === "err" && (
-              <div style={{ color: "crimson", fontWeight: 600 }}>
-                Could not send. Please try again or call {CONTACT.phone}.
-              </div>
-            )}
-          </form>
         </div>
       </section>
 
@@ -810,8 +702,7 @@ export default function Home() {
           borderLeft: "1px solid #ddd",
           borderTopLeftRadius: 16,
           borderBottomLeftRadius: 16,
-          boxShadow:
-            "0 10px 30px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.04) inset",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.04) inset",
           zIndex: 60,
           transform: showCart ? "translateX(0)" : "translateX(100%)",
           transition: "transform .28s ease",
@@ -848,9 +739,7 @@ export default function Home() {
         {/* body */}
         <div style={{ padding: "10px 12px", overflowY: "auto", flex: 1 }}>
           {lines.length === 0 ? (
-            <div style={{ padding: "24px 0", color: "#666" }}>
-              Your cart is empty.
-            </div>
+            <div style={{ padding: "24px 0", color: "#666" }}>Your cart is empty.</div>
           ) : (
             <div style={{ display: "grid", gap: 12 }}>
               {lines.map((l) => {
@@ -895,9 +784,7 @@ export default function Home() {
                       >
                         <Minus size={16} />
                       </button>
-                      <div style={{ minWidth: 20, textAlign: "center" }}>
-                        {l.qty}
-                      </div>
+                      <div style={{ minWidth: 20, textAlign: "center" }}>{l.qty}</div>
                       <button
                         onClick={() => add(String(p.id))}
                         aria-label="Increase"
@@ -943,24 +830,12 @@ export default function Home() {
             gap: 10,
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              fontWeight: 800,
-            }}
-          >
+          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800 }}>
             <span>Total</span>
             <span>{currency(Math.round(total))}</span>
           </div>
 
-          <label
-            style={{
-              fontSize: 12,
-              color: "#555",
-              marginTop: 2,
-            }}
-          >
+          <label style={{ fontSize: 12, color: "#555", marginTop: 2 }}>
             M-Pesa Phone (07XXXXXXXX)
           </label>
           <input
