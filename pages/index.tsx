@@ -19,7 +19,7 @@ type Product = {
   name: string;
   sku?: string;
   price: number | string;
-  stock?: number;
+  stock?: number | string;
   img?: string;
   desc?: string;
 };
@@ -36,6 +36,7 @@ const CONTACT = {
   email: "sales@mastermindelectricals.com",
   maps: "https://maps.app.goo.gl/7P2okRB5ssLFMkUT8",
   hours: "Open Mon–Sun • 8:00am – 9:00pm",
+  till: "8636720",
 };
 
 function currencyKES(v: number) {
@@ -83,11 +84,13 @@ export default function Home() {
     fetch("/products.json")
       .then((r) => r.json())
       .then((data: Product[]) => {
-        // normalize price/stock types
         const clean = data.map((p) => ({
           ...p,
           price: Number(p.price) || 0,
-          stock: p.stock === undefined ? 0 : Number(p.stock),
+          stock:
+            p.stock === undefined || p.stock === null || p.stock === ""
+              ? 0
+              : Number(p.stock) || 0,
         }));
         setAllProducts(clean);
       })
@@ -142,7 +145,7 @@ export default function Home() {
   const [cartOpen, setCartOpen] = useState(false);
   const [showGas, setShowGas] = useState(false);
 
-  // CONTACT FORM (dummy submit)
+  // CONTACT FORM
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -151,9 +154,57 @@ export default function Home() {
   });
   function submitContact(e: React.FormEvent) {
     e.preventDefault();
-    // You can hook this to an email service later
     alert("Thanks! We received your message.");
     setForm({ name: "", email: "", phone: "", message: "" });
+  }
+
+  // MPESA PHONE
+  const [mpesaPhone, setMpesaPhone] = useState("");
+
+  async function payWithMpesa() {
+    const phone = mpesaPhone.trim();
+    // Accept 07XXXXXXXX or 7XXXXXXXX (auto-normalize)
+    const normalized =
+      /^0?7\d{8}$/.test(phone) ? (phone.startsWith("0") ? phone : "0" + phone) : "";
+
+    if (!normalized) {
+      alert('Enter a valid Safaricom number, e.g., "07XXXXXXXX".');
+      return;
+    }
+    if (lines.length === 0) {
+      alert("Your cart is empty.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/mpesa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: normalized,
+          amount: totalKES,
+          items: lines.map((l) => ({ id: l.product!.id, qty: l.qty })),
+          till: CONTACT.till,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({} as any));
+
+      if (res.ok && (data?.ok ?? false)) {
+        alert(
+          `STK Push sent to ${normalized}. When prompted, enter your M-Pesa PIN. (Till ${CONTACT.till})`
+        );
+      } else {
+        const msg =
+          data?.error ||
+          "M-Pesa request could not be completed. Please try again or pay in-store.";
+        alert(`Payment error: ${msg}`);
+      }
+    } catch (e) {
+      alert(
+        "We couldn't reach the M-Pesa service. Please try again or pay in-store."
+      );
+    }
   }
 
   return (
@@ -161,7 +212,6 @@ export default function Home() {
       <Head>
         <title>Mastermind Electricals & Electronics</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        {/* Favicon: put your logo in /public/logo.png */}
         <link rel="icon" href="/logo.png" />
       </Head>
 
@@ -188,7 +238,6 @@ export default function Home() {
         >
           {/* Brand */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {/* logo dot */}
             <div
               style={{
                 height: 34,
@@ -226,7 +275,7 @@ export default function Home() {
             />
           </div>
 
-          {/* Cart Button (smaller) */}
+          {/* Cart Button */}
           <button
             onClick={() => setCartOpen((v) => !v)}
             style={{
@@ -270,7 +319,7 @@ export default function Home() {
         </div>
       </header>
 
-      {/* HERO + VISIT — side-by-side on desktop */}
+      {/* HERO + VISIT */}
       <section
         style={{
           maxWidth: 1200,
@@ -278,262 +327,219 @@ export default function Home() {
           padding: "0 16px",
         }}
       >
-        <div
-          style={{
-            display: "grid",
-            gap: 16,
-            gridTemplateColumns: "1fr",
-          }}
-        >
-          {/* Wrap in a 2-col grid on wider screens */}
+        <style>{`
+          @media (min-width: 900px) {
+            .heroGrid2 {
+              display: grid;
+              grid-template-columns: 2fr 1fr;
+              gap: 16px;
+            }
+          }
+        `}</style>
+
+        <div className="heroGrid2" style={{ display: "grid", gap: 16 }}>
+          {/* Left: Hero */}
           <div
             style={{
-              display: "grid",
-              gap: 16,
-              gridTemplateColumns: "1fr",
+              position: "relative",
+              background: "#fff",
+              border: "1px solid #eee",
+              borderRadius: 18,
+              padding: 18,
+              overflow: "hidden",
+            }}
+          >
+            {/* bg circles (subtle, tucked) */}
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                width: 360,
+                height: 360,
+                left: -90,
+                top: -90,
+                borderRadius: "9999px",
+                background: "#fde58a",
+                opacity: 0.35,
+                filter: "blur(1.2px)",
+                zIndex: 0,
+                pointerEvents: "none",
+              }}
+            />
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                width: 26,
+                height: 26,
+                right: 10,
+                top: 10,
+                borderRadius: "9999px",
+                background: "#f0b90b",
+                opacity: 0.25,
+                zIndex: 0,
+                pointerEvents: "none",
+              }}
+            />
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                width: 14,
+                height: 14,
+                right: 48,
+                top: 26,
+                borderRadius: "9999px",
+                background: "#f0b90b",
+                opacity: 0.2,
+                zIndex: 0,
+                pointerEvents: "none",
+              }}
+            />
+
+            <div style={{ position: "relative", zIndex: 1 }}>
+              <div
+                style={{
+                  color: "#6b7280",
+                  fontWeight: 700,
+                  letterSpacing: 1,
+                  fontSize: 12,
+                  marginBottom: 10,
+                }}
+              >
+                TRUSTED IN SOTIK
+              </div>
+
+              <h1
+                style={{
+                  fontSize: 28,
+                  lineHeight: 1.15,
+                  margin: 0,
+                  fontWeight: 800,
+                  color: "#111827",
+                }}
+              >
+                Quality Electronics, Lighting & Gas — Fast Delivery
+              </h1>
+
+              <p style={{ marginTop: 10, color: "#4b5563" }}>
+                Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay via
+                M-Pesa. Pickup or same-day delivery.
+              </p>
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <span style={pill(true)}>
+                  <Wallet size={14} />
+                  M-Pesa Available
+                </span>
+                <button
+                  style={pill(true)}
+                  onClick={() => setShowGas(true)}
+                  aria-label="Show gas refill options"
+                >
+                  <Fuel size={14} />
+                  Gas Refill Available
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Visit card */}
+          <div
+            style={{
+              position: "relative",
+              background: "#0f0f0f",
+              color: "#fff",
+              borderRadius: 18,
+              padding: 18,
+              overflow: "hidden",
             }}
           >
             <div
+              aria-hidden
               style={{
-                display: "grid",
-                gap: 16,
-                gridTemplateColumns: "1fr",
+                position: "absolute",
+                width: 220,
+                height: 220,
+                right: -60,
+                top: -60,
+                borderRadius: "9999px",
+                background: "#f4c84d",
+                opacity: 0.18,
+                filter: "blur(1px)",
+                zIndex: 0,
+                pointerEvents: "none",
               }}
-            >
-              {/* Make 2 cols when wide */}
-              <style>{`
-                @media (min-width: 900px) {
-                  .heroGrid2 {
-                    display: grid;
-                    grid-template-columns: 2fr 1fr;
-                    gap: 16px;
-                  }
-                }
-              `}</style>
-              <div className="heroGrid2">
-                {/* Left: Hero */}
-                <div
-                  style={{
-                    position: "relative",
-                    background: "#fff",
-                    border: "1px solid #eee",
-                    borderRadius: 18,
-                    padding: 18,
-                    overflow: "hidden",
-                  }}
-                >
-                  {/* bg circles UNDER content */}
-                  <div
-                    aria-hidden
-                    style={{
-                      position: "absolute",
-                      width: 360,
-                      height: 360,
-                      left: -90,
-                      top: -90,
-                      borderRadius: "9999px",
-                      background: "#fde58a",
-                      opacity: 0.6,
-                      filter: "blur(0.5px)",
-                      zIndex: 0,
-                      pointerEvents: "none",
-                    }}
-                  />
-                  <div
-                    aria-hidden
-                    style={{
-                      position: "absolute",
-                      width: 36,
-                      height: 36,
-                      right: 16,
-                      top: 16,
-                      borderRadius: "9999px",
-                      background: "#f0b90b",
-                      opacity: 0.35,
-                      zIndex: 0,
-                      pointerEvents: "none",
-                    }}
-                  />
-                  <div
-                    aria-hidden
-                    style={{
-                      position: "absolute",
-                      width: 18,
-                      height: 18,
-                      right: 58,
-                      top: 32,
-                      borderRadius: "9999px",
-                      background: "#f0b90b",
-                      opacity: 0.25,
-                      zIndex: 0,
-                      pointerEvents: "none",
-                    }}
-                  />
-
-                  {/* content above */}
-                  <div style={{ position: "relative", zIndex: 1 }}>
-                    <div
-                      style={{
-                        color: "#6b7280",
-                        fontWeight: 700,
-                        letterSpacing: 1,
-                        fontSize: 12,
-                        marginBottom: 10,
-                      }}
-                    >
-                      TRUSTED IN SOTIK
-                    </div>
-
-                    <h1
-                      style={{
-                        fontSize: 28,
-                        lineHeight: 1.15,
-                        margin: 0,
-                        fontWeight: 800,
-                        color: "#111827",
-                      }}
-                    >
-                      Quality Electronics, Lighting & Gas — Fast Delivery
-                    </h1>
-
-                    <p style={{ marginTop: 10, color: "#4b5563" }}>
-                      Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills.
-                      Pay via M-Pesa. Pickup or same-day delivery.
-                    </p>
-
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <span style={pill(true)}>
-                        <Wallet size={14} />
-                        M-Pesa Available
-                      </span>
-                      <button
-                        style={pill(true)}
-                        onClick={() => setShowGas(true)}
-                        aria-label="Show gas refill options"
-                      >
-                        <Fuel size={14} />
-                        Gas Refill Available
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right: Visit card */}
-                <div
-                  style={{
-                    position: "relative",
-                    background: "#0f0f0f",
-                    color: "#fff",
-                    borderRadius: 18,
-                    padding: 18,
-                    overflow: "hidden",
-                  }}
-                >
-                  {/* bg circle UNDER content */}
-                  <div
-                    aria-hidden
-                    style={{
-                      position: "absolute",
-                      width: 220,
-                      height: 220,
-                      right: -60,
-                      top: -60,
-                      borderRadius: "9999px",
-                      background: "#f4c84d",
-                      opacity: 0.18,
-                      filter: "blur(1px)",
-                      zIndex: 0,
-                      pointerEvents: "none",
-                    }}
-                  />
-
-                  {/* content above */}
-                  <div style={{ position: "relative", zIndex: 1 }}>
-                    <h2 style={{ margin: 0, fontSize: 18, display: "flex", gap: 8 }}>
-                      🏬 Visit Our Shop
-                    </h2>
-                    <div style={{ opacity: 0.9, marginTop: 6 }}>
-                      {BRAND.name}, Sotik Town
-                    </div>
-                    <div style={{ opacity: 0.8, marginTop: 2 }}>{CONTACT.hours}</div>
-
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 12,
-                        flexWrap: "wrap",
-                        marginTop: 14,
-                      }}
-                    >
-                      {/* Tibet Yellow buttons */}
-                      <a
-                        href={CONTACT.maps}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={ctaBtn(BRAND.primary, "#111")}
-                      >
-                        <MapPin size={16} />
-                        View on Maps
-                      </a>
-                      <a href={`tel:${CONTACT.phone}`} style={ctaBtn(BRAND.primary, "#111")}>
-                        <Phone size={16} />
-                        {CONTACT.phoneDisplay}
-                      </a>
-                      <a
-                        href={`mailto:${CONTACT.email}`}
-                        style={ctaBtn(BRAND.primary, "#111")}
-                      >
-                        <Mail size={16} />
-                        {CONTACT.email}
-                      </a>
-                    </div>
-                  </div>
-                </div>
+            />
+            <div style={{ position: "relative", zIndex: 1 }}>
+              <h2 style={{ margin: 0, fontSize: 18, display: "flex", gap: 8 }}>
+                🏬 Visit Our Shop
+              </h2>
+              <div style={{ opacity: 0.9, marginTop: 6 }}>
+                {BRAND.name}, Sotik Town
               </div>
-              {/* end heroGrid2 */}
+              <div style={{ opacity: 0.8, marginTop: 2 }}>{CONTACT.hours}</div>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  flexWrap: "wrap",
+                  marginTop: 14,
+                }}
+              >
+                <a
+                  href={CONTACT.maps}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={ctaBtn(BRAND.primary, "#111")}
+                >
+                  <MapPin size={16} />
+                  View on Maps
+                </a>
+                <a href={`tel:${CONTACT.phone}`} style={ctaBtn(BRAND.primary, "#111")}>
+                  <Phone size={16} />
+                  {CONTACT.phoneDisplay}
+                </a>
+                <a
+                  href={`mailto:${CONTACT.email}`}
+                  style={ctaBtn(BRAND.primary, "#111")}
+                >
+                  <Mail size={16} />
+                  {CONTACT.email}
+                </a>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* PRODUCT GRID */}
-      <section style={{ maxWidth: 1200, margin: "0 auto", padding: "8px 16px 20px" }}>
+      <section style={{ maxWidth: 1200, margin: "0 auto", padding: "8px 16px 24px" }}>
         <div
-          className="grid"
           style={{
             display: "grid",
             gap: 16,
-            gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
           }}
         >
           {filtered.map((p) => {
             const price = Number(p.price) || 0;
-            const inStock = (p.stock ?? 0) > 0;
+            const stockCount = Number(p.stock ?? 0) || 0;
+            const inStock = stockCount > 0;
+
             return (
               <div
                 key={p.id}
                 style={{
                   background: "#fff",
                   border: "1px solid #eee",
-                  borderRadius: 14,
+                  borderRadius: 16,
                   overflow: "hidden",
+                  transition: "box-shadow .15s ease, transform .15s ease",
                 }}
               >
                 <div style={{ position: "relative" }}>
-                  {/* bg pattern dot */}
-                  <div
-                    aria-hidden
-                    style={{
-                      position: "absolute",
-                      width: 90,
-                      height: 90,
-                      right: -20,
-                      top: -20,
-                      borderRadius: 999,
-                      background: "#f7f7f7",
-                      zIndex: 0,
-                    }}
-                  />
                   <img
                     src={
                       p.img && p.img.trim()
@@ -543,46 +549,83 @@ export default function Home() {
                     alt={p.name}
                     style={{
                       width: "100%",
-                      height: 140,
+                      height: 180,
                       objectFit: "cover",
-                      position: "relative",
-                      zIndex: 1,
+                      display: "block",
                     }}
                   />
+
+                  {!inStock && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: 10,
+                        left: 10,
+                        background: "#fee2e2",
+                        color: "#991b1b",
+                        border: "1px solid #fecaca",
+                        padding: "2px 8px",
+                        fontSize: 11,
+                        fontWeight: 800,
+                        borderRadius: 999,
+                      }}
+                    >
+                      Out of stock
+                    </span>
+                  )}
                 </div>
 
-                <div style={{ padding: 10, position: "relative", zIndex: 1 }}>
+                <div style={{ padding: 12 }}>
                   <div style={{ fontSize: 12, color: "#6b7280" }}>{p.sku || ""}</div>
-                  <div style={{ fontWeight: 700, color: "#111827" }}>{p.name}</div>
+
                   <div
                     style={{
-                      marginTop: 8,
+                      fontWeight: 700,
+                      color: "#111827",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                      minHeight: 40,
+                      lineHeight: "1.2",
+                      marginTop: 2,
+                    }}
+                    title={p.name}
+                  >
+                    {p.name}
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: 10,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
                     }}
                   >
-                    <div style={{ fontSize: 18, fontWeight: 800 }}>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: "#111" }}>
                       {currencyKES(price)}
                     </div>
+
                     <button
-                      onClick={() => add(p.id, 1)}
+                      onClick={() => inStock && add(p.id, 1)}
                       disabled={!inStock}
                       style={{
-                        background: BRAND.primary,
-                        color: "#111",
-                        border: "1px solid rgba(0,0,0,0.06)",
-                        padding: "6px 10px",
+                        background: inStock ? BRAND.primary : "#f3f4f6",
+                        color: inStock ? "#111" : "#9ca3af",
+                        padding: "8px 12px",
                         borderRadius: 10,
+                        border: "1px solid rgba(0,0,0,0.06)",
                         fontWeight: 800,
-                        opacity: inStock ? 1 : 0.5,
+                        cursor: inStock ? "pointer" : "not-allowed",
                       }}
                     >
-                      {inStock ? "Add" : "Out"}
+                      {inStock ? "Add" : "Out of stock"}
                     </button>
                   </div>
-                  <div style={{ marginTop: 4, fontSize: 12, color: "#6b7280" }}>
-                    Stock: {p.stock ?? 0}
+
+                  <div style={{ marginTop: 6, fontSize: 12, color: "#6b7280" }}>
+                    Stock: {stockCount}
                   </div>
                 </div>
               </div>
@@ -705,7 +748,7 @@ export default function Home() {
           <div>
             <div style={{ fontWeight: 700 }}>Payments</div>
             <ul style={ulStyle}>
-              <li>M-Pesa (Till & in-store)</li>
+              <li>M-Pesa (Till {CONTACT.till})</li>
               <li>Cash on Delivery (local)</li>
               <li>In-store M-Pesa Agent</li>
             </ul>
@@ -731,7 +774,7 @@ export default function Home() {
             right: 12,
             top: 72,
             width: 340,
-            maxHeight: "70vh",
+            maxHeight: "75vh",
             overflow: "auto",
             background: "#fff",
             border: "1px solid #eee",
@@ -829,7 +872,6 @@ export default function Home() {
                   <div style={{ fontWeight: 900 }}>{currencyKES(totalKES)}</div>
                 </div>
 
-                {/* Clear all only if more than one product line */}
                 {lines.length > 1 && (
                   <div style={{ marginTop: 8 }}>
                     <button onClick={clearAll} style={miniDanger}>
@@ -838,9 +880,38 @@ export default function Home() {
                   </div>
                 )}
 
+                {/* M-Pesa phone input */}
+                <div style={{ marginTop: 12 }}>
+                  <label
+                    htmlFor="mpesa"
+                    style={{ fontSize: 12, color: "#6b7280", display: "block" }}
+                  >
+                    M-Pesa Number (Safaricom)
+                  </label>
+                  <input
+                    id="mpesa"
+                    inputMode="numeric"
+                    placeholder="07XXXXXXXX"
+                    value={mpesaPhone}
+                    onChange={(e) => setMpesaPhone(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: 10,
+                      border: "1px solid #e5e7eb",
+                      outline: "none",
+                      background: "#fff",
+                      marginTop: 6,
+                    }}
+                  />
+                  <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+                    Till: {CONTACT.till}
+                  </div>
+                </div>
+
                 <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
                   <button
-                    onClick={() => alert("Proceeding to M-Pesa checkout soon")}
+                    onClick={payWithMpesa}
                     style={{
                       ...ctaBtn(BRAND.primary, "#111"),
                       width: "100%",
