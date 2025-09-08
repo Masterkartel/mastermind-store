@@ -12,28 +12,32 @@
     "name": "12W Bulbs",
     "sku": "1 pc",
     "price": 250,
-    "stock": 8
+    "stock": 8,
+    "img": "/products/12w-bulbs.jpg"
   },
   {
     "id": "15w-led-bulkhead",
     "name": "15W LED bulkhead",
     "sku": "1",
     "price": 680,
-    "stock": 35
+    "stock": 35,
+    "img": "/products/15w-led-bulkhead.jpg"
   },
   {
     "id": "15w-sundabest",
     "name": "15W Sundabest",
     "sku": "1 pc",
     "price": 300,
-    "stock": 8
+    "stock": 8,
+    "img": "/products/15w-sundabest.png"
   },
   {
     "id": "18w-sundabest",
     "name": "18W Sundabest",
     "sku": "1 pc",
     "price": 350,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/18w-sundabest.png"
   },
   {
     "id": "2-batt-torch",
