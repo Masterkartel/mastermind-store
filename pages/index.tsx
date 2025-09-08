@@ -122,12 +122,7 @@ export default function Home() {
       <header className="topbar">
         <div className="topbar__inner">
           <div className="brand">
-            <img
-              src="/favicon.ico"
-              alt=""
-              className="brandIcon"
-              aria-hidden
-            />
+            <img src="/favicon.ico" alt="" className="brandIcon" aria-hidden />
             Mastermind Electricals & Electronics
           </div>
           <button
@@ -186,13 +181,12 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right: SERVICES with M-Pesa logo and Gas quick add */}
+          {/* Right: SERVICES with M-Pesa logo and Gas mini-cards */}
           <div className="infoCard">
             <div className="infoCard__bubble" aria-hidden />
             <div className="eyebrow">SERVICES</div>
 
             <div className="servicesHeader">
-              {/* Replace "M-Pesa" text with your logo */}
               <img
                 src="/mpesa.png"
                 alt="M-Pesa"
@@ -203,9 +197,9 @@ export default function Home() {
               <span className="servicesText">Gas Refill</span>
             </div>
 
-            {/* Gas cylinders above the buttons */}
+            {/* Gas semi-cards, centered */}
             <div className="cylinders">
-              <div className="cyl">
+              <div className="cylCard">
                 <img
                   src="/gas-6kg.png"
                   alt="6KG Gas"
@@ -216,7 +210,7 @@ export default function Home() {
                   6KG — KES 1,110
                 </button>
               </div>
-              <div className="cyl">
+              <div className="cylCard">
                 <img
                   src="/gas-13kg.png"
                   alt="13KG Gas"
@@ -238,7 +232,7 @@ export default function Home() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder='Search products, e.g., "43 TV" or "bulb"'
-          className="search"
+        className="search"
         />
       </div>
 
@@ -421,7 +415,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* ===== Floating WhatsApp (file from /public) ===== */}
+      {/* ===== Floating WhatsApp (now uses /whatsapp.svg) ===== */}
       <a
         href="https://wa.me/254715151010"
         target="_blank"
@@ -429,7 +423,7 @@ export default function Home() {
         className="waFab"
         aria-label="Chat on WhatsApp"
       >
-        <img src="/whatsapp.png" alt="WhatsApp" className="waIcon" />
+        <img src="/whatsapp.svg" alt="WhatsApp" className="waIcon" />
       </a>
 
       {/* ===== Styles ===== */}
@@ -467,15 +461,16 @@ export default function Home() {
         .infoCard { position:relative; background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; overflow:hidden; }
         .infoCard__bubble { position:absolute; right:-40px; bottom:-60px; width:160px; height:160px; background:#f4d03f; opacity:.25; border-radius:9999px; }
 
-        .servicesHeader { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-weight:800; font-size:20px; margin:4px 0 10px; }
+        .servicesHeader { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-weight:800; font-size:20px; margin:4px 0 12px; justify-content:center; }
         .mpesaLogo { height:60px; width:auto; display:block; }
         .amp { font-size:20px; color:#222; line-height:1; }
         .servicesText { font-size:20px; font-weight:800; color:#111; }
 
-        .cylinders { display:flex; gap:14px; flex-wrap:wrap; }
-        .cyl { display:flex; flex-direction:column; align-items:flex-start; gap:6px; }
-        .cylImg { height:72px; width:auto; object-fit:contain; }
-        .cylImg--tight { margin-bottom:-4px; } /* nudge 6KG closer to its button */
+        /* Gas mini cards, centered */
+        .cylinders { display:flex; justify-content:center; gap:14px; flex-wrap:wrap; }
+        .cylCard { background:#fff; border:1px solid #eee; border-radius:12px; padding:12px; width:min(220px, 46%); display:flex; flex-direction:column; align-items:center; gap:8px; }
+        .cylImg { height:74px; width:auto; object-fit:contain; }
+        .cylImg--tight { margin-bottom:-8px; } /* drop 6KG a bit closer to button */
 
         .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:12px; font-weight:800; text-decoration:none; cursor:pointer; }
         .btn--accent { background:#f4d03f; color:#111; padding:10px 14px; border:none; }
