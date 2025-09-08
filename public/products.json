@@ -4087,4 +4087,20 @@
     "price": 1380,
     "stock": 5
   }
+  {
+  "id": "gas-6kg",
+  "name": "Gas Refill 6KG",
+  "price": 1150,
+  "sku": "refill",
+  "stock": 999,
+  "img": ""
+},
+{
+  "id": "gas-13kg",
+  "name": "Gas Refill 13KG",
+  "price": 2550,
+  "sku": "refill",
+  "stock": 999,
+  "img": ""
+}
 ]
