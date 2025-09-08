@@ -13,24 +13,6 @@ type Product = {
 
 type CartLine = { product: Product; qty: number };
 
-// Simple WhatsApp Icon (inline SVG)
-const WaIcon = ({ size = 18 }: { size?: number }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    role="img"
-    aria-label="WhatsApp"
-  >
-    <circle cx="12" cy="12" r="12" fill="#25D366" />
-    {/* stylized phone receiver */}
-    <path
-      fill="#fff"
-      d="M16.5 14.8c-1 .6-2.2.9-3.5.9-2.9 0-5.6-1.6-7-4.1-.4-.7-.2-1.6.5-2.1l1.1-.8c.3-.2.7-.2.9.1l1.4 1.7c.2.3.2.7-.1 1l-.5.5c.9 1.6 2.3 2.7 4 3.3l.5-.5c.3-.3.7-.3 1-.1l1.7 1.4c.3.2.3.6.1.9l-.8 1.1z"
-    />
-  </svg>
-);
-
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
@@ -125,22 +107,6 @@ export default function Home() {
   const currency = (n: number) =>
     `KES ${Math.round(n).toLocaleString("en-KE")}`;
 
-  // ---- Contact form (retained) ----
-  const [cName, setCName] = useState("");
-  const [cPhone, setCPhone] = useState("");
-  const [cEmail, setCEmail] = useState("");
-  const [cMessage, setCMessage] = useState("");
-
-  const submitContact = (e: React.FormEvent) => {
-    e.preventDefault();
-    const to = "sales@mastermindelectricals.com";
-    const subject = encodeURIComponent("Website enquiry");
-    const body = encodeURIComponent(
-      `Message: ${cMessage}\n\nName: ${cName}\nPhone: ${cPhone}\nEmail: ${cEmail}`
-    );
-    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
-  };
-
   return (
     <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
       <Head>
@@ -155,11 +121,7 @@ export default function Home() {
       {/* ===== Top Bar ===== */}
       <header className="topbar">
         <div className="topbar__inner">
-          <div className="brandWrap">
-            {/* Replace yellow dot with favicon */}
-            <img className="brandIcon" src="/favicon.ico" alt="" />
-            <div className="brand">Mastermind Electricals & Electronics</div>
-          </div>
+          <div className="brand">Mastermind Electricals & Electronics</div>
           <button
             onClick={() => setShowCart(true)}
             className="cartBtn"
@@ -188,7 +150,6 @@ export default function Home() {
         <div className="twoCol">
           {/* Left: Visit shop (dark) */}
           <div className="shopCard">
-            {/* Bubble moved to RIGHT (per your earlier ask) */}
             <div className="shopCard__bubble" aria-hidden />
             <div className="shopCard__title">Visit Our Shop</div>
             <div className="muted">
@@ -213,17 +174,6 @@ export default function Home() {
                 className="btn btn--light"
               >
                 ✉️ sales@mastermindelectricals.com
-              </a>
-              {/* WhatsApp icon-only */}
-              <a
-                className="btn btn--waIcon"
-                href="https://wa.me/254715151010?text=Hi%20Mastermind%2C%20I%27m%20interested%20in%20your%20products."
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Chat on WhatsApp"
-                title="WhatsApp"
-              >
-                <WaIcon />
               </a>
             </div>
           </div>
@@ -305,7 +255,7 @@ export default function Home() {
                     className="btn btn--accent small"
                     onClick={() => add(p.id)}
                   >
-                    Add
+                    Add to Cart
                   </button>
                 ) : (
                   <div className="btn btn--disabled small">Out of stock</div>
@@ -313,70 +263,6 @@ export default function Home() {
               </article>
             );
           })}
-        </div>
-      </section>
-
-      {/* ===== Contact Form (kept as-is) ===== */}
-      <section className="container" style={{ marginBottom: 28 }}>
-        <div className="contact">
-          <h3 className="h3">Leave us a message</h3>
-          <p className="muted" style={{ marginTop: 6 }}>
-            We’ll get back to you shortly.
-          </p>
-
-          <form onSubmit={submitContact} className="form">
-            <label className="label">Message</label>
-            <textarea
-              className="input"
-              rows={4}
-              value={cMessage}
-              onChange={(e) => setCMessage(e.target.value)}
-              placeholder="How can we help?"
-              required
-            />
-
-            <div className="formRow">
-              <div className="col">
-                <label className="label">Name</label>
-                <input
-                  className="input"
-                  value={cName}
-                  onChange={(e) => setCName(e.target.value)}
-                  placeholder="Your name"
-                  required
-                />
-              </div>
-              <div className="col">
-                <label className="label">Phone</label>
-                <input
-                  className="input"
-                  value={cPhone}
-                  onChange={(e) => setCPhone(e.target.value)}
-                  placeholder="07XXXXXXXX"
-                  inputMode="tel"
-                  required
-                />
-              </div>
-            </div>
-
-            <label className="label">Email</label>
-            <input
-              className="input"
-              type="email"
-              value={cEmail}
-              onChange={(e) => setCEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-            />
-
-            <button
-              className="btn btn--dark"
-              type="submit"
-              style={{ marginTop: 10 }}
-            >
-              Send message
-            </button>
-          </form>
         </div>
       </section>
 
@@ -389,18 +275,6 @@ export default function Home() {
           </div>
         </div>
       </footer>
-
-      {/* ===== Floating WhatsApp FAB (icon-only) ===== */}
-      <a
-        className="waFab"
-        href="https://wa.me/254715151010?text=Hi%20Mastermind%2C%20I%27d%20like%20to%20order%20or%20ask%20a%20question."
-        target="_blank"
-        rel="noreferrer"
-        aria-label="Chat on WhatsApp"
-        title="WhatsApp"
-      >
-        <WaIcon size={22} />
-      </a>
 
       {/* ===== Cart Drawer ===== */}
       {showCart && (
@@ -491,7 +365,9 @@ export default function Home() {
 
               <button
                 disabled={cartLines.length === 0}
-                className={`btn ${cartLines.length ? "btn--pay" : "btn--disabled"}`}
+                className={`btn ${
+                  cartLines.length ? "btn--pay" : "btn--disabled"
+                }`}
                 onClick={() => alert("Checkout coming soon")}
               >
                 Pay with M-Pesa
@@ -501,115 +377,413 @@ export default function Home() {
         </div>
       )}
 
+      {/* ===== Floating WhatsApp Button ===== */}
+      <a
+        className="waFab"
+        href="https://wa.me/254715151010?text=Hi%20Mastermind%20Electronics%20%26%20Electricals%2C%20I%27d%20like%20to%20order%20or%20ask%20a%20question."
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Chat on WhatsApp"
+      >
+        <img src="/whatsapp.svg" alt="WhatsApp" width={28} height={28} />
+      </a>
+
       {/* ===== Styles ===== */}
       <style jsx>{`
-        .container { max-width: 1200px; margin: 0 auto; padding: 0 12px; }
-
-        .topbar { position: sticky; top: 0; z-index: 50; background: #111; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); }
-        .topbar__inner { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 12px; }
-        .brandWrap { display:flex; align-items:center; gap:8px; }
-        .brandIcon { width:16px; height:16px; border-radius:4px; }
-        .brand { font-weight: 800; letter-spacing: .3px; }
-        .cartBtn { background:#f4d03f; color:#111; border:none; padding:8px 12px; border-radius:12px; font-weight:800; cursor:pointer; white-space:nowrap; }
-
-        .hero { position: relative; background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; overflow:hidden; }
-        .hero__bubble { position:absolute; right:-60px; top:-40px; width:240px; height:240px; background:#f4d03f; opacity:.35; border-radius:9999px; }
-        .eyebrow { color:#666; font-weight:700; font-size:12px; }
-        .h1 { margin:6px 0 8px; font-size:28px; line-height:1.15; letter-spacing:-.2px; }
-        .h3 { margin:4px 0 8px; font-size:20px; font-weight:800; }
-        .h4 { font-weight:800; font-size:18px; }
-        .lead { color:#444; font-size:15px; }
-        .muted { color:#888; }
-
-        .twoCol { display:grid; grid-template-columns:1fr; gap:12px; margin-top:12px; }
-        @media (min-width: 900px) {
-          .twoCol { grid-template-columns: 1fr 1fr; }
+        .container {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 0 12px;
         }
 
-        .shopCard { position:relative; background:#111; color:#fff; border-radius:16px; padding:16px; overflow:hidden; }
-        .shopCard__bubble { position:absolute; right:-50px; bottom:-70px; width:180px; height:180px; background:#f4d03f; opacity:.25; border-radius:9999px; }
-        .shopCard__title { font-weight:800; margin-bottom:6px; }
+        .topbar {
+          position: sticky;
+          top: 0;
+          z-index: 50;
+          background: #111;
+          color: #fff;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .topbar__inner {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 8px;
+          align-items: center;
+          padding: 10px 12px;
+        }
+        .brand {
+          font-weight: 800;
+          letter-spacing: 0.3px;
+        }
+        .cartBtn {
+          background: #f4d03f;
+          color: #111;
+          border: none;
+          padding: 8px 12px;
+          border-radius: 12px;
+          font-weight: 800;
+          cursor: pointer;
+          white-space: nowrap;
+        }
 
-        .infoCard { position:relative; background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; overflow:hidden; }
-        .infoCard__bubble { position:absolute; right:-40px; bottom:-60px; width:160px; height:160px; background:#f4d03f; opacity:.25; border-radius:9999px; }
+        .hero {
+          position: relative;
+          background: #fff;
+          border: 1px solid #eee;
+          border-radius: 16px;
+          padding: 16px;
+          overflow: hidden;
+        }
+        .hero__bubble {
+          position: absolute;
+          right: -60px;
+          top: -40px;
+          width: 240px;
+          height: 240px;
+          background: #f4d03f;
+          opacity: 0.35;
+          border-radius: 9999px;
+        }
+        .eyebrow {
+          color: #666;
+          font-weight: 700;
+          font-size: 12px;
+        }
+        .h1 {
+          margin: 6px 0 8px;
+          font-size: 28px;
+          line-height: 1.15;
+          letter-spacing: -0.2px;
+        }
+        .h3 {
+          margin: 4px 0 8px;
+          font-size: 20px;
+          font-weight: 800;
+        }
+        .h4 {
+          font-weight: 800;
+          font-size: 18px;
+        }
+        .lead {
+          color: #444;
+          font-size: 15px;
+        }
+        .muted {
+          color: #888;
+        }
 
-        .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
-        .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:12px; font-weight:800; text-decoration:none; cursor:pointer; }
-        .btn--accent { background:#f4d03f; color:#111; padding:10px 14px; border:none; }
-        .btn--light { background:#fff; color:#111; padding:10px 14px; border:1px solid #eee; }
-        .btn--dark { background:#111; color:#fff; padding:10px 16px; border:none; }
-        .btn--ghost { background:#fff; color:#111; border:1px solid #ddd; padding:8px 12px; border-radius:10px; }
-        .btn--disabled { background:#eee; color:#888; }
-        .btn--pay { background:#16a34a; color:#fff; border:none; padding:12px 16px; border-radius:12px; }
-        .btn--waIcon { background:#25D366; color:#fff; padding:10px 12px; border:none; border-radius:12px; width:42px; height:42px; display:inline-flex; align-items:center; justify-content:center; }
-        .small { padding:8px 14px; }
+        .twoCol {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 12px;
+          margin-top: 12px;
+        }
+        @media (min-width: 900px) {
+          .twoCol {
+            grid-template-columns: 1fr 1fr;
+          }
+        }
 
-        .badgeRow { display:flex; gap:10px; flex-wrap:wrap; margin:8px 0 12px; }
-        .badge { padding:6px 10px; border-radius:999px; font-weight:800; font-size:13px; }
-        .badge--mpesa { background:#ffe9a3; border:1px solid #f3d97b; color:#1a1a1a; }
-        .badge--gas { background:#eef7ff; border:1px solid #d5eaff; color:#0a2533; }
+        .shopCard {
+          position: relative;
+          background: #111;
+          color: #fff;
+          border-radius: 16px;
+          padding: 16px;
+          overflow: hidden;
+        }
+        .shopCard__bubble {
+          position: absolute;
+          right: -60px; /* moved to the RIGHT per your earlier request */
+          bottom: -70px;
+          width: 220px;
+          height: 220px;
+          background: #f4d03f;
+          opacity: 0.25;
+          border-radius: 9999px;
+        }
+        .shopCard__title {
+          font-weight: 800;
+          margin-bottom: 6px;
+        }
 
-        .quickAdd { display:grid; gap:8px; }
-        .quickAdd__row { display:flex; gap:10px; flex-wrap:wrap; }
+        .infoCard {
+          position: relative;
+          background: #fff;
+          border: 1px solid #eee;
+          border-radius: 16px;
+          padding: 16px;
+          overflow: hidden;
+        }
+        .infoCard__bubble {
+          position: absolute;
+          right: -40px;
+          bottom: -60px;
+          width: 160px;
+          height: 160px;
+          background: #f4d03f;
+          opacity: 0.25;
+          border-radius: 9999px;
+        }
 
-        .search { width:100%; height:44px; padding:0 14px; border-radius:12px; border:1px solid #ddd; background:#fff; font-size:15px; outline:none; }
+        .actions {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+          margin-top: 12px;
+        }
+        .btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          border-radius: 12px;
+          font-weight: 800;
+          text-decoration: none;
+          cursor: pointer;
+        }
+        .btn--accent {
+          background: #f4d03f;
+          color: #111;
+          padding: 10px 14px;
+          border: none;
+        }
+        .btn--light {
+          background: #fff;
+          color: #111;
+          padding: 10px 14px;
+          border: 1px solid #eee;
+        }
+        .btn--dark {
+          background: #111;
+          color: #fff;
+          padding: 10px 16px;
+          border: none;
+        }
+        .btn--ghost {
+          background: #fff;
+          color: #111;
+          border: 1px solid #ddd;
+          padding: 8px 12px;
+          border-radius: 10px;
+        }
+        .btn--disabled {
+          background: #eee;
+          color: #888;
+        }
+        .btn--pay {
+          background: #16a34a;
+          color: #fff;
+          border: none;
+          padding: 12px 16px;
+          border-radius: 12px;
+        }
+        .small {
+          padding: 8px 14px;
+        }
 
-        .productGrid { display:grid; gap:16px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
-        .card { background:#fff; border:1px solid #eee; border-radius:16px; padding:12px; display:grid; gap:10px; box-shadow:0 1px 0 rgba(0,0,0,.03); }
-        .card__img { height:160px; background:#f3f3f3; border-radius:14px; overflow:hidden; display:flex; align-items:center; justify-content:center; }
-        .sku { color:#777; font-size:12px; }
-        .name { font-weight:800; }
-        .price { color:#111; font-weight:800; }
-        .stock { color:#666; font-size:12px; }
+        .badgeRow {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+          margin: 8px 0 12px;
+        }
+        .badge {
+          padding: 6px 10px;
+          border-radius: 999px;
+          font-weight: 800;
+          font-size: 13px;
+        }
+        .badge--mpesa {
+          background: #ffe9a3;
+          border: 1px solid #f3d97b;
+          color: #1a1a1a;
+        }
+        .badge--gas {
+          background: #eef7ff;
+          border: 1px solid #d5eaff;
+          color: #0a2533;
+        }
 
-        .footer { border-top:1px solid #eaeaea; padding:12px 0 18px; background:#fafafa; }
+        .quickAdd {
+          display: grid;
+          gap: 8px;
+        }
+        .quickAdd__row {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .search {
+          width: 100%;
+          height: 44px;
+          padding: 0 14px;
+          border-radius: 12px;
+          border: 1px solid #ddd;
+          background: #fff;
+          font-size: 15px;
+          outline: none;
+        }
+
+        .productGrid {
+          display: grid;
+          gap: 16px;
+          grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        }
+        .card {
+          background: #fff;
+          border: 1px solid #eee;
+          border-radius: 16px;
+          padding: 12px;
+          display: grid;
+          gap: 10px;
+          box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
+        }
+        .card__img {
+          height: 160px;
+          background: #f3f3f3;
+          border-radius: 14px;
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .sku {
+          color: #777;
+          font-size: 12px;
+        }
+        .name {
+          font-weight: 800;
+        }
+        .price {
+          color: #111;
+          font-weight: 800;
+        }
+        .stock {
+          color: #666;
+          font-size: 12px;
+        }
+
+        .footer {
+          border-top: 1px solid #eaeaea;
+          padding: 12px 0 18px;
+          background: #fafafa;
+        }
 
         /* Drawer */
-        .overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:60; }
-        .drawer { position:fixed; right:10px; top:12vh; width:min(440px, 92vw); max-height:76vh; overflow:auto; background:#fff; border-radius:16px; border:1px solid #eee; box-shadow:0 20px 40px rgba(0,0,0,.25); padding:12px; }
-        .drawer__top { display:flex; justify-content:space-between; align-items:center; }
-        .empty { padding:22px 0; color:#666; }
-        .lines { display:grid; gap:10px; margin-top:10px; }
-        .line { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; }
-        .line__name { font-weight:700; }
-        .line__price { color:#666; font-size:12px; }
-        .qty { display:flex; align-items:center; gap:8px; }
-        .qtyBtn { border:1px solid #ddd; background:#fff; padding:6px 10px; border-radius:8px; cursor:pointer; }
-        .qtyNum { min-width:20px; text-align:center; }
-
-        .totals { margin-top:12px; display:grid; gap:8px; }
-        .row { display:flex; justify-content:space-between; }
-        .strong { font-weight:800; }
-        .label { font-size:12px; color:#555; margin-top:4px; }
-        .input { width:100%; height:42px; border-radius:10px; border:1px solid #ddd; padding:0 12px; outline:none; background:#fff; }
-        textarea.input { height:auto; padding:10px 12px; }
-
-        /* Contact */
-        .contact { background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; }
-        .form { display:grid; gap:10px; margin-top:8px; }
-        .formRow { display:grid; grid-template-columns:1fr; gap:10px; }
-        .col { display:grid; gap:6px; }
-        @media (min-width: 700px) {
-          .formRow { grid-template-columns: 1fr 1fr; }
+        .overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.45);
+          z-index: 60;
+        }
+        .drawer {
+          position: fixed;
+          right: 10px;
+          top: 12vh;
+          width: min(440px, 92vw);
+          max-height: 76vh;
+          overflow: auto;
+          background: #fff;
+          border-radius: 16px;
+          border: 1px solid #eee;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+          padding: 12px;
+        }
+        .drawer__top {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .empty {
+          padding: 22px 0;
+          color: #666;
+        }
+        .lines {
+          display: grid;
+          gap: 10px;
+          margin-top: 10px;
+        }
+        .line {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 8px;
+          align-items: center;
+          border-bottom: 1px solid #eee;
+          padding-bottom: 8px;
+        }
+        .line__name {
+          font-weight: 700;
+        }
+        .line__price {
+          color: #666;
+          font-size: 12px;
+        }
+        .qty {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .qtyBtn {
+          border: 1px solid #ddd;
+          background: #fff;
+          padding: 6px 10px;
+          border-radius: 8px;
+          cursor: pointer;
+        }
+        .qtyNum {
+          min-width: 20px;
+          text-align: center;
         }
 
-        /* Floating WhatsApp FAB */
+        .totals {
+          margin-top: 12px;
+          display: grid;
+          gap: 8px;
+        }
+        .row {
+          display: flex;
+          justify-content: space-between;
+        }
+        .strong {
+          font-weight: 800;
+        }
+        .label {
+          font-size: 12px;
+          color: #555;
+          margin-top: 4px;
+        }
+        .input {
+          width: 100%;
+          height: 42px;
+          border-radius: 10px;
+          border: 1px solid #ddd;
+          padding: 0 12px;
+          outline: none;
+          background: #fff;
+        }
+        textarea.input {
+          height: auto;
+          padding: 10px 12px;
+        }
+
+        /* Floating WhatsApp button */
         .waFab {
           position: fixed;
           right: 16px;
           bottom: 16px;
-          background: #25D366;
-          color: #fff;
-          width: 54px;
-          height: 54px;
+          width: 56px;
+          height: 56px;
           border-radius: 999px;
-          font-weight: 800;
-          text-decoration: none;
-          z-index: 70;
-          box-shadow: 0 10px 24px rgba(0,0,0,.2);
-          display:flex;
-          align-items:center;
-          justify-content:center;
+          background: #25d366;
+          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+          display: grid;
+          place-items: center;
+          z-index: 80;
+        }
+        .waFab img {
+          display: block;
         }
       `}</style>
     </div>
