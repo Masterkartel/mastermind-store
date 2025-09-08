@@ -19,7 +19,7 @@ type Product = {
   name: string;
   price: number | string;
   sku?: string;   // Units from your Excel
-  stock?: number; // optional; if missing we default to 10
+  stock?: number; // optional; default to 10 if missing
   img?: string;
 };
 
@@ -68,7 +68,7 @@ export default function Home() {
           stock:
             typeof p.stock === "number"
               ? p.stock
-              : Number(p.Stock) || 10, // allow "Stock" from Excel; default 10
+              : Number(p.Stock) || 10, // support "Stock" key; else default 10
         }));
         setProducts(normalized);
       })
@@ -615,6 +615,66 @@ export default function Home() {
             );
           })}
         </div>
+      </section>
+
+      {/* Contact Form (Phone + Email in separate fields) */}
+      <section style={{ maxWidth: 800, margin: "0 auto", padding: "20px 16px" }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12, textAlign: "center" }}>
+          Contact Us
+        </h2>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const phone = (e.currentTarget.elements.namedItem("phone") as HTMLInputElement).value;
+            const email = (e.currentTarget.elements.namedItem("email") as HTMLInputElement).value;
+            const msg = (e.currentTarget.elements.namedItem("message") as HTMLTextAreaElement).value;
+            alert(`Thank you! We will reach out.\nPhone: ${phone}\nEmail: ${email}\nMessage: ${msg}`);
+          }}
+          style={{
+            display: "grid",
+            gap: 12,
+            background: "#fff",
+            padding: 20,
+            borderRadius: 16,
+            border: "1px solid #eee",
+          }}
+        >
+          <input
+            name="phone"
+            type="tel"
+            placeholder="Your Phone (07XXXXXXXX)"
+            required
+            style={{ padding: "12px", border: "1px solid #ddd", borderRadius: 8 }}
+          />
+          <input
+            name="email"
+            type="email"
+            placeholder="Your Email"
+            required
+            style={{ padding: "12px", border: "1px solid #ddd", borderRadius: 8 }}
+          />
+          <textarea
+            name="message"
+            rows={4}
+            placeholder="Your Message"
+            required
+            style={{ padding: "12px", border: "1px solid #ddd", borderRadius: 8 }}
+          />
+          <button
+            type="submit"
+            style={{
+              background: BRAND.primary,
+              color: "#111",
+              padding: "12px",
+              borderRadius: 10,
+              fontWeight: 700,
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            Send Message
+          </button>
+        </form>
       </section>
 
       {/* Footer */}
