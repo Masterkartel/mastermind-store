@@ -26,7 +26,18 @@ export default function Home() {
       try {
         const res = await fetch("/products.json", { cache: "no-store" });
         const data: Product[] = await res.json();
-        setProducts(Array.isArray(data) ? data : []);
+
+        // Enforce gas refill prices here so the cart totals match the new pricing.
+        const enforceGasPrices = (arr: Product[]) =>
+          arr.map((p) =>
+            p.id === "gas-6kg"
+              ? { ...p, price: 1110 }
+              : p.id === "gas-13kg"
+              ? { ...p, price: 2355 }
+              : p
+          );
+
+        setProducts(Array.isArray(data) ? enforceGasPrices(data) : []);
       } catch {
         setProducts([]);
       }
@@ -111,20 +122,19 @@ export default function Home() {
     <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
       <Head>
         <title>Mastermind Electricals & Electronics</title>
-
-        {/* Favicon: keep .ico as the primary; browsers will scale correctly */}
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="shortcut icon" href="/favicon.ico" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <meta name="theme-color" content="#111111" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, viewport-fit=cover"
+        />
+        <link rel="icon" href="/favicon.ico" />
       </Head>
 
       {/* ===== Top Bar ===== */}
       <header className="topbar">
         <div className="topbar__inner">
-          <div className="brandWrap">
-            <img src="/favicon.ico" alt="" className="brandIcon" />
-            <div className="brand">Mastermind Electricals & Electronics</div>
+          <div className="brand">
+            <img src="/favicon.ico" alt="Logo" className="brandIcon" />
+            Mastermind Electricals & Electronics
           </div>
           <button
             onClick={() => setShowCart(true)}
@@ -136,7 +146,7 @@ export default function Home() {
         </div>
       </header>
 
-      {/* ===== Hero + Two Cards ===== */}
+      {/* ===== Hero ===== */}
       <section className="container" style={{ marginTop: 12 }}>
         <div className="hero">
           <div className="hero__bubble" aria-hidden />
@@ -150,14 +160,15 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Two cards side-by-side on desktop */}
+        {/* ===== Two cards side-by-side on desktop ===== */}
         <div className="twoCol">
           {/* Left: Visit shop (dark) */}
           <div className="shopCard">
-            {/* Bubble moved to the RIGHT as requested */}
-            <div className="shopCard__bubbleRight" aria-hidden />
+            <div className="shopCard__bubble" aria-hidden />
             <div className="shopCard__title">Visit Our Shop</div>
-            <div className="muted">Mastermind Electricals & Electronics, Sotik Town</div>
+            <div className="muted">
+              Mastermind Electricals & Electronics, Sotik Town
+            </div>
             <div className="muted">Open Mon–Sun • 8:00am – 9:00pm</div>
 
             <div className="actions">
@@ -181,42 +192,40 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right: Services (light) */}
+          {/* Right: Services / Gas quick add */}
           <div className="infoCard">
             <div className="infoCard__bubble" aria-hidden />
             <div className="eyebrow">SERVICES</div>
-            <h3 className="h3">M-Pesa & Gas Refill</h3>
-
-            {/* M-Pesa logo only (sized bigger) */}
-            <div className="mpesaRow">
-              <img
-                src="/mpesa.png"
-                alt="M-Pesa"
-                className="mpesaLogo"
-                height={64}
-              />
+            <div className="servicesHeader">
+              <h3 className="h3">M-Pesa & Gas Refill</h3>
+              <img src="/mpesa.png" alt="M-Pesa" className="mpesaLogo" />
             </div>
 
-            {/* Gas refill badge back */}
-            <div className="badgeRow">
-              <span className="badge badge--gas">🔥 Gas Refill Available</span>
-            </div>
-
-            {/* Quick add gas buttons */}
-            <div className="quickAdd">
-              <div className="muted">Quick add gas refill to cart:</div>
-              <div className="quickAdd__row">
+            <div className="gasRefills">
+              <div className="gasItem">
+                <img
+                  src="/gas-6kg.png"
+                  alt="6KG Gas Cylinder"
+                  className="gasImg"
+                />
                 <button
                   className="btn btn--ghost"
                   onClick={() => add("gas-6kg")}
                 >
-                  6KG — KES 1,150
+                  6KG — KES 1,110
                 </button>
+              </div>
+              <div className="gasItem">
+                <img
+                  src="/gas-13kg.png"
+                  alt="13KG Gas Cylinder"
+                  className="gasImg"
+                />
                 <button
                   className="btn btn--ghost"
                   onClick={() => add("gas-13kg")}
                 >
-                  13KG — KES 2,550
+                  13KG — KES 2,355
                 </button>
               </div>
             </div>
@@ -224,7 +233,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== Search (kept below the two cards) ===== */}
+      {/* ===== Search ===== */}
       <div className="container" style={{ marginTop: 10, marginBottom: 6 }}>
         <input
           value={query}
@@ -247,18 +256,28 @@ export default function Home() {
                     <img
                       src={p.img}
                       alt={p.name}
-                      style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }}
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "100%",
+                        objectFit: "contain",
+                        display: "block",
+                      }}
                       loading="lazy"
                     />
                   ) : null}
                 </div>
                 <div className="sku">{p.sku || ""}</div>
                 <div className="name">{p.name}</div>
-                <div className="price">KES {Math.round(price).toLocaleString("en-KE")}</div>
+                <div className="price">
+                  KES {Math.round(price).toLocaleString("en-KE")}
+                </div>
                 <div className="stock">Stock: {stock}</div>
 
                 {stock > 0 ? (
-                  <button className="btn btn--accent small" onClick={() => add(p.id)}>
+                  <button
+                    className="btn btn--accent small"
+                    onClick={() => add(p.id)}
+                  >
                     Add to Cart
                   </button>
                 ) : (
@@ -270,49 +289,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== Info Section below website (Shop / Contact / Payments) ===== */}
-      <section className="container" style={{ padding: "8px 0 0" }}>
-        <div className="infoBlocks">
-          <div>
-            <div className="infoTitle">Mastermind Electricals & Electronics</div>
-            <div className="muted" style={{ marginTop: 8 }}>
-              Genuine stock, fair prices, friendly support.
-            </div>
-          </div>
-          <div>
-            <div className="infoTitle">Shop</div>
-            <ul className="infoList">
-              <li>TVs & Screens</li>
-              <li>Woofers & Audio</li>
-              <li>Bulbs & Lighting</li>
-              <li>Gas Refills</li>
-            </ul>
-          </div>
-          <div>
-            <div className="infoTitle">Contact</div>
-            <ul className="infoList">
-              <li>Email: sales@mastermindelectricals.com</li>
-              <li>Website: www.mastermindelectricals.com</li>
-              <li>M-Pesa Till: 8636720</li>
-              <li>Sotik Town, Bomet County</li>
-            </ul>
-          </div>
-          <div>
-            <div className="infoTitle">Payments</div>
-            <ul className="infoList">
-              <li>M-Pesa Till 8636720</li>
-              <li>Cash on Delivery (local)</li>
-              <li>In-store M-Pesa Agent</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
       {/* ===== Footer ===== */}
       <footer className="footer">
         <div className="container" style={{ padding: "10px 12px" }}>
           <div className="muted" style={{ textAlign: "center" }}>
-            © {new Date().getFullYear()} Mastermind Electricals & Electronics. All rights reserved.
+            © {new Date().getFullYear()} Mastermind Electricals & Electronics.
+            All rights reserved.
           </div>
         </div>
       </footer>
@@ -320,16 +302,27 @@ export default function Home() {
       {/* ===== Cart Drawer ===== */}
       {showCart && (
         <div className="overlay" onClick={() => setShowCart(false)}>
-          <aside className="drawer" onClick={(e) => e.stopPropagation()} aria-label="Cart">
+          <aside
+            className="drawer"
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Cart"
+          >
             <div className="drawer__top">
               <div className="h4">Your Cart</div>
               <div style={{ display: "flex", gap: 8 }}>
                 {cartCount > 1 && (
-                  <button className="btn btn--light small" onClick={clear} aria-label="Remove all items">
+                  <button
+                    className="btn btn--light small"
+                    onClick={clear}
+                    aria-label="Remove all items"
+                  >
                     Remove all
                   </button>
                 )}
-                <button className="btn btn--dark small" onClick={() => setShowCart(false)}>
+                <button
+                  className="btn btn--dark small"
+                  onClick={() => setShowCart(false)}
+                >
                   Close
                 </button>
               </div>
@@ -348,14 +341,25 @@ export default function Home() {
                         <div className="line__price">{currency(price)}</div>
                       </div>
                       <div className="qty">
-                        <button className="qtyBtn" onClick={() => sub(l.product.id)} aria-label="Decrease">
+                        <button
+                          className="qtyBtn"
+                          onClick={() => sub(l.product.id)}
+                          aria-label="Decrease"
+                        >
                           −
                         </button>
                         <div className="qtyNum">{l.qty}</div>
-                        <button className="qtyBtn" onClick={() => add(l.product.id)} aria-label="Increase">
+                        <button
+                          className="qtyBtn"
+                          onClick={() => add(l.product.id)}
+                          aria-label="Increase"
+                        >
                           +
                         </button>
-                        <button className="qtyBtn" onClick={() => remove(l.product.id)}>
+                        <button
+                          className="qtyBtn"
+                          onClick={() => remove(l.product.id)}
+                        >
                           Remove
                         </button>
                       </div>
@@ -384,7 +388,9 @@ export default function Home() {
 
               <button
                 disabled={cartLines.length === 0}
-                className={`btn ${cartLines.length ? "btn--pay" : "btn--disabled"}`}
+                className={`btn ${
+                  cartLines.length ? "btn--pay" : "btn--disabled"
+                }`}
                 onClick={() => alert("Checkout coming soon")}
               >
                 Pay with M-Pesa
@@ -394,108 +400,399 @@ export default function Home() {
         </div>
       )}
 
-      {/* ===== Floating WhatsApp ===== */}
-      <a
-        className="whats"
-        href="https://wa.me/254715151010?text=Hello%20Mastermind%2C%20I%27d%20like%20to%20order%20or%20enquire."
-        target="_blank"
-        rel="noreferrer"
-        aria-label="Chat on WhatsApp"
-      >
-        <img src="/whatsapp.svg" alt="" className="whats__icon" />
-      </a>
-
       {/* ===== Styles ===== */}
       <style jsx>{`
-        .container { max-width: 1200px; margin: 0 auto; padding: 0 12px; }
-
-        .topbar { position: sticky; top: 0; z-index: 50; background: #111; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); }
-        .topbar__inner { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 12px; }
-        .brandWrap { display:flex; align-items:center; gap:8px; min-width:0; }
-        .brandIcon { width: 18px; height: 18px; border-radius: 4px; }
-        .brand { font-weight: 800; letter-spacing: .3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .cartBtn { background:#f4d03f; color:#111; border:none; padding:8px 12px; border-radius:12px; font-weight:800; cursor:pointer; white-space:nowrap; }
-
-        .hero { position: relative; background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; overflow:hidden; }
-        .hero__bubble { position:absolute; right:-60px; top:-40px; width:240px; height:240px; background:#f4d03f; opacity:.35; border-radius:9999px; }
-        .eyebrow { color:#666; font-weight:700; font-size:12px; }
-        .h1 { margin:6px 0 8px; font-size:28px; line-height:1.15; letter-spacing:-.2px; }
-        .h3 { margin:4px 0 8px; font-size:20px; font-weight:800; }
-        .h4 { font-weight:800; font-size:18px; }
-        .lead { color:#444; font-size:15px; }
-        .muted { color:#888; }
-
-        .twoCol { display:grid; grid-template-columns:1fr; gap:12px; margin-top:12px; }
-        @media (min-width: 900px) {
-          .twoCol { grid-template-columns: 1fr 1fr; }
+        .container {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 0 12px;
         }
 
-        .shopCard { position:relative; background:#111; color:#fff; border-radius:16px; padding:16px; overflow:hidden; }
-        .shopCard__bubbleRight { position:absolute; right:-50px; bottom:-70px; width:180px; height:180px; background:#f4d03f; opacity:.25; border-radius:9999px; }
-        .shopCard__title { font-weight:800; margin-bottom:6px; }
+        .topbar {
+          position: sticky;
+          top: 0;
+          z-index: 50;
+          background: #111;
+          color: #fff;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .topbar__inner {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 8px;
+          align-items: center;
+          padding: 10px 12px;
+        }
+        .brand {
+          font-weight: 800;
+          letter-spacing: 0.3px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .brandIcon {
+          height: 22px;
+          width: 22px;
+        }
+        .cartBtn {
+          background: #f4d03f;
+          color: #111;
+          border: none;
+          padding: 8px 12px;
+          border-radius: 12px;
+          font-weight: 800;
+          cursor: pointer;
+          white-space: nowrap;
+        }
 
-        .infoCard { position:relative; background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; overflow:hidden; }
-        .infoCard__bubble { position:absolute; right:-40px; bottom:-60px; width:160px; height:160px; background:#f4d03f; opacity:.2; border-radius:9999px; }
+        .hero {
+          position: relative;
+          background: #fff;
+          border: 1px solid #eee;
+          border-radius: 16px;
+          padding: 16px;
+          overflow: hidden;
+        }
+        .hero__bubble {
+          position: absolute;
+          right: -60px;
+          top: -40px;
+          width: 240px;
+          height: 240px;
+          background: #f4d03f;
+          opacity: 0.35;
+          border-radius: 9999px;
+        }
+        .eyebrow {
+          color: #666;
+          font-weight: 700;
+          font-size: 12px;
+        }
+        .h1 {
+          margin: 6px 0 8px;
+          font-size: 28px;
+          line-height: 1.15;
+          letter-spacing: -0.2px;
+        }
+        .h3 {
+          margin: 4px 0 8px;
+          font-size: 20px;
+          font-weight: 800;
+        }
+        .h4 {
+          font-weight: 800;
+          font-size: 18px;
+        }
+        .lead {
+          color: #444;
+          font-size: 15px;
+        }
+        .muted {
+          color: #888;
+        }
 
-        .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
-        .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:12px; font-weight:800; text-decoration:none; cursor:pointer; }
-        .btn--accent { background:#f4d03f; color:#111; padding:10px 14px; border:none; }
-        .btn--light { background:#fff; color:#111; padding:10px 14px; border:1px solid #eee; }
-        .btn--dark { background:#111; color:#fff; padding:10px 16px; border:none; }
-        .btn--ghost { background:#fff; color:#111; border:1px solid #ddd; padding:8px 12px; border-radius:10px; }
-        .btn--disabled { background:#eee; color:#888; }
-        .btn--pay { background:#16a34a; color:#fff; border:none; padding:12px 16px; border-radius:12px; }
-        .small { padding:8px 14px; }
+        .twoCol {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 12px;
+          margin-top: 12px;
+        }
+        @media (min-width: 900px) {
+          .twoCol {
+            grid-template-columns: 1fr 1fr;
+          }
+        }
 
-        .badgeRow { display:flex; gap:10px; flex-wrap:wrap; margin:8px 0 12px; }
-        .badge { padding:6px 10px; border-radius:999px; font-weight:800; font-size:13px; }
-        .badge--gas { background:#eef7ff; border:1px solid #d5eaff; color:#0a2533; }
+        .shopCard {
+          position: relative;
+          background: #111;
+          color: #fff;
+          border-radius: 16px;
+          padding: 16px;
+          overflow: hidden;
+        }
+        .shopCard__bubble {
+          position: absolute;
+          left: -50px;
+          bottom: -70px;
+          width: 180px;
+          height: 180px;
+          background: #f4d03f;
+          opacity: 0.25;
+          border-radius: 9999px;
+        }
+        .shopCard__title {
+          font-weight: 800;
+          margin-bottom: 6px;
+        }
 
-        .mpesaRow { display:flex; align-items:center; gap:10px; margin:6px 0 8px; }
-        .mpesaLogo { height: 64px; width:auto; display:block; }
+        .infoCard {
+          position: relative;
+          background: #fff;
+          border: 1px solid #eee;
+          border-radius: 16px;
+          padding: 16px;
+          overflow: hidden;
+        }
+        .infoCard__bubble {
+          position: absolute;
+          right: -40px;
+          bottom: -60px;
+          width: 160px;
+          height: 160px;
+          background: #f4d03f;
+          opacity: 0.25;
+          border-radius: 9999px;
+        }
 
-        .quickAdd { display:grid; gap:8px; }
-        .quickAdd__row { display:flex; gap:10px; flex-wrap:wrap; }
+        .servicesHeader {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 4px;
+        }
+        .mpesaLogo {
+          height: 60px; /* tweak if you want it larger */
+          width: auto;
+          object-fit: contain;
+        }
 
-        .search { width:100%; height:44px; padding:0 14px; border-radius:12px; border:1px solid #ddd; background:#fff; font-size:15px; outline:none; }
+        .actions {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+          margin-top: 12px;
+        }
+        .btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          border-radius: 12px;
+          font-weight: 800;
+          text-decoration: none;
+          cursor: pointer;
+        }
+        .btn--accent {
+          background: #f4d03f;
+          color: #111;
+          padding: 10px 14px;
+          border: none;
+        }
+        .btn--light {
+          background: #fff;
+          color: #111;
+          padding: 10px 14px;
+          border: 1px solid #eee;
+        }
+        .btn--dark {
+          background: #111;
+          color: #fff;
+          padding: 10px 16px;
+          border: none;
+        }
+        .btn--ghost {
+          background: #fff;
+          color: #111;
+          border: 1px solid #ddd;
+          padding: 8px 12px;
+          border-radius: 10px;
+        }
+        .btn--disabled {
+          background: #eee;
+          color: #888;
+        }
+        .btn--pay {
+          background: #16a34a;
+          color: #fff;
+          border: none;
+          padding: 12px 16px;
+          border-radius: 12px;
+        }
+        .small {
+          padding: 8px 14px;
+        }
 
-        .productGrid { display:grid; gap:16px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
-        .card { background:#fff; border:1px solid #eee; border-radius:16px; padding:12px; display:grid; gap:10px; box-shadow:0 1px 0 rgba(0,0,0,.03); }
-        .card__img { height:160px; background:#f3f3f3; border-radius:14px; overflow:hidden; display:flex; align-items:center; justify-content:center; }
-        .sku { color:#777; font-size:12px; }
-        .name { font-weight:800; }
-        .price { color:#111; font-weight:800; }
-        .stock { color:#666; font-size:12px; }
+        .gasRefills {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+          margin-top: 8px;
+        }
+        @media (max-width: 520px) {
+          .gasRefills {
+            grid-template-columns: 1fr;
+          }
+        }
+        .gasItem {
+          display: grid;
+          justify-items: center;
+          gap: 8px;
+          background: #fff;
+          border: 1px solid #eee;
+          border-radius: 12px;
+          padding: 10px;
+        }
+        .gasImg {
+          height: 74px;
+          width: auto;
+          object-fit: contain;
+          display: block;
+        }
 
-        .infoBlocks { border-top:1px solid #eee; padding-top:16px; display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; font-size:14px; }
-        .infoTitle { font-weight:800; color:#111; }
-        .infoList { margin-top:8px; color:#555; padding-left:16px; }
+        .search {
+          width: 100%;
+          height: 44px;
+          padding: 0 14px;
+          border-radius: 12px;
+          border: 1px solid #ddd;
+          background: #fff;
+          font-size: 15px;
+          outline: none;
+        }
 
-        .footer { border-top:1px solid #eaeaea; padding:12px 0 18px; background:#fafafa; }
+        .productGrid {
+          display: grid;
+          gap: 16px;
+          grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        }
+        .card {
+          background: #fff;
+          border: 1px solid #eee;
+          border-radius: 16px;
+          padding: 12px;
+          display: grid;
+          gap: 10px;
+          box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
+        }
+        .card__img {
+          height: 160px;
+          background: #f3f3f3;
+          border-radius: 14px;
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .sku {
+          color: #777;
+          font-size: 12px;
+        }
+        .name {
+          font-weight: 800;
+        }
+        .price {
+          color: #111;
+          font-weight: 800;
+        }
+        .stock {
+          color: #666;
+          font-size: 12px;
+        }
+
+        .footer {
+          border-top: 1px solid #eaeaea;
+          padding: 12px 0 18px;
+          background: #fafafa;
+        }
 
         /* Drawer */
-        .overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:60; }
-        .drawer { position:fixed; right:10px; top:12vh; width:min(440px, 92vw); max-height:76vh; overflow:auto; background:#fff; border-radius:16px; border:1px solid #eee; box-shadow:0 20px 40px rgba(0,0,0,.25); padding:12px; }
-        .drawer__top { display:flex; justify-content:space-between; align-items:center; }
-        .empty { padding:22px 0; color:#666; }
-        .lines { display:grid; gap:10px; margin-top:10px; }
-        .line { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; }
-        .line__name { font-weight:700; }
-        .line__price { color:#666; font-size:12px; }
-        .qty { display:flex; align-items:center; gap:8px; }
-        .qtyBtn { border:1px solid #ddd; background:#fff; padding:6px 10px; border-radius:8px; cursor:pointer; }
-        .qtyNum { min-width:20px; text-align:center; }
+        .overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.45);
+          z-index: 60;
+        }
+        .drawer {
+          position: fixed;
+          right: 10px;
+          top: 12vh;
+          width: min(440px, 92vw);
+          max-height: 76vh;
+          overflow: auto;
+          background: #fff;
+          border-radius: 16px;
+          border: 1px solid #eee;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+          padding: 12px;
+        }
+        .drawer__top {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .empty {
+          padding: 22px 0;
+          color: #666;
+        }
+        .lines {
+          display: grid;
+          gap: 10px;
+          margin-top: 10px;
+        }
+        .line {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 8px;
+          align-items: center;
+          border-bottom: 1px solid #eee;
+          padding-bottom: 8px;
+        }
+        .line__name {
+          font-weight: 700;
+        }
+        .line__price {
+          color: #666;
+          font-size: 12px;
+        }
+        .qty {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .qtyBtn {
+          border: 1px solid #ddd;
+          background: #fff;
+          padding: 6px 10px;
+          border-radius: 8px;
+          cursor: pointer;
+        }
+        .qtyNum {
+          min-width: 20px;
+          text-align: center;
+        }
 
-        .totals { margin-top:12px; display:grid; gap:8px; }
-        .row { display:flex; justify-content:space-between; }
-        .strong { font-weight:800; }
-        .label { font-size:12px; color:#555; margin-top:4px; }
-        .input { width:100%; height:42px; border-radius:10px; border:1px solid #ddd; padding:0 12px; outline:none; background:#fff; }
-        textarea.input { height:auto; padding:10px 12px; }
-
-        /* Floating WhatsApp */
-        .whats { position:fixed; right:14px; bottom:14px; width:56px; height:56px; border-radius:50%; background:#25D366; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 24px rgba(0,0,0,.25); z-index:70; }
-        .whats__icon { width:28px; height:28px; filter: invert(1); }
+        .totals {
+          margin-top: 12px;
+          display: grid;
+          gap: 8px;
+        }
+        .row {
+          display: flex;
+          justify-content: space-between;
+        }
+        .strong {
+          font-weight: 800;
+        }
+        .label {
+          font-size: 12px;
+          color: #555;
+          margin-top: 4px;
+        }
+        .input {
+          width: 100%;
+          height: 42px;
+          border-radius: 10px;
+          border: 1px solid #ddd;
+          padding: 0 12px;
+          outline: none;
+          background: #fff;
+        }
+        textarea.input {
+          height: auto;
+          padding: 10px 12px;
+        }
       `}</style>
     </div>
   );
