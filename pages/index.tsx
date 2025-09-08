@@ -145,49 +145,14 @@ export default function Home() {
     alert("Thanks! Your email app will open with your message.");
   };
 
-  /** ---------- Decorative circles helper ---------- */
-  const Circle = ({
-    size = 220,
-    x = "auto",
-    y = "auto",
-    opacity = 0.18,
-    color = "#f3c74d",
-    blur = 0,
-    z = 0,
-  }: {
-    size?: number;
-    x?: number | string;
-    y?: number | string;
-    opacity?: number;
-    color?: string;
-    blur?: number;
-    z?: number;
-  }) => (
-    <div
-      aria-hidden
-      style={{
-        position: "absolute",
-        width: size,
-        height: size,
-        borderRadius: "9999px",
-        background: color,
-        opacity,
-        filter: blur ? `blur(${blur}px)` : undefined,
-        left: typeof x === "number" ? x : undefined,
-        right: x === "auto" ? undefined : undefined,
-        top: typeof y === "number" ? y : undefined,
-        bottom: y === "auto" ? undefined : undefined,
-        zIndex: z,
-      }}
-    />
-  );
-
   /** ---------- UI ---------- */
   return (
     <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
       <Head>
         <title>Mastermind Electricals & Electronics</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {/* Favicon: place /public/favicon.ico (use your logo) */}
+        <link rel="icon" href="/favicon.ico" />
       </Head>
 
       {/* Header */}
@@ -196,7 +161,7 @@ export default function Home() {
           position: "relative",
           background: "#0f0f0f",
           color: "#fff",
-          padding: "10px 14px",
+          padding: "12px 14px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -208,8 +173,8 @@ export default function Home() {
           <div
             style={{
               position: "absolute",
-              width: 160,
-              height: 160,
+              width: 170,
+              height: 170,
               right: -40,
               top: -40,
               borderRadius: "9999px",
@@ -221,8 +186,8 @@ export default function Home() {
           <div
             style={{
               position: "absolute",
-              width: 80,
-              height: 80,
+              width: 90,
+              height: 90,
               left: -20,
               bottom: -20,
               borderRadius: "9999px",
@@ -232,7 +197,7 @@ export default function Home() {
           />
         </div>
 
-        <div style={{ fontWeight: 800, fontSize: 18 }}>
+        <div style={{ fontWeight: 900, fontSize: 19 }}>
           Mastermind Electricals & Electronics
         </div>
 
@@ -247,12 +212,12 @@ export default function Home() {
             border: "1px solid #e2b009",
             borderRadius: 14,
             padding: "6px 10px",
-            fontWeight: 700,
+            fontWeight: 800,
             boxShadow: "inset 0 -1px 0 rgba(0,0,0,.12)",
           }}
           aria-label="Open cart"
         >
-          🛒 Cart: {count}
+          🛒 Cart
           <span
             style={{
               marginLeft: 6,
@@ -269,173 +234,196 @@ export default function Home() {
         </button>
       </header>
 
-      {/* Hero */}
+      {/* Top section: two cards side-by-side on wide screens */}
       <section
         style={{
           position: "relative",
           maxWidth: 1200,
           margin: "0 auto",
-          padding: "16px",
+          padding: 16,
         }}
       >
         <div
           style={{
-            position: "relative",
-            background: "#fff",
-            border: "1px solid #eee",
-            borderRadius: 18,
-            padding: 18,
-            overflow: "hidden",
+            display: "grid",
+            gap: 16,
+            gridTemplateColumns: "1fr",
           }}
         >
-          {/* large soft circle */}
-          <div
-            aria-hidden
-            style={{
-              position: "absolute",
-              width: 360,
-              height: 360,
-              right: -90,
-              top: -90,
-              borderRadius: "9999px",
-              background: "#fde58a",
-              opacity: 0.6,
-              filter: "blur(0.5px)",
-            }}
-          />
-          {/* tiny accents */}
-          <div
-            aria-hidden
-            style={{
-              position: "absolute",
-              width: 36,
-              height: 36,
-              left: 16,
-              top: 16,
-              borderRadius: "9999px",
-              background: "#f0b90b",
-              opacity: 0.35,
-            }}
-          />
-          <div
-            aria-hidden
-            style={{
-              position: "absolute",
-              width: 18,
-              height: 18,
-              left: 58,
-              top: 32,
-              borderRadius: "9999px",
-              background: "#f0b90b",
-              opacity: 0.25,
-            }}
-          />
+          {/* CSS for responsive columns (no Tailwind) */}
+          <style jsx>{`
+            @media (min-width: 900px) {
+              section > div.grid-2 {
+                display: grid !important;
+                grid-template-columns: 1.1fr 0.9fr !important;
+                gap: 16px !important;
+              }
+            }
+          `}</style>
 
-          <div
-            style={{
-              color: "#6b7280",
-              fontWeight: 700,
-              letterSpacing: 1,
-              fontSize: 12,
-              marginBottom: 10,
-            }}
-          >
-            TRUSTED IN SOTIK
-          </div>
-
-          <h1
-            style={{
-              fontSize: 28,
-              lineHeight: 1.15,
-              margin: 0,
-              fontWeight: 800,
-              color: "#111827",
-            }}
-          >
-            Quality Electronics, Lighting & Gas — Fast Delivery
-          </h1>
-
-          <p style={{ marginTop: 10, color: "#4b5563" }}>
-            Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay via
-            M-Pesa. Pickup or same-day delivery.
-          </p>
-
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <span style={pill()}>🚚 Same-day delivery</span>
-            <span style={pill()}>🛡️ 1-Year TV Warranty</span>
-            <button
-              style={pill(true)}
-              onClick={() => alert("M-Pesa available in-store & online.")}
+          <div className="grid-2" style={{ display: "block" }}>
+            {/* Left: Hero */}
+            <div
+              style={{
+                position: "relative",
+                background: "#fff",
+                border: "1px solid #eee",
+                borderRadius: 18,
+                padding: 18,
+                overflow: "hidden",
+              }}
             >
-              🇰🇪 M-Pesa Available
-            </button>
-            <button style={pill(true)} onClick={quickAddGas}>
-              ⛽ Gas Refill Available
-            </button>
-          </div>
-        </div>
+              {/* large soft circle */}
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  width: 360,
+                  height: 360,
+                  right: -90,
+                  top: -90,
+                  borderRadius: "9999px",
+                  background: "#fde58a",
+                  opacity: 0.6,
+                  filter: "blur(0.5px)",
+                }}
+              />
+              {/* tiny accents */}
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  width: 36,
+                  height: 36,
+                  left: 16,
+                  top: 16,
+                  borderRadius: "9999px",
+                  background: "#f0b90b",
+                  opacity: 0.35,
+                }}
+              />
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  width: 18,
+                  height: 18,
+                  left: 58,
+                  top: 32,
+                  borderRadius: "9999px",
+                  background: "#f0b90b",
+                  opacity: 0.25,
+                }}
+              />
 
-        {/* Visit card */}
-        <div
-          style={{
-            position: "relative",
-            marginTop: 16,
-            background: "#0f0f0f",
-            color: "#fff",
-            borderRadius: 18,
-            padding: 18,
-            overflow: "hidden",
-          }}
-        >
-          <div
-            aria-hidden
-            style={{
-              position: "absolute",
-              width: 220,
-              height: 220,
-              right: -60,
-              top: -60,
-              borderRadius: "9999px",
-              background: "#f4c84d",
-              opacity: 0.18,
-              filter: "blur(1px)",
-            }}
-          />
-          <h2 style={{ margin: 0, fontSize: 18, display: "flex", gap: 8 }}>
-            🏬 Visit Our Shop
-          </h2>
-          <div style={{ opacity: 0.9, marginTop: 6 }}>
-            Mastermind Electricals & Electronics, Sotik Town
-          </div>
-          <div style={{ opacity: 0.8, marginTop: 2 }}>
-            Open Mon–Sun • 8:00am – 9:00pm
-          </div>
+              <div
+                style={{
+                  color: "#6b7280",
+                  fontWeight: 700,
+                  letterSpacing: 1,
+                  fontSize: 12,
+                  marginBottom: 10,
+                }}
+              >
+                TRUSTED IN SOTIK
+              </div>
 
-          <div
-            style={{
-              display: "flex",
-              gap: 12,
-              flexWrap: "wrap",
-              marginTop: 14,
-            }}
-          >
-            <a
-              href="https://maps.app.goo.gl/7P2okRB5ssLFMkUT8"
-              target="_blank"
-              rel="noreferrer"
-              style={ctaBtn()}
+              <h1
+                style={{
+                  fontSize: 28,
+                  lineHeight: 1.15,
+                  margin: 0,
+                  fontWeight: 800,
+                  color: "#111827",
+                }}
+              >
+                Quality Electronics, Lighting & Gas — Fast Delivery
+              </h1>
+
+              <p style={{ marginTop: 10, color: "#4b5563" }}>
+                Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay via
+                M-Pesa. Pickup or same-day delivery.
+              </p>
+
+              {/* Pills (only two requested; wallet icon for M-Pesa) */}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  style={pill(true)}
+                  onClick={() =>
+                    alert("M-Pesa available in-store & online.")
+                  }
+                >
+                  💼 M-Pesa Available
+                </button>
+                <button style={pill(true)} onClick={quickAddGas}>
+                  ⛽ Gas Refill Available
+                </button>
+              </div>
+            </div>
+
+            {/* Right: Visit card */}
+            <div
+              style={{
+                position: "relative",
+                marginTop: 16,
+                background: "#0f0f0f",
+                color: "#fff",
+                borderRadius: 18,
+                padding: 18,
+                overflow: "hidden",
+              }}
             >
-              View on Maps ↗
-            </a>
-            <a href="tel:+254715151010" style={ctaBtn("#fff", "#111")}>
-              📞 0715151010
-            </a>
-            <a
-              href="mailto:sales@mastermindelectricals.com"
-              style={ctaBtn("#fff", "#111")}
-            >
-              ✉️ sales@mastermindelectricals.com
-            </a>
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  width: 220,
+                  height: 220,
+                  right: -60,
+                  top: -60,
+                  borderRadius: "9999px",
+                  background: "#f4c84d",
+                  opacity: 0.18,
+                  filter: "blur(1px)",
+                }}
+              />
+              <h2 style={{ margin: 0, fontSize: 18, display: "flex", gap: 8 }}>
+                🏬 Visit Our Shop
+              </h2>
+              <div style={{ opacity: 0.9, marginTop: 6 }}>
+                Mastermind Electricals & Electronics, Sotik Town
+              </div>
+              <div style={{ opacity: 0.8, marginTop: 2 }}>
+                Open Mon–Sun • 8:00am – 9:00pm
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  flexWrap: "wrap",
+                  marginTop: 14,
+                }}
+              >
+                <a
+                  href="https://maps.app.goo.gl/7P2okRB5ssLFMkUT8"
+                  target="_blank"
+                  rel="noreferrer"
+                  style={ctaBtn()}
+                >
+                  View on Maps ↗
+                </a>
+                <a href="tel:+254715151010" style={ctaBtn("#fff", "#111")}>
+                  📞 0715151010
+                </a>
+                <a
+                  href="mailto:sales@mastermindelectricals.com"
+                  style={ctaBtn("#fff", "#111")}
+                >
+                  ✉️ sales@mastermindelectricals.com
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -611,7 +599,7 @@ export default function Home() {
           </h3>
 
           <form ref={formRef} onSubmit={submitContact} style={{ marginTop: 12 }}>
-            {/* Message FIRST as requested */}
+            {/* Message FIRST */}
             <label style={label()}>Message</label>
             <textarea
               required
