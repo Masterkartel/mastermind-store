@@ -13,6 +13,24 @@ type Product = {
 
 type CartLine = { product: Product; qty: number };
 
+// Simple WhatsApp Icon (inline SVG)
+const WaIcon = ({ size = 18 }: { size?: number }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    role="img"
+    aria-label="WhatsApp"
+  >
+    <circle cx="12" cy="12" r="12" fill="#25D366" />
+    {/* stylized phone receiver */}
+    <path
+      fill="#fff"
+      d="M16.5 14.8c-1 .6-2.2.9-3.5.9-2.9 0-5.6-1.6-7-4.1-.4-.7-.2-1.6.5-2.1l1.1-.8c.3-.2.7-.2.9.1l1.4 1.7c.2.3.2.7-.1 1l-.5.5c.9 1.6 2.3 2.7 4 3.3l.5-.5c.3-.3.7-.3 1-.1l1.7 1.4c.3.2.3.6.1.9l-.8 1.1z"
+    />
+  </svg>
+);
+
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
@@ -107,7 +125,7 @@ export default function Home() {
   const currency = (n: number) =>
     `KES ${Math.round(n).toLocaleString("en-KE")}`;
 
-  // ---- Contact form (kept as-is per your file) ----
+  // ---- Contact form (retained) ----
   const [cName, setCName] = useState("");
   const [cPhone, setCPhone] = useState("");
   const [cEmail, setCEmail] = useState("");
@@ -138,7 +156,8 @@ export default function Home() {
       <header className="topbar">
         <div className="topbar__inner">
           <div className="brandWrap">
-            <span className="brandDot" aria-hidden />
+            {/* Replace yellow dot with favicon */}
+            <img className="brandIcon" src="/favicon.ico" alt="" />
             <div className="brand">Mastermind Electricals & Electronics</div>
           </div>
           <button
@@ -169,7 +188,7 @@ export default function Home() {
         <div className="twoCol">
           {/* Left: Visit shop (dark) */}
           <div className="shopCard">
-            {/* bubble moved to RIGHT per request */}
+            {/* Bubble moved to RIGHT (per your earlier ask) */}
             <div className="shopCard__bubble" aria-hidden />
             <div className="shopCard__title">Visit Our Shop</div>
             <div className="muted">
@@ -195,14 +214,16 @@ export default function Home() {
               >
                 ✉️ sales@mastermindelectricals.com
               </a>
-              {/* New: WhatsApp button */}
+              {/* WhatsApp icon-only */}
               <a
-                className="btn btn--wa"
+                className="btn btn--waIcon"
                 href="https://wa.me/254715151010?text=Hi%20Mastermind%2C%20I%27m%20interested%20in%20your%20products."
                 target="_blank"
                 rel="noreferrer"
+                aria-label="Chat on WhatsApp"
+                title="WhatsApp"
               >
-                💬 WhatsApp
+                <WaIcon />
               </a>
             </div>
           </div>
@@ -295,7 +316,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== Contact Form (left as-is) ===== */}
+      {/* ===== Contact Form (kept as-is) ===== */}
       <section className="container" style={{ marginBottom: 28 }}>
         <div className="contact">
           <h3 className="h3">Leave us a message</h3>
@@ -369,15 +390,16 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* ===== Floating WhatsApp FAB ===== */}
+      {/* ===== Floating WhatsApp FAB (icon-only) ===== */}
       <a
         className="waFab"
         href="https://wa.me/254715151010?text=Hi%20Mastermind%2C%20I%27d%20like%20to%20order%20or%20ask%20a%20question."
         target="_blank"
         rel="noreferrer"
         aria-label="Chat on WhatsApp"
+        title="WhatsApp"
       >
-        WhatsApp
+        <WaIcon size={22} />
       </a>
 
       {/* ===== Cart Drawer ===== */}
@@ -486,7 +508,7 @@ export default function Home() {
         .topbar { position: sticky; top: 0; z-index: 50; background: #111; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); }
         .topbar__inner { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 12px; }
         .brandWrap { display:flex; align-items:center; gap:8px; }
-        .brandDot { width:14px; height:14px; border-radius:999px; background:#f4d03f; flex:0 0 14px; }
+        .brandIcon { width:16px; height:16px; border-radius:4px; }
         .brand { font-weight: 800; letter-spacing: .3px; }
         .cartBtn { background:#f4d03f; color:#111; border:none; padding:8px 12px; border-radius:12px; font-weight:800; cursor:pointer; white-space:nowrap; }
 
@@ -505,7 +527,6 @@ export default function Home() {
         }
 
         .shopCard { position:relative; background:#111; color:#fff; border-radius:16px; padding:16px; overflow:hidden; }
-        /* moved bubble to RIGHT per request */
         .shopCard__bubble { position:absolute; right:-50px; bottom:-70px; width:180px; height:180px; background:#f4d03f; opacity:.25; border-radius:9999px; }
         .shopCard__title { font-weight:800; margin-bottom:6px; }
 
@@ -520,7 +541,7 @@ export default function Home() {
         .btn--ghost { background:#fff; color:#111; border:1px solid #ddd; padding:8px 12px; border-radius:10px; }
         .btn--disabled { background:#eee; color:#888; }
         .btn--pay { background:#16a34a; color:#fff; border:none; padding:12px 16px; border-radius:12px; }
-        .btn--wa { background:#25D366; color:#fff; padding:10px 14px; border:none; }
+        .btn--waIcon { background:#25D366; color:#fff; padding:10px 12px; border:none; border-radius:12px; width:42px; height:42px; display:inline-flex; align-items:center; justify-content:center; }
         .small { padding:8px 14px; }
 
         .badgeRow { display:flex; gap:10px; flex-wrap:wrap; margin:8px 0 12px; }
@@ -579,12 +600,16 @@ export default function Home() {
           bottom: 16px;
           background: #25D366;
           color: #fff;
-          padding: 10px 14px;
+          width: 54px;
+          height: 54px;
           border-radius: 999px;
           font-weight: 800;
           text-decoration: none;
           z-index: 70;
           box-shadow: 0 10px 24px rgba(0,0,0,.2);
+          display:flex;
+          align-items:center;
+          justify-content:center;
         }
       `}</style>
     </div>
