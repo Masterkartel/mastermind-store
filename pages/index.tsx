@@ -10,6 +10,7 @@ type Product = {
   stock?: number | string;
   img?: string;
 };
+
 type CartLine = { product: Product; qty: number };
 
 export default function Home() {
@@ -19,7 +20,7 @@ export default function Home() {
   const [mpesaPhone, setMpesaPhone] = useState("");
   const [cartMap, setCartMap] = useState<Record<string, number>>({});
 
-  // Load products.json
+  // ---- Load products.json ----
   useEffect(() => {
     (async () => {
       try {
@@ -32,7 +33,7 @@ export default function Home() {
     })();
   }, []);
 
-  // Cart persistence
+  // ---- Cart persistence ----
   useEffect(() => {
     try {
       const saved = localStorage.getItem("mm_cart");
@@ -52,7 +53,7 @@ export default function Home() {
     } catch {}
   }, [mpesaPhone]);
 
-  // Cart helpers
+  // ---- Cart helpers ----
   const add = (id: string) =>
     setCartMap((m) => ({ ...m, [id]: (m[id] ?? 0) + 1 }));
   const sub = (id: string) =>
@@ -92,7 +93,7 @@ export default function Home() {
     [cartLines]
   );
 
-  // Search filter
+  // ---- Search filter ----
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return products;
@@ -106,72 +107,81 @@ export default function Home() {
   const currency = (n: number) =>
     `KES ${Math.round(n).toLocaleString("en-KE")}`;
 
-  // Contact form state
-  const [cName, setCName] = useState("");
-  const [cPhone, setCPhone] = useState("");
-  const [cEmail, setCEmail] = useState("");
-  const [cMessage, setCMessage] = useState("");
-  const submitContact = (e: React.FormEvent) => {
-    e.preventDefault();
-    const to = "sales@mastermindelectricals.com";
-    const subject = encodeURIComponent("Website enquiry");
-    const body = encodeURIComponent(
-      `Message: ${cMessage}\n\nName: ${cName}\nPhone: ${cPhone}\nEmail: ${cEmail}`
-    );
-    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
-  };
-
   return (
     <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
       <Head>
         <title>Mastermind Electricals & Electronics</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+        {/* Favicon set */}
         <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+        <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" />
+
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, viewport-fit=cover"
+        />
       </Head>
 
-      {/* Top Bar */}
+      {/* ===== Top Bar ===== */}
       <header className="topbar">
         <div className="topbar__inner">
-          <div className="brandRow">
-            {/* Favicon in header (a bit bigger for visibility) */}
-            <img
-              src="/favicon.ico"
-              alt=""
-              width={26}
-              height={26}
-              className="brandLogo"
-            />
+          <div className="brandWrap">
+            {/* Use the favicon graphic as the brand bubble */}
+            <div className="brandBubble">
+              <img
+                src="/favicon-32.png"
+                alt="Brand"
+                className="brandIcon"
+                width={28}
+                height={28}
+              />
+            </div>
             <div className="brand">Mastermind Electricals & Electronics</div>
           </div>
-          <button
-            onClick={() => setShowCart(true)}
-            className="cartBtn"
-            aria-label="Open cart"
-          >
-            🛒 Cart: {cartCount}
-          </button>
+
+          <div className="topRight">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder='Search products, e.g., "43 TV" or "bulb"'
+              className="searchTop"
+              aria-label="Search products"
+            />
+            <button
+              onClick={() => setShowCart(true)}
+              className="cartBtn"
+              aria-label="Open cart"
+            >
+              🛒 Cart: {cartCount}
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Hero */}
+      {/* ===== Hero ===== */}
       <section className="container" style={{ marginTop: 12 }}>
         <div className="hero">
           <div className="hero__bubble" aria-hidden />
           <div className="eyebrow">TRUSTED IN SOTIK</div>
-          <h1 className="h1">Quality Electronics, Lighting & Gas — Fast Delivery</h1>
+          <h1 className="h1">
+            Quality Electronics, Lighting & Gas — Fast Delivery
+          </h1>
           <p className="lead">
             Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay via
             M-Pesa. Pickup or same-day delivery.
           </p>
         </div>
 
-        {/* Two cards */}
+        {/* ===== Two cards side-by-side on desktop ===== */}
         <div className="twoCol">
-          {/* Visit shop (dark) */}
+          {/* Left: Visit shop (dark) */}
           <div className="shopCard">
             <div className="shopCard__bubble" aria-hidden />
             <div className="shopCard__title">Visit Our Shop</div>
-            <div className="muted">Mastermind Electricals & Electronics, Sotik Town</div>
+            <div className="muted">
+              Mastermind Electricals & Electronics, Sotik Town
+            </div>
             <div className="muted">Open Mon–Sun • 8:00am – 9:00pm</div>
 
             <div className="actions">
@@ -183,31 +193,47 @@ export default function Home() {
               >
                 View on Maps
               </a>
-              <a href="tel:+254715151010" className="btn btn--light">📞 0715151010</a>
-              <a href="mailto:sales@mastermindelectricals.com" className="btn btn--light">
+              <a href="tel:+254715151010" className="btn btn--light">
+                📞 0715151010
+              </a>
+              <a
+                href="mailto:sales@mastermindelectricals.com"
+                className="btn btn--light"
+              >
                 ✉️ sales@mastermindelectricals.com
               </a>
             </div>
           </div>
 
-          {/* Info / quick actions (light) */}
+          {/* Right: Services / quick actions (light) */}
           <div className="infoCard">
             <div className="infoCard__bubble" aria-hidden />
             <div className="eyebrow">SERVICES</div>
-            <h3 className="h3">Pay with M-Pesa & Refill Gas</h3>
+            <h3 className="h3">M-Pesa & Gas Refill</h3>
 
-            <div className="badgeRow">
-              <span className="badge badge--mpesa">💳 M-Pesa Available</span>
-              <span className="badge badge--gas">🔥 Gas Refill Available</span>
+            {/* Show M-Pesa logo */}
+            <div className="mpesaLogoWrap">
+              <img
+                src="/mpesa.png"
+                alt="M-Pesa"
+                className="mpesaLogo"
+                height={28}
+              />
             </div>
 
             <div className="quickAdd">
               <div className="muted">Quick add gas refill to cart:</div>
               <div className="quickAdd__row">
-                <button className="btn btn--ghost" onClick={() => add("gas-6kg")}>
+                <button
+                  className="btn btn--ghost"
+                  onClick={() => add("gas-6kg")}
+                >
                   6KG — KES 1,150
                 </button>
-                <button className="btn btn--ghost" onClick={() => add("gas-13kg")}>
+                <button
+                  className="btn btn--ghost"
+                  onClick={() => add("gas-13kg")}
+                >
                   13KG — KES 2,550
                 </button>
               </div>
@@ -216,18 +242,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Search */}
-      <div className="container" style={{ marginTop: 10, marginBottom: 6 }}>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder='Search products, e.g., "43 TV" or "bulb"'
-          className="search"
-        />
-      </div>
-
-      {/* Product Grid */}
-      <section className="container" style={{ paddingBottom: 24 }}>
+      {/* ===== Product Grid ===== */}
+      <section className="container" style={{ paddingBottom: 24, marginTop: 12 }}>
         <div className="productGrid">
           {filtered.map((p) => {
             const price = Number(p.price) || 0;
@@ -239,18 +255,28 @@ export default function Home() {
                     <img
                       src={p.img}
                       alt={p.name}
-                      style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }}
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "100%",
+                        objectFit: "contain",
+                        display: "block",
+                      }}
                       loading="lazy"
                     />
                   ) : null}
                 </div>
                 <div className="sku">{p.sku || ""}</div>
                 <div className="name">{p.name}</div>
-                <div className="price">KES {Math.round(price).toLocaleString("en-KE")}</div>
+                <div className="price">
+                  KES {Math.round(price).toLocaleString("en-KE")}
+                </div>
                 <div className="stock">Stock: {stock}</div>
 
                 {stock > 0 ? (
-                  <button className="btn btn--accent small" onClick={() => add(p.id)}>
+                  <button
+                    className="btn btn--accent small"
+                    onClick={() => add(p.id)}
+                  >
                     Add to Cart
                   </button>
                 ) : (
@@ -262,99 +288,40 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Contact details + form */}
-      <section className="container" style={{ marginBottom: 28 }}>
-        <div className="contact">
-          <div className="contactGrid">
-            <div>
-              <h3 className="h3">Contact Us</h3>
-              <p className="muted" style={{ marginTop: 6 }}>
-                Mastermind Electricals & Electronics, Sotik Town<br />
-                Open Mon–Sun • 8:00am – 9:00pm
-              </p>
-              <p style={{ marginTop: 8 }}>
-                <a className="link" href="tel:+254715151010">📞 0715 151 010</a><br />
-                <a className="link" href="mailto:sales@mastermindelectricals.com">
-                  ✉️ sales@mastermindelectricals.com
-                </a>
-              </p>
-            </div>
-
-            <form onSubmit={submitContact} className="form">
-              <label className="label">Message</label>
-              <textarea
-                className="input"
-                rows={4}
-                value={cMessage}
-                onChange={(e) => setCMessage(e.target.value)}
-                placeholder="How can we help?"
-                required
-              />
-
-              <div className="formRow">
-                <div className="col">
-                  <label className="label">Name</label>
-                  <input
-                    className="input"
-                    value={cName}
-                    onChange={(e) => setCName(e.target.value)}
-                    placeholder="Your name"
-                    required
-                  />
-                </div>
-                <div className="col">
-                  <label className="label">Phone</label>
-                  <input
-                    className="input"
-                    value={cPhone}
-                    onChange={(e) => setCPhone(e.target.value)}
-                    placeholder="07XXXXXXXX"
-                    inputMode="tel"
-                    required
-                  />
-                </div>
-              </div>
-
-              <label className="label">Email</label>
-              <input
-                className="input"
-                type="email"
-                value={cEmail}
-                onChange={(e) => setCEmail(e.target.value)}
-                placeholder="you@example.com"
-                required
-              />
-
-              <button className="btn btn--dark" type="submit" style={{ marginTop: 10 }}>
-                Send message
-              </button>
-            </form>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
+      {/* ===== Footer ===== */}
       <footer className="footer">
         <div className="container" style={{ padding: "10px 12px" }}>
           <div className="muted" style={{ textAlign: "center" }}>
-            © {new Date().getFullYear()} Mastermind Electricals & Electronics. All rights reserved.
+            © {new Date().getFullYear()} Mastermind Electricals & Electronics.
+            All rights reserved.
           </div>
         </div>
       </footer>
 
-      {/* Cart Drawer */}
+      {/* ===== Cart Drawer ===== */}
       {showCart && (
         <div className="overlay" onClick={() => setShowCart(false)}>
-          <aside className="drawer" onClick={(e) => e.stopPropagation()} aria-label="Cart">
+          <aside
+            className="drawer"
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Cart"
+          >
             <div className="drawer__top">
               <div className="h4">Your Cart</div>
               <div style={{ display: "flex", gap: 8 }}>
                 {cartCount > 1 && (
-                  <button className="btn btn--light small" onClick={clear} aria-label="Remove all items">
+                  <button
+                    className="btn btn--light small"
+                    onClick={clear}
+                    aria-label="Remove all items"
+                  >
                     Remove all
                   </button>
                 )}
-                <button className="btn btn--dark small" onClick={() => setShowCart(false)}>
+                <button
+                  className="btn btn--dark small"
+                  onClick={() => setShowCart(false)}
+                >
                   Close
                 </button>
               </div>
@@ -373,14 +340,25 @@ export default function Home() {
                         <div className="line__price">{currency(price)}</div>
                       </div>
                       <div className="qty">
-                        <button className="qtyBtn" onClick={() => sub(l.product.id)} aria-label="Decrease">
+                        <button
+                          className="qtyBtn"
+                          onClick={() => sub(l.product.id)}
+                          aria-label="Decrease"
+                        >
                           −
                         </button>
                         <div className="qtyNum">{l.qty}</div>
-                        <button className="qtyBtn" onClick={() => add(l.product.id)} aria-label="Increase">
+                        <button
+                          className="qtyBtn"
+                          onClick={() => add(l.product.id)}
+                          aria-label="Increase"
+                        >
                           +
                         </button>
-                        <button className="qtyBtn" onClick={() => remove(l.product.id)}>
+                        <button
+                          className="qtyBtn"
+                          onClick={() => remove(l.product.id)}
+                        >
                           Remove
                         </button>
                       </div>
@@ -396,7 +374,9 @@ export default function Home() {
                 <span className="strong">{currency(cartTotal)}</span>
               </div>
 
-              <label className="label" style={{ marginTop: 6 }}>M-Pesa Phone (07XXXXXXXX)</label>
+              <label className="label" style={{ marginTop: 6 }}>
+                M-Pesa Phone (07XXXXXXXX)
+              </label>
               <input
                 value={mpesaPhone}
                 onChange={(e) => setMpesaPhone(e.target.value)}
@@ -417,30 +397,49 @@ export default function Home() {
         </div>
       )}
 
-      {/* Floating WhatsApp Button (white icon) */}
+      {/* ===== Floating WhatsApp ===== */}
       <a
-        className="waFab"
-        href="https://wa.me/254715151010?text=Hi%20Mastermind%20Electronics%20%26%20Electricals%2C%20I%27d%20like%20to%20order%20or%20ask%20a%20question."
+        href="https://wa.me/254715151010"
         target="_blank"
         rel="noreferrer"
+        className="waFab"
         aria-label="Chat on WhatsApp"
       >
-        <img src="/whatsapp.svg" alt="WhatsApp" width={28} height={28} />
+        <img
+          src="/whatsapp.svg"
+          alt="WhatsApp"
+          className="waIcon"
+          width={28}
+          height={28}
+        />
       </a>
 
-      {/* Styles */}
+      {/* ===== Styles ===== */}
       <style jsx>{`
         .container { max-width: 1200px; margin: 0 auto; padding: 0 12px; }
 
+        /* Topbar */
         .topbar { position: sticky; top: 0; z-index: 50; background: #111; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); }
-        .topbar__inner { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 12px; }
-        .brandRow { display:flex; align-items:center; gap:10px; }
-        .brandLogo { border-radius: 6px; display:block; }
-        .brand { font-weight: 800; letter-spacing: .3px; }
+        .topbar__inner { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; }
+        .brandWrap { display:flex; align-items:center; gap:10px; min-width:0; }
+        .brandBubble { width:32px; height:32px; border-radius:9999px; background:#f4d03f; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+        .brandIcon { display:block; }
+        .brand { font-weight: 800; letter-spacing: .3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .topRight { display:grid; grid-template-columns: 1fr auto; gap:8px; align-items:center; min-width: 220px; }
+        .searchTop { width:100%; height:38px; padding:0 12px; border-radius:10px; border:1px solid #2a2a2a; background:#1a1a1a; color:#fff; font-size:14px; outline:none; }
+        .searchTop::placeholder { color:#9b9b9b; }
         .cartBtn { background:#f4d03f; color:#111; border:none; padding:8px 12px; border-radius:12px; font-weight:800; cursor:pointer; white-space:nowrap; }
 
+        @media (max-width: 640px) {
+          .topbar__inner { grid-template-columns: 1fr; gap: 8px; }
+          .topRight { grid-template-columns: 1fr; }
+          .cartBtn { justify-self: end; }
+        }
+
+        /* Hero */
         .hero { position: relative; background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; overflow:hidden; }
-        .hero__bubble { position:absolute; right:-60px; top:-40px; width:240px; height:240px; background:#f4d03f; opacity:.35; border-radius:9999px; }
+        .hero__bubble { position:absolute; right:-60px; top:-40px; width:240px; height:240px; background:#f4d03f; opacity:.28; border-radius:9999px; }
         .eyebrow { color:#666; font-weight:700; font-size:12px; }
         .h1 { margin:6px 0 8px; font-size:28px; line-height:1.15; letter-spacing:-.2px; }
         .h3 { margin:4px 0 8px; font-size:20px; font-weight:800; }
@@ -448,15 +447,19 @@ export default function Home() {
         .lead { color:#444; font-size:15px; }
         .muted { color:#888; }
 
+        /* Two-up */
         .twoCol { display:grid; grid-template-columns:1fr; gap:12px; margin-top:12px; }
         @media (min-width: 900px) { .twoCol { grid-template-columns: 1fr 1fr; } }
 
+        /* Shop card (dark) */
         .shopCard { position:relative; background:#111; color:#fff; border-radius:16px; padding:16px; overflow:hidden; }
-        .shopCard__bubble { position:absolute; right:-60px; bottom:-70px; width:220px; height:220px; background:#f4d03f; opacity:.25; border-radius:9999px; }
+        /* Bubble moved to the RIGHT side per your request */
+        .shopCard__bubble { position:absolute; right:-50px; bottom:-70px; width:180px; height:180px; background:#f4d03f; opacity:.20; border-radius:9999px; }
         .shopCard__title { font-weight:800; margin-bottom:6px; }
 
+        /* Info card (light) */
         .infoCard { position:relative; background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; overflow:hidden; }
-        .infoCard__bubble { position:absolute; right:-40px; bottom:-60px; width:160px; height:160px; background:#f4d03f; opacity:.25; border-radius:9999px; }
+        .infoCard__bubble { position:absolute; right:-40px; bottom:-60px; width:160px; height:160px; background:#f4d03f; opacity:.20; border-radius:9999px; }
 
         .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
         .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:12px; font-weight:800; text-decoration:none; cursor:pointer; }
@@ -468,16 +471,13 @@ export default function Home() {
         .btn--pay { background:#16a34a; color:#fff; border:none; padding:12px 16px; border-radius:12px; }
         .small { padding:8px 14px; }
 
-        .badgeRow { display:flex; gap:10px; flex-wrap:wrap; margin:8px 0 12px; }
-        .badge { padding:6px 10px; border-radius:999px; font-weight:800; font-size:13px; }
-        .badge--mpesa { background:#ffe9a3; border:1px solid #f3d97b; color:#1a1a1a; }
-        .badge--gas { background:#eef7ff; border:1px solid #d5eaff; color:#0a2533; }
-
         .quickAdd { display:grid; gap:8px; }
         .quickAdd__row { display:flex; gap:10px; flex-wrap:wrap; }
 
-        .search { width:100%; height:44px; padding:0 14px; border-radius:12px; border:1px solid #ddd; background:#fff; font-size:15px; outline:none; }
+        .mpesaLogoWrap { display:flex; align-items:center; gap:10px; margin: 6px 0 10px; }
+        .mpesaLogo { display:block; height:28px; width:auto; }
 
+        /* Products */
         .productGrid { display:grid; gap:16px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
         .card { background:#fff; border:1px solid #eee; border-radius:16px; padding:12px; display:grid; gap:10px; box-shadow:0 1px 0 rgba(0,0,0,.03); }
         .card__img { height:160px; background:#f3f3f3; border-radius:14px; overflow:hidden; display:flex; align-items:center; justify-content:center; }
@@ -486,18 +486,7 @@ export default function Home() {
         .price { color:#111; font-weight:800; }
         .stock { color:#666; font-size:12px; }
 
-        .contact { background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; }
-        .contactGrid { display:grid; gap:16px; grid-template-columns:1fr; }
-        @media(min-width:900px){ .contactGrid { grid-template-columns: 1fr 1.3fr; } }
-        .form { display:grid; gap:10px; margin-top:8px; }
-        .formRow { display:grid; grid-template-columns:1fr; gap:10px; }
-        @media (min-width: 700px) { .formRow { grid-template-columns: 1fr 1fr; } }
-        .col { display:grid; gap:6px; }
-        .label { font-size:12px; color:#555; margin-top:4px; }
-        .input { width:100%; height:42px; border-radius:10px; border:1px solid #ddd; padding:0 12px; outline:none; background:#fff; }
-        textarea.input { height:auto; padding:10px 12px; }
-        .link { color:#111; text-decoration:none; border-bottom:1px dotted #bbb; }
-
+        /* Footer */
         .footer { border-top:1px solid #eaeaea; padding:12px 0 18px; background:#fafafa; }
 
         /* Drawer */
@@ -512,13 +501,17 @@ export default function Home() {
         .qty { display:flex; align-items:center; gap:8px; }
         .qtyBtn { border:1px solid #ddd; background:#fff; padding:6px 10px; border-radius:8px; cursor:pointer; }
         .qtyNum { min-width:20px; text-align:center; }
+
         .totals { margin-top:12px; display:grid; gap:8px; }
         .row { display:flex; justify-content:space-between; }
         .strong { font-weight:800; }
+        .label { font-size:12px; color:#555; margin-top:4px; }
+        .input { width:100%; height:42px; border-radius:10px; border:1px solid #ddd; padding:0 12px; outline:none; background:#fff; }
 
         /* Floating WhatsApp */
-        .waFab { position:fixed; right:16px; bottom:16px; width:56px; height:56px; border-radius:999px; background:#25d366; box-shadow:0 6px 18px rgba(0,0,0,.25); display:grid; place-items:center; z-index:80; }
-        .waFab img { display:block; }
+        .waFab { position: fixed; right: 14px; bottom: 14px; width: 56px; height: 56px; border-radius: 9999px; background: #25D366; box-shadow: 0 12px 28px rgba(0,0,0,.24); display:flex; align-items:center; justify-content:center; z-index: 70; }
+        .waIcon { width: 28px; height: 28px; display:block; filter: brightness(0) saturate(100%) invert(100%); }
+        .waFab:hover { transform: translateY(-1px); transition: transform .15s ease; }
       `}</style>
     </div>
   );
