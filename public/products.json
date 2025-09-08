@@ -5,6 +5,7 @@
     "sku": "1",
     "price": 100,
     "stock": 11
+    "img": "/products/1-batt-torch.jpg"
   },
   {
     "id": "12w-bulbs",
