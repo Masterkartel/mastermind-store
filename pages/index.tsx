@@ -1,13 +1,13 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import {
   ShoppingCart,
   Search,
-  Phone,
-  MapPin,
-  Truck,
-  Check,
   Store,
+  Check,
+  Plus,
+  Minus,
+  Trash2,
 } from "lucide-react";
 
 const BRAND = {
@@ -15,10 +15,11 @@ const BRAND = {
   primary: "#F2C300",
   dark: "#111111",
 };
+
 const CONTACT = {
   phone: "0715151010",
   email: "sales@mastermindelectricals.com",
-  till: "8636720",
+  maps: "https://maps.app.goo.gl/7P2okRB5ssLFMkUT8",
 };
 
 function currency(kes: number) {
@@ -42,8 +43,8 @@ function useCart() {
       }
       return { ...s, [id]: q };
     });
-  const removeAll = () => setItems({});
-  return { items, add, sub, removeAll };
+  const clear = () => setItems({});
+  return { items, add, sub, clear };
 }
 
 export default function Home() {
@@ -62,43 +63,35 @@ export default function Home() {
   const lines = useMemo(
     () =>
       Object.entries(cart.items)
-        .filter(([_, q]: any) => q > 0)
-        .map(([id, qty]: any) => ({
+        .filter(([_, q]) => (q as number) > 0)
+        .map(([id, qty]) => ({
           product: products.find((p) => p.id === id),
-          qty,
+          qty: qty as number,
         })),
     [cart.items, products]
   );
 
   const total = useMemo(
-    () =>
-      lines.reduce((s, l) => s + (l.product?.price || 0) * l.qty, 0),
+    () => lines.reduce((s, l) => s + (l.product?.price || 0) * l.qty, 0),
     [lines]
   );
 
   const filtered = useMemo(() => {
-    let list = products;
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      list = list.filter((p: any) =>
-        `${p.name} ${p.sku}`.toLowerCase().includes(q)
-      );
-    }
-    return list;
+    const q = query.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) => `${p.name} ${p.sku}`.toLowerCase().includes(q));
   }, [products, query]);
 
   return (
     <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
       <Head>
         <title>{BRAND.name}</title>
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1"
-        />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {/* keep your favicon in /public/favicon.ico */}
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      {/* ===== Header ===== */}
+      {/* ===== Header (unchanged layout, just add the yellow dot before brand) ===== */}
       <header
         style={{
           background: BRAND.dark,
@@ -109,17 +102,19 @@ export default function Home() {
           justifyContent: "space-between",
         }}
       >
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <div
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span
             style={{
-              height: 14,
-              width: 14,
-              borderRadius: "50%",
+              height: 12,
+              width: 12,
+              borderRadius: "9999px",
               background: BRAND.primary,
+              display: "inline-block",
             }}
           />
-          <div style={{ fontWeight: 600 }}>{BRAND.name}</div>
+          <div style={{ fontWeight: 700 }}>{BRAND.name}</div>
         </div>
+
         <button
           onClick={() => setShowCart(true)}
           style={{
@@ -130,15 +125,15 @@ export default function Home() {
             display: "flex",
             alignItems: "center",
             gap: 6,
+            fontWeight: 700,
           }}
         >
           <ShoppingCart size={16} /> Cart: {lines.length}
         </button>
       </header>
 
-      {/* ===== Hero Section ===== */}
+      {/* ===== Hero (keep “previous” layout; just move black-card circle to the right) ===== */}
       <section
-        className="container"
         style={{
           maxWidth: 1200,
           margin: "0 auto",
@@ -148,6 +143,7 @@ export default function Home() {
           gridTemplateColumns: "2fr 1fr",
         }}
       >
+        {/* Left white card */}
         <div
           style={{
             background: "white",
@@ -158,10 +154,11 @@ export default function Home() {
             overflow: "hidden",
           }}
         >
+          {/* light accent circle (unchanged) */}
           <div
             style={{
               position: "absolute",
-              right: -40,
+              left: -40,
               top: -40,
               height: 160,
               width: 160,
@@ -232,6 +229,7 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Right black card (circle moved to RIGHT) */}
         <div
           style={{
             background: "#111",
@@ -245,6 +243,7 @@ export default function Home() {
             overflow: "hidden",
           }}
         >
+          {/* accent circle moved to right/bottom */}
           <div
             style={{
               position: "absolute",
@@ -269,7 +268,7 @@ export default function Home() {
           </div>
           <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
             <a
-              href="https://maps.app.goo.gl/7P2okRB5ssLFMkUT8"
+              href={CONTACT.maps}
               target="_blank"
               rel="noreferrer"
               style={{
@@ -297,20 +296,12 @@ export default function Home() {
               {CONTACT.phone}
             </a>
           </div>
-          <div style={{ marginTop: 8, fontSize: 14 }}>
-            {CONTACT.email}
-          </div>
+          <div style={{ marginTop: 8, fontSize: 14 }}>{CONTACT.email}</div>
         </div>
       </section>
 
       {/* ===== Search ===== */}
-      <div
-        style={{
-          maxWidth: 1200,
-          margin: "0 auto",
-          padding: "0 16px",
-        }}
-      >
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 16px" }}>
         <div style={{ position: "relative" }}>
           <Search
             size={16}
@@ -325,21 +316,15 @@ export default function Home() {
               padding: "8px 12px 8px 32px",
               border: "1px solid #ddd",
               borderRadius: 8,
+              background: "white",
             }}
           />
         </div>
       </div>
 
-      {/* ===== Product Grid ===== */}
-      <section
-        style={{
-          maxWidth: 1200,
-          margin: "0 auto",
-          padding: "16px",
-        }}
-      >
+      {/* ===== Product Grid (image area intentionally blank) ===== */}
+      <section style={{ maxWidth: 1200, margin: "0 auto", padding: "16px" }}>
         <div
-          className="grid"
           style={{
             display: "grid",
             gap: 16,
@@ -356,17 +341,14 @@ export default function Home() {
                 overflow: "hidden",
               }}
             >
-              <div style={{ position: "relative" }}>
-                <img
-                  src={p.img || "https://via.placeholder.com/600x360?text=Product+Image"}
-                  alt={p.name}
-                  style={{
-                    height: 160,
-                    width: "100%",
-                    objectFit: "cover",
-                  }}
-                />
-              </div>
+              {/* Empty image band */}
+              <div
+                style={{
+                  height: 140,
+                  width: "100%",
+                  background: "#f3f3f3",
+                }}
+              />
               <div style={{ padding: 12 }}>
                 <div style={{ fontSize: 12, color: "#777" }}>{p.sku}</div>
                 <div style={{ fontWeight: 600 }}>{p.name}</div>
@@ -378,27 +360,21 @@ export default function Home() {
                     justifyContent: "space-between",
                   }}
                 >
-                  <div
-                    style={{
-                      fontSize: 18,
-                      fontWeight: 800,
-                      color: "#111",
-                    }}
-                  >
-                    {currency(p.price)}
+                  <div style={{ fontSize: 18, fontWeight: 800, color: "#111" }}>
+                    {currency(Number(p.price) || 0)}
                   </div>
                   <button
                     onClick={() => cart.add(p.id)}
-                    disabled={p.stock <= 0}
+                    disabled={Number(p.stock) <= 0}
                     style={{
                       background: BRAND.primary,
                       color: "#111",
                       padding: "6px 10px",
                       borderRadius: 10,
-                      opacity: p.stock <= 0 ? 0.6 : 1,
+                      opacity: Number(p.stock) <= 0 ? 0.55 : 1,
                     }}
                   >
-                    {p.stock > 0 ? "Add" : "Out of stock"}
+                    {Number(p.stock) > 0 ? "Add" : "Out of stock"}
                   </button>
                 </div>
                 <div style={{ marginTop: 6, fontSize: 12, color: "#666" }}>
@@ -410,7 +386,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== WhatsApp Contact ===== */}
+      {/* ===== WhatsApp (replaces the contact form) ===== */}
       <section
         style={{
           maxWidth: 1200,
@@ -418,7 +394,9 @@ export default function Home() {
           padding: "28px 16px",
         }}
       >
-        <h3 style={{ fontSize: 18, fontWeight: 600 }}>Chat with us on WhatsApp</h3>
+        <h3 style={{ fontSize: 18, fontWeight: 700, color: "#111" }}>
+          Chat with us on WhatsApp
+        </h3>
         <p style={{ marginTop: 6, color: "#555" }}>
           Quick questions, price checks, or orders—message us anytime.
         </p>
@@ -452,6 +430,167 @@ export default function Home() {
       >
         © {new Date().getFullYear()} {BRAND.name}. All rights reserved.
       </footer>
+
+      {/* ===== Cart Panel (same as before) ===== */}
+      {showCart && (
+        <div
+          style={{
+            position: "fixed",
+            top: 72,
+            right: 16,
+            width: 320,
+            maxHeight: "70vh",
+            overflow: "auto",
+            background: "white",
+            border: "1px solid #e5e5e5",
+            borderRadius: 16,
+            boxShadow: "0 10px 30px rgba(0,0,0,.12)",
+            zIndex: 50,
+          }}
+        >
+          <div
+            style={{
+              padding: 12,
+              borderBottom: "1px solid #eee",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              fontWeight: 700,
+            }}
+          >
+            <span>Cart</span>
+            <button
+              onClick={() => setShowCart(false)}
+              style={{ fontWeight: 700, color: "#666" }}
+              aria-label="Close cart"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div style={{ padding: 12 }}>
+            {lines.length === 0 ? (
+              <div style={{ color: "#666", fontSize: 14 }}>
+                Your cart is empty.
+              </div>
+            ) : (
+              lines.map(({ product, qty }) => (
+                <div
+                  key={product.id}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr auto",
+                    gap: 8,
+                    alignItems: "center",
+                    padding: "8px 0",
+                    borderBottom: "1px solid #f2f2f2",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{product.name}</div>
+                    <div style={{ fontSize: 12, color: "#777" }}>
+                      {currency(product.price)} • {product.sku}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <button
+                      onClick={() => cart.sub(product.id)}
+                      style={{
+                        border: "1px solid #ddd",
+                        borderRadius: 6,
+                        padding: "2px 6px",
+                      }}
+                      aria-label="Decrease quantity"
+                    >
+                      <Minus size={14} />
+                    </button>
+                    <div style={{ minWidth: 18, textAlign: "center" }}>{qty}</div>
+                    <button
+                      onClick={() => cart.add(product.id)}
+                      style={{
+                        border: "1px solid #ddd",
+                        borderRadius: 6,
+                        padding: "2px 6px",
+                      }}
+                      aria-label="Increase quantity"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div
+            style={{
+              padding: 12,
+              borderTop: "1px solid #eee",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              fontWeight: 800,
+            }}
+          >
+            <span>Total</span>
+            <span>{currency(total)}</span>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              padding: 12,
+              borderTop: "1px solid #f2f2f2",
+            }}
+          >
+            {lines.length > 1 && (
+              <button
+                onClick={cart.clear}
+                style={{
+                  flex: 1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  border: "1px solid #ddd",
+                  borderRadius: 10,
+                  padding: "8px 10px",
+                  background: "white",
+                }}
+              >
+                <Trash2 size={16} /> Remove all
+              </button>
+            )}
+            <button
+              onClick={() =>
+                (window.location.href =
+                  "https://wa.me/254715151010?text=Hi%20Mastermind%2C%20here%20is%20my%20order%3A%20" +
+                  encodeURIComponent(
+                    lines
+                      .map(
+                        (l) =>
+                          `${l.qty} × ${l.product.name} (${currency(
+                            l.product.price
+                          )})`
+                      )
+                      .join(", ") + ` • Total ${currency(total)}`
+                  ))
+              }
+              style={{
+                flex: 1,
+                background: BRAND.primary,
+                color: "#111",
+                borderRadius: 10,
+                padding: "8px 10px",
+                fontWeight: 800,
+              }}
+            >
+              Send Order on WhatsApp
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
