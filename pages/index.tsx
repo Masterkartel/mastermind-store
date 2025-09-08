@@ -1,510 +1,457 @@
-// pages/index.tsx
-import { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import Head from "next/head";
+import {
+  ShoppingCart,
+  Search,
+  Phone,
+  MapPin,
+  Truck,
+  Check,
+  Store,
+} from "lucide-react";
 
-type Product = {
-  id: string;
-  name: string;
-  sku?: string;
-  price: number | string;
-  stock?: number | string;
-  img?: string;
+const BRAND = {
+  name: "Mastermind Electricals & Electronics",
+  primary: "#F2C300",
+  dark: "#111111",
+};
+const CONTACT = {
+  phone: "0715151010",
+  email: "sales@mastermindelectricals.com",
+  till: "8636720",
 };
 
-type CartLine = { product: Product; qty: number };
+function currency(kes: number) {
+  return new Intl.NumberFormat("en-KE", {
+    style: "currency",
+    currency: "KES",
+    maximumFractionDigits: 0,
+  }).format(kes);
+}
+
+function useCart() {
+  const [items, setItems] = useState<Record<string, number>>({});
+  const add = (id: string, qty = 1) =>
+    setItems((s) => ({ ...s, [id]: (s[id] || 0) + qty }));
+  const sub = (id: string) =>
+    setItems((s) => {
+      const q = (s[id] || 0) - 1;
+      if (q <= 0) {
+        const { [id]: _, ...rest } = s;
+        return rest;
+      }
+      return { ...s, [id]: q };
+    });
+  const removeAll = () => setItems({});
+  return { items, add, sub, removeAll };
+}
 
 export default function Home() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const cart = useCart();
+  const [products, setProducts] = useState<any[]>([]);
   const [query, setQuery] = useState("");
   const [showCart, setShowCart] = useState(false);
-  const [mpesaPhone, setMpesaPhone] = useState("");
-  const [cartMap, setCartMap] = useState<Record<string, number>>({});
 
-  // ---- Load products.json ----
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/products.json", { cache: "no-store" });
-        const data: Product[] = await res.json();
-        setProducts(Array.isArray(data) ? data : []);
-      } catch {
-        setProducts([]);
-      }
-    })();
+    fetch("/products.json")
+      .then((r) => r.json())
+      .then(setProducts)
+      .catch(() => {});
   }, []);
 
-  // ---- Cart persistence ----
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("mm_cart");
-      if (saved) setCartMap(JSON.parse(saved));
-      const phone = localStorage.getItem("mm_mpesa_phone");
-      if (phone) setMpesaPhone(phone);
-    } catch {}
-  }, []);
-  useEffect(() => {
-    try {
-      localStorage.setItem("mm_cart", JSON.stringify(cartMap));
-    } catch {}
-  }, [cartMap]);
-  useEffect(() => {
-    try {
-      localStorage.setItem("mm_mpesa_phone", mpesaPhone);
-    } catch {}
-  }, [mpesaPhone]);
-
-  // ---- Cart helpers ----
-  const add = (id: string) =>
-    setCartMap((m) => ({ ...m, [id]: (m[id] ?? 0) + 1 }));
-  const sub = (id: string) =>
-    setCartMap((m) => {
-      const q = (m[id] ?? 0) - 1;
-      const next = { ...m };
-      if (q <= 0) delete next[id];
-      else next[id] = q;
-      return next;
-    });
-  const remove = (id: string) =>
-    setCartMap((m) => {
-      const n = { ...m };
-      delete n[id];
-      return n;
-    });
-  const clear = () => setCartMap({});
-
-  const cartLines: CartLine[] = useMemo(() => {
-    const byId: Record<string, Product> = {};
-    products.forEach((p) => (byId[p.id] = p));
-    return Object.entries(cartMap)
-      .map(([id, qty]) => (byId[id] ? { product: byId[id], qty } : null))
-      .filter(Boolean) as CartLine[];
-  }, [cartMap, products]);
-
-  const cartCount = useMemo(
-    () => Object.values(cartMap).reduce((a, b) => a + b, 0),
-    [cartMap]
-  );
-  const cartTotal = useMemo(
+  const lines = useMemo(
     () =>
-      cartLines.reduce(
-        (sum, l) => sum + (Number(l.product.price) || 0) * l.qty,
-        0
-      ),
-    [cartLines]
+      Object.entries(cart.items)
+        .filter(([_, q]: any) => q > 0)
+        .map(([id, qty]: any) => ({
+          product: products.find((p) => p.id === id),
+          qty,
+        })),
+    [cart.items, products]
   );
 
-  // ---- Search filter ----
+  const total = useMemo(
+    () =>
+      lines.reduce((s, l) => s + (l.product?.price || 0) * l.qty, 0),
+    [lines]
+  );
+
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter((p) => {
-      const hay =
-        `${p.name} ${p.sku ?? ""} ${p.id}`.toLowerCase().replace(/\s+/g, " ");
-      return hay.includes(q);
-    });
+    let list = products;
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      list = list.filter((p: any) =>
+        `${p.name} ${p.sku}`.toLowerCase().includes(q)
+      );
+    }
+    return list;
   }, [products, query]);
-
-  const currency = (n: number) =>
-    `KES ${Math.round(n).toLocaleString("en-KE")}`;
-
-  // ---- Contact form ----
-  const [cName, setCName] = useState("");
-  const [cPhone, setCPhone] = useState("");
-  const [cEmail, setCEmail] = useState("");
-  const [cMessage, setCMessage] = useState("");
-
-  const submitContact = (e: React.FormEvent) => {
-    e.preventDefault();
-    const to = "sales@mastermindelectricals.com";
-    const subject = encodeURIComponent("Website enquiry");
-    const body = encodeURIComponent(
-      `Message: ${cMessage}\n\nName: ${cName}\nPhone: ${cPhone}\nEmail: ${cEmail}`
-    );
-    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
-  };
 
   return (
     <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
       <Head>
-        <title>Mastermind Electricals & Electronics</title>
+        <title>{BRAND.name}</title>
         <meta
           name="viewport"
-          content="width=device-width, initial-scale=1, viewport-fit=cover"
+          content="width=device-width, initial-scale=1"
         />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      {/* ===== Top Bar ===== */}
-      <header className="topbar">
-        <div className="topbar__inner">
-          <div className="brand">Mastermind Electricals & Electronics</div>
-          <button
-            onClick={() => setShowCart(true)}
-            className="cartBtn"
-            aria-label="Open cart"
-          >
-            🛒 Cart: {cartCount}
-          </button>
+      {/* ===== Header ===== */}
+      <header
+        style={{
+          background: BRAND.dark,
+          color: "white",
+          padding: "10px 16px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div
+            style={{
+              height: 14,
+              width: 14,
+              borderRadius: "50%",
+              background: BRAND.primary,
+            }}
+          />
+          <div style={{ fontWeight: 600 }}>{BRAND.name}</div>
         </div>
+        <button
+          onClick={() => setShowCart(true)}
+          style={{
+            background: BRAND.primary,
+            color: "#111",
+            padding: "6px 12px",
+            borderRadius: 14,
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <ShoppingCart size={16} /> Cart: {lines.length}
+        </button>
       </header>
 
-      {/* ===== Hero ===== */}
-      <section className="container" style={{ marginTop: 12 }}>
-        <div className="hero">
-          <div className="hero__bubble" aria-hidden />
-          <div className="eyebrow">TRUSTED IN SOTIK</div>
-          <h1 className="h1">
+      {/* ===== Hero Section ===== */}
+      <section
+        className="container"
+        style={{
+          maxWidth: 1200,
+          margin: "0 auto",
+          padding: "24px 16px",
+          display: "grid",
+          gap: 16,
+          gridTemplateColumns: "2fr 1fr",
+        }}
+      >
+        <div
+          style={{
+            background: "white",
+            border: "1px solid #e5e5e5",
+            borderRadius: 16,
+            padding: 16,
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              right: -40,
+              top: -40,
+              height: 160,
+              width: 160,
+              borderRadius: 80,
+              background: BRAND.primary,
+              opacity: 0.15,
+            }}
+          />
+          <div
+            style={{
+              textTransform: "uppercase",
+              fontSize: 12,
+              letterSpacing: 1,
+              color: "#111",
+            }}
+          >
+            Trusted in Sotik
+          </div>
+          <h1
+            style={{
+              margin: "8px 0 0",
+              fontSize: 28,
+              fontWeight: 800,
+              color: "#111",
+            }}
+          >
             Quality Electronics, Lighting & Gas — Fast Delivery
           </h1>
-          <p className="lead">
+          <p style={{ marginTop: 8, color: "#555" }}>
             Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay via
             M-Pesa. Pickup or same-day delivery.
           </p>
-        </div>
-
-        {/* ===== Two cards side-by-side on desktop ===== */}
-        <div className="twoCol">
-          {/* Left: Visit shop (dark) */}
-          <div className="shopCard">
-            <div className="shopCard__bubble" aria-hidden />
-            <div className="shopCard__title">Visit Our Shop</div>
-            <div className="muted">Mastermind Electricals & Electronics, Sotik Town</div>
-            <div className="muted">Open Mon–Sun • 8:00am – 9:00pm</div>
-
-            <div className="actions">
-              <a
-                href="https://maps.app.goo.gl/7P2okRB5ssLFMkUT8"
-                target="_blank"
-                rel="noreferrer"
-                className="btn btn--accent"
-              >
-                View on Maps
-              </a>
-              <a href="tel:+254715151010" className="btn btn--light">
-                📞 0715151010
-              </a>
-              <a
-                href="mailto:sales@mastermindelectricals.com"
-                className="btn btn--light"
-              >
-                ✉️ sales@mastermindelectricals.com
-              </a>
+          <div
+            style={{
+              marginTop: 12,
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            <div
+              style={{
+                border: "1px solid #e5e5e5",
+                fontSize: 12,
+                padding: "4px 8px",
+                borderRadius: 12,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Check size={12} /> M-Pesa Available
+            </div>
+            <div
+              style={{
+                border: "1px solid #e5e5e5",
+                fontSize: 12,
+                padding: "4px 8px",
+                borderRadius: 12,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Check size={12} /> Gas Refills Available
             </div>
           </div>
+        </div>
 
-          {/* Right: Info / quick actions (light) */}
-          <div className="infoCard">
-            <div className="infoCard__bubble" aria-hidden />
-            <div className="eyebrow">SERVICES</div>
-            <h3 className="h3">Pay with M-Pesa & Refill Gas</h3>
-
-            <div className="badgeRow">
-              <span className="badge badge--mpesa">💳 M-Pesa Available</span>
-              <span className="badge badge--gas">🔥 Gas Refill Available</span>
-            </div>
-
-            <div className="quickAdd">
-              <div className="muted">Quick add gas refill to cart:</div>
-              <div className="quickAdd__row">
-                <button
-                  className="btn btn--ghost"
-                  onClick={() => add("gas-6kg")}
-                >
-                  6KG — KES 1,150
-                </button>
-                <button
-                  className="btn btn--ghost"
-                  onClick={() => add("gas-13kg")}
-                >
-                  13KG — KES 2,550
-                </button>
-              </div>
-            </div>
+        <div
+          style={{
+            background: "#111",
+            color: "white",
+            borderRadius: 16,
+            padding: 16,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              right: -40,
+              bottom: -40,
+              height: 160,
+              width: 160,
+              borderRadius: 80,
+              background: BRAND.primary,
+              opacity: 0.25,
+            }}
+          />
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <Store size={18} />
+            <span style={{ fontWeight: 600 }}>Visit Our Shop</span>
+          </div>
+          <div style={{ marginTop: 8, opacity: 0.9, fontSize: 14 }}>
+            Mastermind Electricals & Electronics, Sotik Town
+          </div>
+          <div style={{ marginTop: 8, opacity: 0.75, fontSize: 14 }}>
+            Open Mon-Sun • 8:00am – 9:00pm
+          </div>
+          <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+            <a
+              href="https://maps.app.goo.gl/7P2okRB5ssLFMkUT8"
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                background: BRAND.primary,
+                color: "#111",
+                padding: "6px 10px",
+                borderRadius: 8,
+                fontSize: 14,
+                fontWeight: 600,
+              }}
+            >
+              View on Maps
+            </a>
+            <a
+              href={`tel:${CONTACT.phone}`}
+              style={{
+                background: BRAND.primary,
+                color: "#111",
+                padding: "6px 10px",
+                borderRadius: 8,
+                fontSize: 14,
+                fontWeight: 600,
+              }}
+            >
+              {CONTACT.phone}
+            </a>
+          </div>
+          <div style={{ marginTop: 8, fontSize: 14 }}>
+            {CONTACT.email}
           </div>
         </div>
       </section>
 
       {/* ===== Search ===== */}
-      <div className="container" style={{ marginTop: 10, marginBottom: 6 }}>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder='Search products, e.g., "43 TV" or "bulb"'
-          className="search"
-        />
+      <div
+        style={{
+          maxWidth: 1200,
+          margin: "0 auto",
+          padding: "0 16px",
+        }}
+      >
+        <div style={{ position: "relative" }}>
+          <Search
+            size={16}
+            style={{ position: "absolute", left: 10, top: 10, color: "#999" }}
+          />
+          <input
+            placeholder='Search products, e.g., "43 TV" or "bulb"'
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "8px 12px 8px 32px",
+              border: "1px solid #ddd",
+              borderRadius: 8,
+            }}
+          />
+        </div>
       </div>
 
       {/* ===== Product Grid ===== */}
-      <section className="container" style={{ paddingBottom: 24 }}>
-        <div className="productGrid">
-          {filtered.map((p) => {
-            const price = Number(p.price) || 0;
-            const stock = Number(p.stock) || 0;
-            return (
-              <article key={p.id} className="card">
-                <div className="card__img">
-                  {p.img ? (
-                    <img
-                      src={p.img}
-                      alt={p.name}
-                      style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }}
-                      loading="lazy"
-                    />
-                  ) : null}
-                </div>
-                <div className="sku">{p.sku || ""}</div>
-                <div className="name">{p.name}</div>
-                <div className="price">KES {Math.round(price).toLocaleString("en-KE")}</div>
-                <div className="stock">Stock: {stock}</div>
-
-                {stock > 0 ? (
-                  <button className="btn btn--accent small" onClick={() => add(p.id)}>
-                    Add
+      <section
+        style={{
+          maxWidth: 1200,
+          margin: "0 auto",
+          padding: "16px",
+        }}
+      >
+        <div
+          className="grid"
+          style={{
+            display: "grid",
+            gap: 16,
+            gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+          }}
+        >
+          {filtered.map((p: any) => (
+            <div
+              key={p.id}
+              style={{
+                background: "white",
+                border: "1px solid #e5e5e5",
+                borderRadius: 16,
+                overflow: "hidden",
+              }}
+            >
+              <div style={{ position: "relative" }}>
+                <img
+                  src={p.img || "https://via.placeholder.com/600x360?text=Product+Image"}
+                  alt={p.name}
+                  style={{
+                    height: 160,
+                    width: "100%",
+                    objectFit: "cover",
+                  }}
+                />
+              </div>
+              <div style={{ padding: 12 }}>
+                <div style={{ fontSize: 12, color: "#777" }}>{p.sku}</div>
+                <div style={{ fontWeight: 600 }}>{p.name}</div>
+                <div
+                  style={{
+                    marginTop: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 800,
+                      color: "#111",
+                    }}
+                  >
+                    {currency(p.price)}
+                  </div>
+                  <button
+                    onClick={() => cart.add(p.id)}
+                    disabled={p.stock <= 0}
+                    style={{
+                      background: BRAND.primary,
+                      color: "#111",
+                      padding: "6px 10px",
+                      borderRadius: 10,
+                      opacity: p.stock <= 0 ? 0.6 : 1,
+                    }}
+                  >
+                    {p.stock > 0 ? "Add" : "Out of stock"}
                   </button>
-                ) : (
-                  <div className="btn btn--disabled small">Out of stock</div>
-                )}
-              </article>
-            );
-          })}
+                </div>
+                <div style={{ marginTop: 6, fontSize: 12, color: "#666" }}>
+                  Stock: {p.stock}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* ===== Contact Form ===== */}
-      <section className="container" style={{ marginBottom: 28 }}>
-        <div className="contact">
-          <h3 className="h3">Leave us a message</h3>
-          <p className="muted" style={{ marginTop: 6 }}>
-            We’ll get back to you shortly.
-          </p>
-
-          <form onSubmit={submitContact} className="form">
-            <label className="label">Message</label>
-            <textarea
-              className="input"
-              rows={4}
-              value={cMessage}
-              onChange={(e) => setCMessage(e.target.value)}
-              placeholder="How can we help?"
-              required
-            />
-
-            <div className="formRow">
-              <div className="col">
-                <label className="label">Name</label>
-                <input
-                  className="input"
-                  value={cName}
-                  onChange={(e) => setCName(e.target.value)}
-                  placeholder="Your name"
-                  required
-                />
-              </div>
-              <div className="col">
-                <label className="label">Phone</label>
-                <input
-                  className="input"
-                  value={cPhone}
-                  onChange={(e) => setCPhone(e.target.value)}
-                  placeholder="07XXXXXXXX"
-                  inputMode="tel"
-                  required
-                />
-              </div>
-            </div>
-
-            <label className="label">Email</label>
-            <input
-              className="input"
-              type="email"
-              value={cEmail}
-              onChange={(e) => setCEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-            />
-
-            <button className="btn btn--dark" type="submit" style={{ marginTop: 10 }}>
-              Send message
-            </button>
-          </form>
-        </div>
+      {/* ===== WhatsApp Contact ===== */}
+      <section
+        style={{
+          maxWidth: 1200,
+          margin: "0 auto",
+          padding: "28px 16px",
+        }}
+      >
+        <h3 style={{ fontSize: 18, fontWeight: 600 }}>Chat with us on WhatsApp</h3>
+        <p style={{ marginTop: 6, color: "#555" }}>
+          Quick questions, price checks, or orders—message us anytime.
+        </p>
+        <a
+          href="https://wa.me/254715151010?text=Hi%20Mastermind%2C%20I%20have%20a%20question%20about..."
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            marginTop: 12,
+            display: "inline-flex",
+            background: "#25D366",
+            color: "#111",
+            padding: "10px 16px",
+            borderRadius: 12,
+            fontWeight: 800,
+            textDecoration: "none",
+          }}
+        >
+          💬 WhatsApp 0715 151 010
+        </a>
       </section>
 
       {/* ===== Footer ===== */}
-      <footer className="footer">
-        <div className="container" style={{ padding: "10px 12px" }}>
-          <div className="muted" style={{ textAlign: "center" }}>
-            © {new Date().getFullYear()} Mastermind Electricals & Electronics. All rights reserved.
-          </div>
-        </div>
+      <footer
+        style={{
+          textAlign: "center",
+          color: "#999",
+          fontSize: 12,
+          padding: "16px 0",
+        }}
+      >
+        © {new Date().getFullYear()} {BRAND.name}. All rights reserved.
       </footer>
-
-      {/* ===== Cart Drawer ===== */}
-      {showCart && (
-        <div className="overlay" onClick={() => setShowCart(false)}>
-          <aside className="drawer" onClick={(e) => e.stopPropagation()} aria-label="Cart">
-            <div className="drawer__top">
-              <div className="h4">Your Cart</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                {cartCount > 1 && (
-                  <button className="btn btn--light small" onClick={clear} aria-label="Remove all items">
-                    Remove all
-                  </button>
-                )}
-                <button className="btn btn--dark small" onClick={() => setShowCart(false)}>
-                  Close
-                </button>
-              </div>
-            </div>
-
-            {cartLines.length === 0 ? (
-              <div className="empty">Your cart is empty.</div>
-            ) : (
-              <div className="lines">
-                {cartLines.map((l) => {
-                  const price = Number(l.product.price) || 0;
-                  return (
-                    <div key={l.product.id} className="line">
-                      <div>
-                        <div className="line__name">{l.product.name}</div>
-                        <div className="line__price">{currency(price)}</div>
-                      </div>
-                      <div className="qty">
-                        <button className="qtyBtn" onClick={() => sub(l.product.id)} aria-label="Decrease">
-                          −
-                        </button>
-                        <div className="qtyNum">{l.qty}</div>
-                        <button className="qtyBtn" onClick={() => add(l.product.id)} aria-label="Increase">
-                          +
-                        </button>
-                        <button className="qtyBtn" onClick={() => remove(l.product.id)}>
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            <div className="totals">
-              <div className="row">
-                <span>Total</span>
-                <span className="strong">{currency(cartTotal)}</span>
-              </div>
-
-              <label className="label" style={{ marginTop: 6 }}>
-                M-Pesa Phone (07XXXXXXXX)
-              </label>
-              <input
-                value={mpesaPhone}
-                onChange={(e) => setMpesaPhone(e.target.value)}
-                placeholder="07XXXXXXXX"
-                className="input"
-                inputMode="tel"
-              />
-
-              <button
-                disabled={cartLines.length === 0}
-                className={`btn ${cartLines.length ? "btn--pay" : "btn--disabled"}`}
-                onClick={() => alert("Checkout coming soon")}
-              >
-                Pay with M-Pesa
-              </button>
-            </div>
-          </aside>
-        </div>
-      )}
-
-      {/* ===== Styles ===== */}
-      <style jsx>{`
-        .container { max-width: 1200px; margin: 0 auto; padding: 0 12px; }
-
-        .topbar { position: sticky; top: 0; z-index: 50; background: #111; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); }
-        .topbar__inner { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 12px; }
-        .brand { font-weight: 800; letter-spacing: .3px; }
-        .cartBtn { background:#f4d03f; color:#111; border:none; padding:8px 12px; border-radius:12px; font-weight:800; cursor:pointer; white-space:nowrap; }
-
-        .hero { position: relative; background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; overflow:hidden; }
-        .hero__bubble { position:absolute; right:-60px; top:-40px; width:240px; height:240px; background:#f4d03f; opacity:.35; border-radius:9999px; }
-        .eyebrow { color:#666; font-weight:700; font-size:12px; }
-        .h1 { margin:6px 0 8px; font-size:28px; line-height:1.15; letter-spacing:-.2px; }
-        .h3 { margin:4px 0 8px; font-size:20px; font-weight:800; }
-        .h4 { font-weight:800; font-size:18px; }
-        .lead { color:#444; font-size:15px; }
-        .muted { color:#888; }
-
-        .twoCol { display:grid; grid-template-columns:1fr; gap:12px; margin-top:12px; }
-        @media (min-width: 900px) {
-          .twoCol { grid-template-columns: 1fr 1fr; }
-        }
-
-        .shopCard { position:relative; background:#111; color:#fff; border-radius:16px; padding:16px; overflow:hidden; }
-        .shopCard__bubble { position:absolute; left:-50px; bottom:-70px; width:180px; height:180px; background:#f4d03f; opacity:.25; border-radius:9999px; }
-        .shopCard__title { font-weight:800; margin-bottom:6px; }
-
-        .infoCard { position:relative; background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; overflow:hidden; }
-        .infoCard__bubble { position:absolute; right:-40px; bottom:-60px; width:160px; height:160px; background:#f4d03f; opacity:.25; border-radius:9999px; }
-
-        .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
-        .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:12px; font-weight:800; text-decoration:none; cursor:pointer; }
-        .btn--accent { background:#f4d03f; color:#111; padding:10px 14px; border:none; }
-        .btn--light { background:#fff; color:#111; padding:10px 14px; border:1px solid #eee; }
-        .btn--dark { background:#111; color:#fff; padding:10px 16px; border:none; }
-        .btn--ghost { background:#fff; color:#111; border:1px solid #ddd; padding:8px 12px; border-radius:10px; }
-        .btn--disabled { background:#eee; color:#888; }
-        .btn--pay { background:#16a34a; color:#fff; border:none; padding:12px 16px; border-radius:12px; }
-        .small { padding:8px 14px; }
-
-        .badgeRow { display:flex; gap:10px; flex-wrap:wrap; margin:8px 0 12px; }
-        .badge { padding:6px 10px; border-radius:999px; font-weight:800; font-size:13px; }
-        .badge--mpesa { background:#ffe9a3; border:1px solid #f3d97b; color:#1a1a1a; }
-        .badge--gas { background:#eef7ff; border:1px solid #d5eaff; color:#0a2533; }
-
-        .quickAdd { display:grid; gap:8px; }
-        .quickAdd__row { display:flex; gap:10px; flex-wrap:wrap; }
-
-        .search { width:100%; height:44px; padding:0 14px; border-radius:12px; border:1px solid #ddd; background:#fff; font-size:15px; outline:none; }
-
-        .productGrid { display:grid; gap:16px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
-        .card { background:#fff; border:1px solid #eee; border-radius:16px; padding:12px; display:grid; gap:10px; box-shadow:0 1px 0 rgba(0,0,0,.03); }
-        .card__img { height:160px; background:#f3f3f3; border-radius:14px; overflow:hidden; display:flex; align-items:center; justify-content:center; }
-        .sku { color:#777; font-size:12px; }
-        .name { font-weight:800; }
-        .price { color:#111; font-weight:800; }
-        .stock { color:#666; font-size:12px; }
-
-        .footer { border-top:1px solid #eaeaea; padding:12px 0 18px; background:#fafafa; }
-
-        /* Drawer */
-        .overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:60; }
-        .drawer { position:fixed; right:10px; top:12vh; width:min(440px, 92vw); max-height:76vh; overflow:auto; background:#fff; border-radius:16px; border:1px solid #eee; box-shadow:0 20px 40px rgba(0,0,0,.25); padding:12px; }
-        .drawer__top { display:flex; justify-content:space-between; align-items:center; }
-        .empty { padding:22px 0; color:#666; }
-        .lines { display:grid; gap:10px; margin-top:10px; }
-        .line { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; }
-        .line__name { font-weight:700; }
-        .line__price { color:#666; font-size:12px; }
-        .qty { display:flex; align-items:center; gap:8px; }
-        .qtyBtn { border:1px solid #ddd; background:#fff; padding:6px 10px; border-radius:8px; cursor:pointer; }
-        .qtyNum { min-width:20px; text-align:center; }
-
-        .totals { margin-top:12px; display:grid; gap:8px; }
-        .row { display:flex; justify-content:space-between; }
-        .strong { font-weight:800; }
-        .label { font-size:12px; color:#555; margin-top:4px; }
-        .input { width:100%; height:42px; border-radius:10px; border:1px solid #ddd; padding:0 12px; outline:none; background:#fff; }
-        textarea.input { height:auto; padding:10px 12px; }
-
-        /* Contact */
-        .contact { background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; }
-        .form { display:grid; gap:10px; margin-top:8px; }
-        .formRow { display:grid; grid-template-columns:1fr; gap:10px; }
-        .col { display:grid; gap:6px; }
-        @media (min-width: 700px) {
-          .formRow { grid-template-columns: 1fr 1fr; }
-        }
-      `}</style>
     </div>
   );
 }
