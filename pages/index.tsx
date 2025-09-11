@@ -1,569 +1,314 @@
 // pages/index.tsx
-import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
+import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
+import products from "@/data/products.json"; // <-- adjust if your path differs
+import { saveOrder, type Order } from "@/lib/orders";
 
+// ----------------- Types -----------------
 type Product = {
   id: string;
   name: string;
+  price: number; // KES
   sku?: string;
-  price: number | string;
-  stock?: number | string;
-  img?: string;
+  stock?: number;
+  img?: string; // /products/xxx.jpg
 };
 
-type CartLine = { product: Product; qty: number };
+type CartLine = {
+  id: string;
+  name: string;
+  price: number;
+  qty: number;
+};
 
-export default function Home() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [query, setQuery] = useState("");
-  const [showCart, setShowCart] = useState(false);
-  const [cartMap, setCartMap] = useState<Record<string, number>>({});
+// --------------- Cart storage ------------
+const CART_KEY = "mm_cart_v1";
+function readCart(): CartLine[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const v = localStorage.getItem(CART_KEY);
+    return v ? (JSON.parse(v) as CartLine[]) : [];
+  } catch {
+    return [];
+  }
+}
+function writeCart(lines: CartLine[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(CART_KEY, JSON.stringify(lines));
+}
 
-  // ---- Load products.json ----
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/products.json", { cache: "no-store" });
-        const data: Product[] = await res.json();
-        setProducts(Array.isArray(data) ? data : []);
-      } catch {
-        setProducts([]);
-      }
-    })();
-  }, []);
+// ---------- Paystack checkout (NEW) ----------
+async function startPaystackCheckout(
+  totalKES: number,
+  cartLines: CartLine[]
+) {
+  if (typeof window === "undefined") return;
 
-  // ---- Cart persistence ----
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("mm_cart");
-      if (saved) setCartMap(JSON.parse(saved));
-    } catch {}
-  }, []);
-  useEffect(() => {
-    try {
-      localStorage.setItem("mm_cart", JSON.stringify(cartMap));
-    } catch {}
-  }, [cartMap]);
-
-  // ---- Cart helpers ----
-  const add = (id: string) =>
-    setCartMap((m) => ({ ...m, [id]: (m[id] ?? 0) + 1 }));
-  const sub = (id: string) =>
-    setCartMap((m) => {
-      const q = (m[id] ?? 0) - 1;
-      const next = { ...m };
-      if (q <= 0) delete next[id];
-      else next[id] = q;
-      return next;
-    });
-  const remove = (id: string) =>
-    setCartMap((m) => {
-      const n = { ...m };
-      delete n[id];
-      return n;
-    });
-  const clear = () => setCartMap({});
-
-  const cartLines: CartLine[] = useMemo(() => {
-    const byId: Record<string, Product> = {};
-    products.forEach((p) => (byId[p.id] = p));
-    return Object.entries(cartMap)
-      .map(([id, qty]) => (byId[id] ? { product: byId[id], qty } : null))
-      .filter(Boolean) as CartLine[];
-  }, [cartMap, products]);
-
-  const cartCount = useMemo(
-    () => Object.values(cartMap).reduce((a, b) => a + b, 0),
-    [cartMap]
-  );
-  const cartTotal = useMemo(
-    () =>
-      cartLines.reduce(
-        (sum, l) => sum + (Number(l.product.price) || 0) * l.qty,
-        0
-      ),
-    [cartLines]
-  );
-
-  // ---- Search filter ----
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter((p) => {
-      const hay =
-        `${p.name} ${p.sku ?? ""} ${p.id}`.toLowerCase().replace(/\s+/g, " ");
-      return hay.includes(q);
-    });
-  }, [products, query]);
-
-  const currency = (n: number) =>
-    `KES ${Math.round(n).toLocaleString("en-KE")}`;
-
-  // ---- Load Paystack script once on client ----
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (document.getElementById("paystack-inline")) return;
+  // Load Paystack JS if not already present
+  if (!(window as any).PaystackPop) {
     const s = document.createElement("script");
-    s.id = "paystack-inline";
     s.src = "https://js.paystack.co/v1/inline.js";
     s.async = true;
-    document.body.appendChild(s);
+    document.head.appendChild(s);
+    await new Promise((res) => (s.onload = res));
+  }
+
+  const publicKey =
+    process.env.NEXT_PUBLIC_PAYSTACK_KEY || "pk_live_xxx_replace_in_env";
+
+  // @ts-ignore injected by script
+  const PaystackPop = (window as any).PaystackPop;
+  if (!PaystackPop) {
+    alert("Couldn't start Paystack. Please refresh and try again.");
+    return;
+  }
+
+  // Reference we also use as the local order id
+  const ref = `MM-${Date.now()}`;
+
+  // Save a local 'pending' order immediately (so it appears in My Orders)
+  const pending: Order = {
+    id: ref,
+    createdAt: new Date().toISOString(),
+    items: cartLines,
+    total: totalKES,
+    status: "pending",
+    channel: "paystack",
+  };
+  saveOrder(pending);
+
+  // IMPORTANT:
+  // Until Paystack enables KES/Mobile Money on your account,
+  // restrict channels to "card" to avoid "Currency not supported" popups.
+  const handler = PaystackPop.setup({
+    key: publicKey,
+    email: "customer@mastermindelectricals.com",
+    amount: totalKES, // base units; Paystack will interpret based on enabled currency/channel
+    currency: "KES",
+    channels: ["card"], // change to ["card","mobile_money"] after Paystack enables KES/M-Pesa for your account
+    ref,
+    callback: function () {
+      window.location.href = `/paystack-status?reference=${encodeURIComponent(
+        ref
+      )}`;
+    },
+    onClose: function () {
+      window.location.href = `/paystack-status?reference=${encodeURIComponent(
+        ref
+      )}&closed=1`;
+    },
+  });
+
+  handler.openIframe();
+}
+
+// ----------------- Page -------------------
+export default function HomePage() {
+  const [cart, setCart] = useState<CartLine[]>([]);
+
+  useEffect(() => {
+    setCart(readCart());
   }, []);
 
-  // ---- Start Paystack popup ----
-  const startPaystack = () => {
-    if (typeof window === "undefined") return;
-    // @ts-ignore - injected by script
-    const PaystackPop = (window as any).PaystackPop;
-    if (!PaystackPop) {
-      alert("Couldn't start Paystack. Please refresh and try again.");
-      return;
-    }
+  useEffect(() => {
+    writeCart(cart);
+  }, [cart]);
 
-    // IMPORTANT: put your real live public key here (Cloudflare env var on prod is best)
-    const publicKey =
-      process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ||
-      "pk_live_10bc141ee6ae2ae48edcd102c06540ffe1cb3ae6"; // fallback
+  const total = useMemo(
+    () => cart.reduce((sum, l) => sum + l.price * l.qty, 0),
+    [cart]
+  );
 
-    const amountKobo = Math.max(1, Math.round(cartTotal * 100)); // Paystack expects minor units
-    const reference = `MM-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
-
-    const handler = PaystackPop.setup({
-      key: publicKey,
-      email: "customer@example.com",
-      amount: amountKobo,
-      ref: reference,
-      callback: function () {
-        // You can also hit your verify endpoint here before redirecting
-        window.location.href = `/success?ref=${encodeURIComponent(reference)}`;
-      },
-      onClose: function () {
-        // Optional: do nothing or show a toast
-      },
+  function addToCart(p: Product) {
+    setCart((prev) => {
+      const idx = prev.findIndex((l) => l.id === p.id);
+      if (idx >= 0) {
+        const cp = [...prev];
+        cp[idx] = { ...cp[idx], qty: cp[idx].qty + 1 };
+        return cp;
+      }
+      return [...prev, { id: p.id, name: p.name, price: p.price, qty: 1 }];
     });
+  }
 
-    handler.openIframe();
-  };
+  function removeFromCart(id: string) {
+    setCart((prev) => prev.filter((l) => l.id !== id));
+  }
+
+  function decQty(id: string) {
+    setCart((prev) =>
+      prev
+        .map((l) => (l.id === id ? { ...l, qty: Math.max(1, l.qty - 1) } : l))
+        .filter((l) => l.qty > 0)
+    );
+  }
+
+  function incQty(id: string) {
+    setCart((prev) => prev.map((l) => (l.id === id ? { ...l, qty: l.qty + 1 } : l)));
+  }
 
   return (
-    <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
+    <>
       <Head>
         <title>Mastermind Electricals & Electronics</title>
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1, viewport-fit=cover"
-        />
-        <link rel="icon" href="/favicon.ico" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
       </Head>
 
-      {/* ===== Top Bar ===== */}
-      <header className="topbar">
-        <div className="topbar__inner">
-          <div className="brand">
-            <img src="/favicon.ico" alt="" className="brandIcon" aria-hidden />
-            Mastermind Electricals & Electronics
+      {/* Header */}
+      <header className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Image src="/favicon-192.png" alt="logo" width={28} height={28} />
+            <span className="text-sm font-semibold">
+              Mastermind Electricals & Electronics
+            </span>
           </div>
-          <button
-            onClick={() => setShowCart(true)}
-            className="cartBtn"
-            aria-label="Open cart"
-          >
-            🛒 Cart: {cartCount}
-          </button>
+
+          <div className="flex items-center gap-2">
+            {/* NEW: My Orders */}
+            <a
+              href="/orders"
+              className="hidden rounded-lg border px-3 py-2 text-sm font-medium hover:bg-gray-50 sm:inline-flex"
+            >
+              My Orders
+            </a>
+
+            <button
+              className="rounded-full bg-yellow-400 px-3 py-2 text-sm font-semibold"
+              onClick={() =>
+                document.getElementById("cart-drawer")?.classList.remove("hidden")
+              }
+            >
+              Cart: {cart.reduce((s, l) => s + l.qty, 0)}
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* ===== Hero ===== */}
-      <section className="container" style={{ marginTop: 12 }}>
-        <div className="hero">
-          <div className="hero__bubble" aria-hidden />
-          <div className="eyebrow">TRUSTED IN SOTIK</div>
-          <h1 className="h1">
-            Quality Electronics, Lighting & Gas — Fast Delivery
-          </h1>
-          <p className="lead">
-            Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay with
-            cards and mobile money via Paystack. Pickup or same-day delivery.
-          </p>
-        </div>
-
-        {/* ===== Two cards side-by-side on desktop ===== */}
-        <div className="twoCol">
-          {/* Left: Visit shop (dark, centered) */}
-          <div className="shopCard">
-            <div className="shopCard__bubble" aria-hidden />
-            <div className="shopCard__title">Visit Our Shop</div>
-            <div className="muted center">
-              Mastermind Electricals & Electronics, Sotik Town
-            </div>
-            <div className="muted center">Open Mon–Sun • 8:00am – 9:00pm</div>
-
-            <div className="actions actions--center">
-              <a
-                href="https://maps.app.goo.gl/7P2okRB5ssLFMkUT8"
-                target="_blank"
-                rel="noreferrer"
-                className="btn btn--accent"
-              >
-                View on Maps
-              </a>
-              <a href="tel:+254715151010" className="btn btn--light">
-                📞 0715151010
-              </a>
-              <a
-                href="mailto:sales@mastermindelectricals.com"
-                className="btn btn--light"
-              >
-                ✉️ sales@mastermindelectricals.com
-              </a>
-            </div>
-          </div>
-
-          {/* Right: SERVICES with M-Pesa logo and Gas mini-cards */}
-          <div className="infoCard">
-            <div className="infoCard__bubble" aria-hidden />
-            <div className="eyebrow">SERVICES</div>
-
-            <div className="servicesHeader">
-              <img
-                src="/mpesa.png"
-                alt="M-Pesa"
-                className="mpesaLogo"
-                loading="lazy"
-              />
-              <span className="amp">&nbsp;&amp;&nbsp;</span>
-              <span className="servicesText">Gas Refill</span>
-            </div>
-
-            {/* Gas semi-cards, centered */}
-            <div className="cylinders">
-              <div className="cylCard">
-                <img
-                  src="/gas-6kg.png"
-                  alt="6KG Gas"
-                  className="cylImg cylImg--tight"
-                  loading="lazy"
+      {/* Content */}
+      <main className="mx-auto grid max-w-6xl grid-cols-1 gap-4 px-4 py-6 sm:grid-cols-2 lg:grid-cols-3">
+        {(products as Product[]).map((p) => (
+          <div key={p.id} className="rounded-2xl border p-4">
+            <div className="mb-3 aspect-[4/3] overflow-hidden rounded-xl bg-gray-50">
+              {p.img ? (
+                <Image
+                  src={p.img}
+                  alt={p.name}
+                  width={800}
+                  height={600}
+                  className="h-full w-full object-contain"
                 />
-                <button className="btn btn--ghost" onClick={() => add("gas-6kg")}>
-                  6KG — KES 1,110
-                </button>
-              </div>
-              <div className="cylCard">
-                <img
-                  src="/gas-13kg.png"
-                  alt="13KG Gas"
-                  className="cylImg"
-                  loading="lazy"
-                />
-                <button className="btn btn--ghost" onClick={() => add("gas-13kg")}>
-                  13KG — KES 2,355
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ===== Search ===== */}
-      <div className="container" style={{ marginTop: 10, marginBottom: 6 }}>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder='Search products, e.g., "43 TV" or "bulb"'
-          className="search"
-        />
-      </div>
-
-      {/* ===== Product Grid ===== */}
-      <section className="container" style={{ paddingBottom: 24 }}>
-        <div className="productGrid">
-          {filtered.map((p) => {
-            const price = Number(p.price) || 0;
-            const stock = Number(p.stock) || 0;
-            return (
-              <article key={p.id} className="card">
-                <div className="card__img">
-                  {p.img ? (
-                    <img
-                      src={p.img}
-                      alt={p.name}
-                      style={{
-                        maxWidth: "100%",
-                        maxHeight: "100%",
-                        objectFit: "contain",
-                        display: "block",
-                      }}
-                      loading="lazy"
-                    />
-                  ) : null}
+              ) : (
+                <div className="flex h-full items-center justify-center text-gray-400">
+                  No image
                 </div>
-                <div className="sku">{p.sku || ""}</div>
-                <div className="name">{p.name}</div>
-                <div className="price">
-                  KES {Math.round(price).toLocaleString("en-KE")}
-                </div>
-                <div className="stock">Stock: {stock}</div>
-
-                {stock > 0 ? (
-                  <button
-                    className="btn btn--accent small"
-                    onClick={() => add(p.id)}
-                  >
-                    Add to Cart
-                  </button>
-                ) : (
-                  <div className="btn btn--disabled small">Out of stock</div>
-                )}
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ===== Footer (info block) ===== */}
-      <footer className="footer">
-        <div className="container footerGrid">
-          <div>
-            <div className="footTitle">Mastermind Electricals & Electronics</div>
-            <div className="footText">
-              Genuine stock • Fair prices • Friendly support.
+              )}
             </div>
+            <div className="mb-1 text-sm text-gray-500">{p.sku || ""}</div>
+            <div className="text-lg font-semibold">{p.name}</div>
+            <div className="mb-3 text-gray-700">KES {p.price.toLocaleString()}</div>
+            <button
+              onClick={() => addToCart(p)}
+              className="w-full rounded-xl bg-black px-4 py-2 font-semibold text-white hover:opacity-90"
+            >
+              Add to Cart
+            </button>
           </div>
-          <div>
-            <div className="footTitle">Contact</div>
-            <ul className="footList">
-              <li>Email: sales@mastermindelectricals.com</li>
-              <li>Website: www.mastermindelectricals.com</li>
-              <li>Phone: 0715 151 010</li>
-              <li>Sotik Town, Bomet County</li>
-            </ul>
-          </div>
-          <div>
-            <div className="footTitle">Payments</div>
-            <ul className="footList">
-              <li>Cards & Mobile Money via Paystack</li>
-              <li>Cash on Delivery (local)</li>
-              <li>In-store M-Pesa Agent</li>
-            </ul>
-          </div>
-        </div>
-        <div className="container" style={{ padding: "10px 12px" }}>
-          <div className="muted" style={{ textAlign: "center" }}>
-            © {new Date().getFullYear()} Mastermind Electricals & Electronics.
-            All rights reserved.
-          </div>
-        </div>
-      </footer>
+        ))}
+      </main>
 
-      {/* ===== Cart Drawer ===== */}
-      {showCart && (
-        <div className="overlay" onClick={() => setShowCart(false)}>
-          <aside
-            className="drawer"
-            onClick={(e) => e.stopPropagation()}
-            aria-label="Cart"
-          >
-            <div className="drawer__top">
-              <div className="h4">Your Cart</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                {cartCount > 1 && (
-                  <button
-                    className="btn btn--light small"
-                    onClick={clear}
-                    aria-label="Remove all items"
-                  >
-                    Remove all
-                  </button>
-                )}
-                <button
-                  className="btn btn--dark small"
-                  onClick={() => setShowCart(false)}
-                >
-                  Close
-                </button>
-              </div>
+      {/* Cart Drawer */}
+      <div
+        id="cart-drawer"
+        className="hidden fixed inset-0 z-20 bg-black/40"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) e.currentTarget.classList.add("hidden");
+        }}
+      >
+        <div className="absolute right-0 top-0 h-full w-full max-w-md overflow-auto bg-white p-4 shadow-2xl">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold">Your Cart</h2>
+            <button
+              className="rounded-lg border px-3 py-1 text-sm"
+              onClick={() =>
+                document.getElementById("cart-drawer")?.classList.add("hidden")
+              }
+            >
+              Close
+            </button>
+          </div>
+
+          {cart.length === 0 ? (
+            <div className="rounded-xl border p-4 text-center text-gray-600">
+              Cart is empty.
             </div>
-
-            {cartLines.length === 0 ? (
-              <div className="empty">Your cart is empty.</div>
-            ) : (
-              <div className="lines">
-                {cartLines.map((l) => {
-                  const price = Number(l.product.price) || 0;
-                  return (
-                    <div key={l.product.id} className="line">
-                      <div>
-                        <div className="line__name">{l.product.name}</div>
-                        <div className="line__price">{currency(price)}</div>
-                      </div>
-                      <div className="qty">
-                        <button
-                          className="qtyBtn"
-                          onClick={() => sub(l.product.id)}
-                          aria-label="Decrease"
-                        >
-                          −
-                        </button>
-                        <div className="qtyNum">{l.qty}</div>
-                        <button
-                          className="qtyBtn"
-                          onClick={() => add(l.product.id)}
-                          aria-label="Increase"
-                        >
-                          +
-                        </button>
-                        <button
-                          className="qtyBtn"
-                          onClick={() => remove(l.product.id)}
-                        >
-                          Remove
-                        </button>
+          ) : (
+            <>
+              <ul className="divide-y">
+                {cart.map((l) => (
+                  <li key={l.id} className="flex items-center justify-between py-3">
+                    <div>
+                      <div className="font-medium">{l.name}</div>
+                      <div className="text-sm text-gray-600">
+                        KES {l.price.toLocaleString()}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
 
-            <div className="totals">
-              <div className="row">
-                <span>Total</span>
-                <span className="strong">{currency(cartTotal)}</span>
-              </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        className="rounded-lg border px-2 py-1"
+                        onClick={() => decQty(l.id)}
+                      >
+                        −
+                      </button>
+                      <span className="w-8 text-center">{l.qty}</span>
+                      <button
+                        className="rounded-lg border px-2 py-1"
+                        onClick={() => incQty(l.id)}
+                      >
+                        +
+                      </button>
 
-              <button
-                disabled={cartLines.length === 0}
-                className={`btn ${
-                  cartLines.length ? "btn--paystack" : "btn--disabled"
-                }`}
-                onClick={startPaystack}
-              >
-                Pay with M-Pesa (Paystack)
-              </button>
-            </div>
-          </aside>
+                      <button
+                        className="ml-2 rounded-lg border px-2 py-1 text-sm"
+                        onClick={() => removeFromCart(l.id)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-4 rounded-xl border p-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-gray-600">Total</span>
+                  <span className="text-lg font-semibold">
+                    KES {total.toLocaleString()}
+                  </span>
+                </div>
+
+                {/* Paystack button (NEW color & copy) */}
+                <button
+                  onClick={() => startPaystackCheckout(total, cart)}
+                  className="mt-2 w-full rounded-xl bg-[#0AA5A0] px-4 py-3 font-semibold text-white hover:opacity-90"
+                >
+                  Pay with Paystack
+                </button>
+
+                {/* My Orders quick link (mobile) */}
+                <a
+                  href="/orders"
+                  className="mt-3 block w-full rounded-xl border px-4 py-3 text-center font-medium hover:bg-gray-50"
+                >
+                  My Orders
+                </a>
+              </div>
+            </>
+          )}
         </div>
-      )}
-
-      {/* ===== Floating WhatsApp (uses /whatsapp.svg) ===== */}
-      <a
-        href="https://wa.me/254715151010"
-        target="_blank"
-        rel="noreferrer"
-        className="waFab"
-        aria-label="Chat on WhatsApp"
-      >
-        <img src="/whatsapp.svg" alt="WhatsApp" className="waIcon" />
-      </a>
-
-      {/* ===== Styles ===== */}
-      <style jsx>{`
-        .container { max-width: 1200px; margin: 0 auto; padding: 0 12px; }
-
-        .topbar { position: sticky; top: 0; z-index: 50; background: #111; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); }
-        .topbar__inner { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 12px; }
-        .brand { font-weight: 800; letter-spacing: .3px; display:flex; align-items:center; gap:8px; }
-        .brandIcon { width: 22px; height: 22px; border-radius: 4px; }
-
-        .cartBtn { background:#f4d03f; color:#111; border:none; padding:8px 12px; border-radius:12px; font-weight:800; cursor:pointer; white-space:nowrap; }
-
-        .hero { position: relative; background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; overflow:hidden; }
-        .hero__bubble { position:absolute; right:-60px; top:-40px; width:240px; height:240px; background:#f4d03f; opacity:.28; border-radius:9999px; z-index:0; }
-        .eyebrow { color:#666; font-weight:700; font-size:12px; position:relative; z-index:1; }
-        .h1 { margin:6px 0 8px; font-size:28px; line-height:1.15; letter-spacing:-.2px; position:relative; z-index:1; }
-        .h3 { margin:4px 0 8px; font-size:20px; font-weight:800; }
-        .h4 { font-weight:800; font-size:18px; }
-        .lead { color:#444; font-size:15px; position:relative; z-index:1; }
-        .muted { color:#888; }
-        .center { text-align:center; }
-
-        .twoCol { display:grid; grid-template-columns:1fr; gap:12px; margin-top:12px; }
-        @media (min-width: 900px) {
-          .twoCol { grid-template-columns: 1fr 1fr; }
-        }
-
-        .shopCard { position:relative; background:#111; color:#fff; border-radius:16px; padding:16px; overflow:hidden; text-align:center; }
-        .shopCard__bubble { position:absolute; right:-50px; bottom:-70px; width:180px; height:180px; background:#f4d03f; opacity:.25; border-radius:9999px; }
-        .shopCard__title { font-weight:800; margin-bottom:6px; }
-        .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
-        .actions--center { justify-content:center; }
-
-        .infoCard { position:relative; background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; overflow:hidden; }
-        .infoCard__bubble { position:absolute; right:-40px; bottom:-60px; width:160px; height:160px; background:#f4d03f; opacity:.25; border-radius:9999px; }
-
-        .servicesHeader { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-weight:800; font-size:20px; margin:4px 0 12px; justify-content:center; }
-        .mpesaLogo { height:60px; width:auto; display:block; }
-        .amp { font-size:20px; color:#222; line-height:1; }
-        .servicesText { font-size:20px; font-weight:800; color:#111; }
-
-        /* Gas mini cards, centered */
-        .cylinders { display:flex; justify-content:center; gap:14px; flex-wrap:wrap; }
-        .cylCard { background:#fff; border:1px solid #eee; border-radius:12px; padding:12px; width:min(220px, 46%); display:flex; flex-direction:column; align-items:center; gap:8px; }
-        .cylImg { height:74px; width:auto; object-fit:contain; }
-        .cylImg--tight { margin-bottom:-8px; } /* bring 6KG closer to button */
-
-        .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:12px; font-weight:800; text-decoration:none; cursor:pointer; }
-        .btn--accent { background:#f4d03f; color:#111; padding:10px 14px; border:none; }
-        .btn--light { background:#fff; color:#111; padding:10px 14px; border:1px solid #eee; }
-        .btn--dark { background:#111; color:#fff; padding:10px 16px; border:none; }
-        .btn--ghost { background:#fff; color:#111; border:1px solid #ddd; padding:8px 12px; border-radius:10px; }
-        .btn--disabled { background:#eee; color:#888; pointer-events:none; }
-        .btn--paystack { background:#3bb75e; color:#fff; border:none; padding:12px 16px; border-radius:12px; font-weight:800; } /* Paystack green */
-        .small { padding:8px 14px; }
-
-        .search { width:100%; height:44px; padding:0 14px; border-radius:12px; border:1px solid #ddd; background:#fff; font-size:15px; outline:none; }
-
-        .productGrid { display:grid; gap:16px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
-        .card { background:#fff; border:1px solid #eee; border-radius:16px; padding:12px; display:grid; gap:10px; box-shadow:0 1px 0 rgba(0,0,0,.03); }
-        .card__img { height:160px; background:#f3f3f3; border-radius:14px; overflow:hidden; display:flex; align-items:center; justify-content:center; }
-        .sku { color:#777; font-size:12px; }
-        .name { font-weight:800; }
-        .price { color:#111; font-weight:800; }
-        .stock { color:#666; font-size:12px; }
-
-        .footer { border-top:1px solid #eaeaea; padding:18px 0 12px; background:#fafafa; }
-        .footerGrid { display:grid; grid-template-columns:1fr; gap:16px; padding:14px 12px; }
-        @media (min-width: 900px) {
-          .footerGrid { grid-template-columns: 2fr 1fr 1fr; }
-        }
-        .footTitle { font-weight:800; color:#111; margin-bottom:6px; }
-        .footText { color:#555; }
-        .footList { margin: 6px 0 0; color:#555; padding-left:18px; }
-
-        /* Drawer */
-        .overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:60; }
-        .drawer { position:fixed; right:10px; top:12vh; width:min(440px, 92vw); max-height:76vh; overflow:auto; background:#fff; border-radius:16px; border:1px solid #eee; box-shadow:0 20px 40px rgba(0,0,0,.25); padding:12px; }
-        .drawer__top { display:flex; justify-content:space-between; align-items:center; }
-        .empty { padding:22px 0; color:#666; }
-        .lines { display:grid; gap:10px; margin-top:10px; }
-        .line { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; }
-        .line__name { font-weight:700; }
-        .line__price { color:#666; font-size:12px; }
-        .qty { display:flex; align-items:center; gap:8px; }
-        .qtyBtn { border:1px solid #ddd; background:#fff; padding:6px 10px; border-radius:8px; cursor:pointer; }
-        .qtyNum { min-width:20px; text-align:center; }
-
-        .totals { margin-top:12px; display:grid; gap:8px; }
-        .row { display:flex; justify-content:space-between; }
-        .strong { font-weight:800; }
-
-        /* Floating WhatsApp */
-        .waFab {
-          position: fixed;
-          bottom: 22px;
-          right: 22px;
-          background: #25d366;
-          border-radius: 50%;
-          width: 56px;
-          height: 56px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-          z-index: 100;
-        }
-        .waIcon { width: 26px; height: 26px; }
-      `}</style>
-    </div>
+      </div>
+    </>
   );
 }
