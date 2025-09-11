@@ -3,30 +3,36 @@ export const onRequestGet: PagesFunction = async ({ request, env }) => {
   try {
     const url = new URL(request.url);
     const reference = url.searchParams.get("reference");
+
     if (!reference) {
-      return json({ ok: false, error: "missing_reference" }, 400);
+      return new Response(
+        JSON.stringify({ ok: false, error: "missing reference" }),
+        { status: 400, headers: { "content-type": "application/json" } }
+      );
     }
 
-    const secret = env.PAYSTACK_SECRET_KEY as string | undefined;
-    if (!secret) {
-      return json({ ok: false, error: "missing_secret" }, 500);
-    }
-
+    // Call Paystack verify
     const resp = await fetch(
-      "https://api.paystack.co/transaction/verify/" + encodeURIComponent(reference),
-      { headers: { Authorization: `Bearer ${secret}` } }
+      `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${env.PAYSTACK_SECRET_KEY}`, // set in CF Pages > Settings > Environment variables
+          Accept: "application/json",
+        },
+      }
     );
 
     const data = await resp.json();
-    return json({ ok: true, paystack: data }, 200);
-  } catch (e: any) {
-    return json({ ok: false, error: "exception", detail: String(e) }, 500);
+
+    // Optional: normalize a small response for the frontend
+    return new Response(JSON.stringify(data), {
+      headers: { "content-type": "application/json" },
+      status: resp.ok ? 200 : 502,
+    });
+  } catch (err: any) {
+    return new Response(
+      JSON.stringify({ ok: false, error: String(err?.message || err) }),
+      { status: 500, headers: { "content-type": "application/json" } }
+    );
   }
 };
-
-function json(obj: unknown, status = 200) {
-  return new Response(JSON.stringify(obj), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
