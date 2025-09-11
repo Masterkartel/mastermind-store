@@ -99,34 +99,46 @@ export default function Home() {
   const currency = (n: number) =>
     `KES ${Math.round(n).toLocaleString("en-KE")}`;
 
-  // ---- Paystack handler ----
-  const handlePaystack = () => {
-    const publicKey =
-      process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ||
-      "pk_test_xxxxxxxxxxxxxxxxxxxxxxxxx";
+  // ---- Load Paystack script once on client ----
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (document.getElementById("paystack-inline")) return;
+    const s = document.createElement("script");
+    s.id = "paystack-inline";
+    s.src = "https://js.paystack.co/v1/inline.js";
+    s.async = true;
+    document.body.appendChild(s);
+  }, []);
 
-    const PaystackPop =
-      typeof window !== "undefined"
-        ? (window as any)?.PaystackPop
-        : undefined;
-
+  // ---- Start Paystack popup ----
+  const startPaystack = () => {
+    if (typeof window === "undefined") return;
+    // @ts-ignore - injected by script
+    const PaystackPop = (window as any).PaystackPop;
     if (!PaystackPop) {
       alert("Couldn't start Paystack. Please refresh and try again.");
       return;
     }
 
+    // IMPORTANT: put your real live public key here (Cloudflare env var on prod is best)
+    const publicKey =
+      process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ||
+      "pk_live_10bc141ee6ae2ae48edcd102c06540ffe1cb3ae6"; // fallback
+
+    const amountKobo = Math.max(1, Math.round(cartTotal * 100)); // Paystack expects minor units
+    const reference = `MM-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+
     const handler = PaystackPop.setup({
       key: publicKey,
-      email: "customer@example.com", // replace with customer email if available
-      amount: cartTotal * 100, // amount in kobo
-      currency: "KES",
-      callback: function (response: any) {
-        alert("Payment complete! Reference: " + response.reference);
-        clear();
-        setShowCart(false);
+      email: "customer@example.com",
+      amount: amountKobo,
+      ref: reference,
+      callback: function () {
+        // You can also hit your verify endpoint here before redirecting
+        window.location.href = `/success?ref=${encodeURIComponent(reference)}`;
       },
       onClose: function () {
-        alert("Transaction was not completed, window closed.");
+        // Optional: do nothing or show a toast
       },
     });
 
@@ -142,8 +154,6 @@ export default function Home() {
           content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
         <link rel="icon" href="/favicon.ico" />
-        {/* Paystack script */}
-        <script src="https://js.paystack.co/v1/inline.js" async></script>
       </Head>
 
       {/* ===== Top Bar ===== */}
@@ -163,8 +173,96 @@ export default function Home() {
         </div>
       </header>
 
-      {/* ===== Hero & Services (same as before) ===== */}
-      {/* ... keep your existing hero and services cards ... */}
+      {/* ===== Hero ===== */}
+      <section className="container" style={{ marginTop: 12 }}>
+        <div className="hero">
+          <div className="hero__bubble" aria-hidden />
+          <div className="eyebrow">TRUSTED IN SOTIK</div>
+          <h1 className="h1">
+            Quality Electronics, Lighting & Gas — Fast Delivery
+          </h1>
+          <p className="lead">
+            Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay with
+            cards and mobile money via Paystack. Pickup or same-day delivery.
+          </p>
+        </div>
+
+        {/* ===== Two cards side-by-side on desktop ===== */}
+        <div className="twoCol">
+          {/* Left: Visit shop (dark, centered) */}
+          <div className="shopCard">
+            <div className="shopCard__bubble" aria-hidden />
+            <div className="shopCard__title">Visit Our Shop</div>
+            <div className="muted center">
+              Mastermind Electricals & Electronics, Sotik Town
+            </div>
+            <div className="muted center">Open Mon–Sun • 8:00am – 9:00pm</div>
+
+            <div className="actions actions--center">
+              <a
+                href="https://maps.app.goo.gl/7P2okRB5ssLFMkUT8"
+                target="_blank"
+                rel="noreferrer"
+                className="btn btn--accent"
+              >
+                View on Maps
+              </a>
+              <a href="tel:+254715151010" className="btn btn--light">
+                📞 0715151010
+              </a>
+              <a
+                href="mailto:sales@mastermindelectricals.com"
+                className="btn btn--light"
+              >
+                ✉️ sales@mastermindelectricals.com
+              </a>
+            </div>
+          </div>
+
+          {/* Right: SERVICES with M-Pesa logo and Gas mini-cards */}
+          <div className="infoCard">
+            <div className="infoCard__bubble" aria-hidden />
+            <div className="eyebrow">SERVICES</div>
+
+            <div className="servicesHeader">
+              <img
+                src="/mpesa.png"
+                alt="M-Pesa"
+                className="mpesaLogo"
+                loading="lazy"
+              />
+              <span className="amp">&nbsp;&amp;&nbsp;</span>
+              <span className="servicesText">Gas Refill</span>
+            </div>
+
+            {/* Gas semi-cards, centered */}
+            <div className="cylinders">
+              <div className="cylCard">
+                <img
+                  src="/gas-6kg.png"
+                  alt="6KG Gas"
+                  className="cylImg cylImg--tight"
+                  loading="lazy"
+                />
+                <button className="btn btn--ghost" onClick={() => add("gas-6kg")}>
+                  6KG — KES 1,110
+                </button>
+              </div>
+              <div className="cylCard">
+                <img
+                  src="/gas-13kg.png"
+                  alt="13KG Gas"
+                  className="cylImg"
+                  loading="lazy"
+                />
+                <button className="btn btn--ghost" onClick={() => add("gas-13kg")}>
+                  13KG — KES 2,355
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* ===== Search ===== */}
       <div className="container" style={{ marginTop: 10, marginBottom: 6 }}>
@@ -222,7 +320,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== Footer (same as before) ===== */}
+      {/* ===== Footer (info block) ===== */}
       <footer className="footer">
         <div className="container footerGrid">
           <div>
@@ -243,15 +341,16 @@ export default function Home() {
           <div>
             <div className="footTitle">Payments</div>
             <ul className="footList">
-              <li>Paystack</li>
-              <li>M-Pesa Till 8636720</li>
+              <li>Cards & Mobile Money via Paystack</li>
               <li>Cash on Delivery (local)</li>
+              <li>In-store M-Pesa Agent</li>
             </ul>
           </div>
         </div>
         <div className="container" style={{ padding: "10px 12px" }}>
           <div className="muted" style={{ textAlign: "center" }}>
-            © {new Date().getFullYear()} Mastermind Electricals & Electronics. All rights reserved.
+            © {new Date().getFullYear()} Mastermind Electricals & Electronics.
+            All rights reserved.
           </div>
         </div>
       </footer>
@@ -337,16 +436,16 @@ export default function Home() {
                 className={`btn ${
                   cartLines.length ? "btn--paystack" : "btn--disabled"
                 }`}
-                onClick={handlePaystack}
+                onClick={startPaystack}
               >
-                Pay with Paystack
+                Pay with M-Pesa (Paystack)
               </button>
             </div>
           </aside>
         </div>
       )}
 
-      {/* ===== Floating WhatsApp ===== */}
+      {/* ===== Floating WhatsApp (uses /whatsapp.svg) ===== */}
       <a
         href="https://wa.me/254715151010"
         target="_blank"
@@ -357,16 +456,113 @@ export default function Home() {
         <img src="/whatsapp.svg" alt="WhatsApp" className="waIcon" />
       </a>
 
+      {/* ===== Styles ===== */}
       <style jsx>{`
-        /* Keep all your previous CSS here */
-        .btn--paystack {
-          background: #3bb75e;
-          color: #fff;
-          border: none;
-          padding: 12px 16px;
-          border-radius: 12px;
-          font-weight: 800;
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 12px; }
+
+        .topbar { position: sticky; top: 0; z-index: 50; background: #111; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); }
+        .topbar__inner { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 12px; }
+        .brand { font-weight: 800; letter-spacing: .3px; display:flex; align-items:center; gap:8px; }
+        .brandIcon { width: 22px; height: 22px; border-radius: 4px; }
+
+        .cartBtn { background:#f4d03f; color:#111; border:none; padding:8px 12px; border-radius:12px; font-weight:800; cursor:pointer; white-space:nowrap; }
+
+        .hero { position: relative; background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; overflow:hidden; }
+        .hero__bubble { position:absolute; right:-60px; top:-40px; width:240px; height:240px; background:#f4d03f; opacity:.28; border-radius:9999px; z-index:0; }
+        .eyebrow { color:#666; font-weight:700; font-size:12px; position:relative; z-index:1; }
+        .h1 { margin:6px 0 8px; font-size:28px; line-height:1.15; letter-spacing:-.2px; position:relative; z-index:1; }
+        .h3 { margin:4px 0 8px; font-size:20px; font-weight:800; }
+        .h4 { font-weight:800; font-size:18px; }
+        .lead { color:#444; font-size:15px; position:relative; z-index:1; }
+        .muted { color:#888; }
+        .center { text-align:center; }
+
+        .twoCol { display:grid; grid-template-columns:1fr; gap:12px; margin-top:12px; }
+        @media (min-width: 900px) {
+          .twoCol { grid-template-columns: 1fr 1fr; }
         }
+
+        .shopCard { position:relative; background:#111; color:#fff; border-radius:16px; padding:16px; overflow:hidden; text-align:center; }
+        .shopCard__bubble { position:absolute; right:-50px; bottom:-70px; width:180px; height:180px; background:#f4d03f; opacity:.25; border-radius:9999px; }
+        .shopCard__title { font-weight:800; margin-bottom:6px; }
+        .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+        .actions--center { justify-content:center; }
+
+        .infoCard { position:relative; background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; overflow:hidden; }
+        .infoCard__bubble { position:absolute; right:-40px; bottom:-60px; width:160px; height:160px; background:#f4d03f; opacity:.25; border-radius:9999px; }
+
+        .servicesHeader { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-weight:800; font-size:20px; margin:4px 0 12px; justify-content:center; }
+        .mpesaLogo { height:60px; width:auto; display:block; }
+        .amp { font-size:20px; color:#222; line-height:1; }
+        .servicesText { font-size:20px; font-weight:800; color:#111; }
+
+        /* Gas mini cards, centered */
+        .cylinders { display:flex; justify-content:center; gap:14px; flex-wrap:wrap; }
+        .cylCard { background:#fff; border:1px solid #eee; border-radius:12px; padding:12px; width:min(220px, 46%); display:flex; flex-direction:column; align-items:center; gap:8px; }
+        .cylImg { height:74px; width:auto; object-fit:contain; }
+        .cylImg--tight { margin-bottom:-8px; } /* bring 6KG closer to button */
+
+        .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:12px; font-weight:800; text-decoration:none; cursor:pointer; }
+        .btn--accent { background:#f4d03f; color:#111; padding:10px 14px; border:none; }
+        .btn--light { background:#fff; color:#111; padding:10px 14px; border:1px solid #eee; }
+        .btn--dark { background:#111; color:#fff; padding:10px 16px; border:none; }
+        .btn--ghost { background:#fff; color:#111; border:1px solid #ddd; padding:8px 12px; border-radius:10px; }
+        .btn--disabled { background:#eee; color:#888; pointer-events:none; }
+        .btn--paystack { background:#3bb75e; color:#fff; border:none; padding:12px 16px; border-radius:12px; font-weight:800; } /* Paystack green */
+        .small { padding:8px 14px; }
+
+        .search { width:100%; height:44px; padding:0 14px; border-radius:12px; border:1px solid #ddd; background:#fff; font-size:15px; outline:none; }
+
+        .productGrid { display:grid; gap:16px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+        .card { background:#fff; border:1px solid #eee; border-radius:16px; padding:12px; display:grid; gap:10px; box-shadow:0 1px 0 rgba(0,0,0,.03); }
+        .card__img { height:160px; background:#f3f3f3; border-radius:14px; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+        .sku { color:#777; font-size:12px; }
+        .name { font-weight:800; }
+        .price { color:#111; font-weight:800; }
+        .stock { color:#666; font-size:12px; }
+
+        .footer { border-top:1px solid #eaeaea; padding:18px 0 12px; background:#fafafa; }
+        .footerGrid { display:grid; grid-template-columns:1fr; gap:16px; padding:14px 12px; }
+        @media (min-width: 900px) {
+          .footerGrid { grid-template-columns: 2fr 1fr 1fr; }
+        }
+        .footTitle { font-weight:800; color:#111; margin-bottom:6px; }
+        .footText { color:#555; }
+        .footList { margin: 6px 0 0; color:#555; padding-left:18px; }
+
+        /* Drawer */
+        .overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:60; }
+        .drawer { position:fixed; right:10px; top:12vh; width:min(440px, 92vw); max-height:76vh; overflow:auto; background:#fff; border-radius:16px; border:1px solid #eee; box-shadow:0 20px 40px rgba(0,0,0,.25); padding:12px; }
+        .drawer__top { display:flex; justify-content:space-between; align-items:center; }
+        .empty { padding:22px 0; color:#666; }
+        .lines { display:grid; gap:10px; margin-top:10px; }
+        .line { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; }
+        .line__name { font-weight:700; }
+        .line__price { color:#666; font-size:12px; }
+        .qty { display:flex; align-items:center; gap:8px; }
+        .qtyBtn { border:1px solid #ddd; background:#fff; padding:6px 10px; border-radius:8px; cursor:pointer; }
+        .qtyNum { min-width:20px; text-align:center; }
+
+        .totals { margin-top:12px; display:grid; gap:8px; }
+        .row { display:flex; justify-content:space-between; }
+        .strong { font-weight:800; }
+
+        /* Floating WhatsApp */
+        .waFab {
+          position: fixed;
+          bottom: 22px;
+          right: 22px;
+          background: #25d366;
+          border-radius: 50%;
+          width: 56px;
+          height: 56px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+          z-index: 100;
+        }
+        .waIcon { width: 26px; height: 26px; }
       `}</style>
     </div>
   );
