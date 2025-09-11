@@ -1,7 +1,6 @@
 // pages/index.tsx
 import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
-import Script from "next/script";
 
 type Product = {
   id: string;
@@ -14,18 +13,10 @@ type Product = {
 
 type CartLine = { product: Product; qty: number };
 
-// Make TS happy when using Paystack on window
-declare global {
-  interface Window {
-    PaystackPop?: any;
-  }
-}
-
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
   const [showCart, setShowCart] = useState(false);
-  const [mpesaPhone, setMpesaPhone] = useState("");
   const [cartMap, setCartMap] = useState<Record<string, number>>({});
 
   // ---- Load products.json ----
@@ -46,8 +37,6 @@ export default function Home() {
     try {
       const saved = localStorage.getItem("mm_cart");
       if (saved) setCartMap(JSON.parse(saved));
-      const phone = localStorage.getItem("mm_mpesa_phone");
-      if (phone) setMpesaPhone(phone);
     } catch {}
   }, []);
   useEffect(() => {
@@ -55,11 +44,6 @@ export default function Home() {
       localStorage.setItem("mm_cart", JSON.stringify(cartMap));
     } catch {}
   }, [cartMap]);
-  useEffect(() => {
-    try {
-      localStorage.setItem("mm_mpesa_phone", mpesaPhone);
-    } catch {}
-  }, [mpesaPhone]);
 
   // ---- Cart helpers ----
   const add = (id: string) =>
@@ -115,45 +99,52 @@ export default function Home() {
   const currency = (n: number) =>
     `KES ${Math.round(n).toLocaleString("en-KE")}`;
 
-  // ---- Paystack checkout ----
-  const payWithPaystack = () => {
-    if (cartLines.length === 0) {
-      alert("Your cart is empty.");
-      return;
-    }
-    if (!window.PaystackPop) {
-      alert("Paystack is not ready yet. Please wait a moment and try again.");
+  // ---- Paystack handler ----
+  const handlePaystack = () => {
+    if (cartLines.length === 0) return;
+    const amountKobo = Math.round(cartTotal) * 100; // paystack expects amount in lowest currency unit
+
+    const publicKey =
+      process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ||
+      "pk_test_xxxxxxxxxxxxxxxxxxxxxxxxx";
+
+    // @ts-expect-error PaystackPop injected by script
+    const PaystackPop = (window as any).PaystackPop;
+    if (!PaystackPop) {
+      alert("Couldn't start Paystack. Please refresh and try again.");
       return;
     }
 
-    const key = process.env.NEXT_PUBLIC_PAYSTACK_KEY;
-    if (!key) {
-      alert("Paystack public key missing.");
-      return;
-    }
-
-    const email = "customer@mastermindelectricals.com"; // replace later if you collect customer emails
-    const ref = "MM-" + Date.now();
-    const amountKobo = Math.round(cartTotal * 100); // Paystack uses lowest denomination
-
-    const handler = window.PaystackPop.setup({
-      key,
-      email,
+    const handler = PaystackPop.setup({
+      key: publicKey,
+      email: "customer@example.com", // optionally capture earlier
       amount: amountKobo,
-      currency: "KES",
-      ref,
-      callback: function (response: any) {
-        window.location.href = `/success?ref=${encodeURIComponent(
-          response.reference
-        )}`;
+      currency: "KES", // or "NGN" if your account currency is Naira
+      ref:
+        "MM-" +
+        Date.now().toString(36) +
+        "-" +
+        Math.random().toString(36).slice(2, 7),
+      callback: function (response: { reference: string }) {
+        // You can confirm on server here if you like:
+        // fetch(`/api/paystack-verify?reference=${response.reference}`)
+        //   .then(r => r.json()).then(console.log).catch(console.error);
+        alert("Payment complete! Ref: " + response.reference);
+        clear();
+        setShowCart(false);
       },
       onClose: function () {
-        alert("Payment window closed.");
+        // closed without paying
       },
+      metadata: {
+        custom_fields: [
+          { display_name: "Cart Items", variable_name: "items", value: cartLines.map(l => `${l.product.name} x${l.qty}`).join(", ") },
+        ],
+      },
+      label: "Mastermind Store",
     });
 
-    if (handler && handler.openIframe) handler.openIframe();
-    else alert("Could not start Paystack payment. Please try again.");
+    handler.openIframe();
   };
 
   return (
@@ -165,10 +156,9 @@ export default function Home() {
           content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
         <link rel="icon" href="/favicon.ico" />
+        {/* Paystack inline script */}
+        <script src="https://js.paystack.co/v1/inline.js" defer></script>
       </Head>
-
-      {/* Paystack script */}
-      <Script src="https://js.paystack.co/v1/inline.js" strategy="afterInteractive" />
 
       {/* ===== Top Bar ===== */}
       <header className="topbar">
@@ -444,21 +434,10 @@ export default function Home() {
                 <span className="strong">{currency(cartTotal)}</span>
               </div>
 
-              <label className="label" style={{ marginTop: 6 }}>
-                M-Pesa Phone (07XXXXXXXX)
-              </label>
-              <input
-                value={mpesaPhone}
-                onChange={(e) => setMpesaPhone(e.target.value)}
-                placeholder="07XXXXXXXX"
-                className="input"
-                inputMode="tel"
-              />
-
               <button
                 disabled={cartLines.length === 0}
-                className={`btn ${cartLines.length ? "btn--pay" : "btn--disabled"}`}
-                onClick={payWithPaystack}
+                className={`btn ${cartLines.length ? "btn--paystack" : "btn--disabled"}`}
+                onClick={handlePaystack}
               >
                 Pay with Paystack
               </button>
@@ -467,7 +446,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* ===== Floating WhatsApp (uses /whatsapp.svg) ===== */}
+      {/* ===== Floating WhatsApp (SVG) ===== */}
       <a
         href="https://wa.me/254715151010"
         target="_blank"
@@ -530,6 +509,7 @@ export default function Home() {
         .btn--dark { background:#111; color:#fff; padding:10px 16px; border:none; }
         .btn--ghost { background:#fff; color:#111; border:1px solid #ddd; padding:8px 12px; border-radius:10px; }
         .btn--disabled { background:#eee; color:#888; pointer-events:none; }
+        .btn--paystack { background:#3bb75e; color:#fff; border:none; padding:12px 16px; border-radius:12px; font-weight:800; }
         .btn--pay { background:#16a34a; color:#fff; border:none; padding:12px 16px; border-radius:12px; }
         .small { padding:8px 14px; }
 
@@ -568,8 +548,6 @@ export default function Home() {
         .totals { margin-top:12px; display:grid; gap:8px; }
         .row { display:flex; justify-content:space-between; }
         .strong { font-weight:800; }
-        .label { font-size:12px; color:#555; margin-top:4px; }
-        .input { width:100%; height:42px; border-radius:10px; border:1px solid #ddd; padding:0 12px; outline:none; background:#fff; }
 
         /* Floating WhatsApp */
         .waFab {
