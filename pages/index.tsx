@@ -107,6 +107,42 @@ export default function Home() {
   const currency = (n: number) =>
     `KES ${Math.round(n).toLocaleString("en-KE")}`;
 
+  // -------- PAYSTACK: initialize and redirect ----------
+  async function payWithPaystack() {
+    try {
+      if (cartLines.length === 0) {
+        alert("Your cart is empty.");
+        return;
+      }
+      const payload = {
+        amountKsh: Math.round(cartTotal),
+        phone: mpesaPhone || "",
+        items: cartLines.map((l) => ({
+          id: l.product.id,
+          name: l.product.name,
+          qty: l.qty,
+          price: Number(l.product.price) || 0,
+        })),
+      };
+
+      const res = await fetch("/api/paystack/initialize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || "Failed to start payment");
+      }
+      const data = await res.json(); // { authorization_url }
+      window.location.href = data.authorization_url; // go to Paystack checkout
+    } catch (e: any) {
+      console.error(e);
+      alert("Could not start Paystack payment. Please try again.");
+    }
+  }
+
   return (
     <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
       <Head>
@@ -149,7 +185,7 @@ export default function Home() {
           </p>
         </div>
 
-        {/* ===== Two cards side-by-side on desktop ===== */}
+        {/* ===== Two cards (left = shop / right = services) ===== */}
         <div className="twoCol">
           {/* Left: Visit shop (dark, centered) */}
           <div className="shopCard">
@@ -181,42 +217,26 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right: SERVICES with M-Pesa logo and Gas mini-cards */}
+          {/* Right: SERVICES header + gas options */}
           <div className="infoCard">
             <div className="infoCard__bubble" aria-hidden />
             <div className="eyebrow">SERVICES</div>
 
             <div className="servicesHeader">
-              <img
-                src="/mpesa.png"
-                alt="M-Pesa"
-                className="mpesaLogo"
-                loading="lazy"
-              />
+              <img src="/mpesa.png" alt="M-Pesa" className="mpesaLogo" />
               <span className="amp">&nbsp;&amp;&nbsp;</span>
               <span className="servicesText">Gas Refill</span>
             </div>
 
-            {/* Gas semi-cards, centered */}
             <div className="cylinders">
               <div className="cylCard">
-                <img
-                  src="/gas-6kg.png"
-                  alt="6KG Gas"
-                  className="cylImg cylImg--tight"
-                  loading="lazy"
-                />
+                <img src="/gas-6kg.png" alt="6KG Gas" className="cylImg cylImg--tight" />
                 <button className="btn btn--ghost" onClick={() => add("gas-6kg")}>
                   6KG — KES 1,110
                 </button>
               </div>
               <div className="cylCard">
-                <img
-                  src="/gas-13kg.png"
-                  alt="13KG Gas"
-                  className="cylImg"
-                  loading="lazy"
-                />
+                <img src="/gas-13kg.png" alt="13KG Gas" className="cylImg" />
                 <button className="btn btn--ghost" onClick={() => add("gas-13kg")}>
                   13KG — KES 2,355
                 </button>
@@ -232,7 +252,7 @@ export default function Home() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder='Search products, e.g., "43 TV" or "bulb"'
-        className="search"
+          className="search"
         />
       </div>
 
@@ -403,10 +423,11 @@ export default function Home() {
                 inputMode="tel"
               />
 
+              {/* SAME LABEL — now triggers Paystack */}
               <button
                 disabled={cartLines.length === 0}
                 className={`btn ${cartLines.length ? "btn--pay" : "btn--disabled"}`}
-                onClick={() => alert("Checkout coming soon")}
+                onClick={payWithPaystack}
               >
                 Pay with M-Pesa
               </button>
@@ -415,7 +436,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* ===== Floating WhatsApp (now uses /whatsapp.svg) ===== */}
+      {/* ===== Floating WhatsApp ===== */}
       <a
         href="https://wa.me/254715151010"
         target="_blank"
@@ -426,15 +447,13 @@ export default function Home() {
         <img src="/whatsapp.svg" alt="WhatsApp" className="waIcon" />
       </a>
 
-      {/* ===== Styles ===== */}
+      {/* ===== Styles (unchanged except what's already in your app) ===== */}
       <style jsx>{`
         .container { max-width: 1200px; margin: 0 auto; padding: 0 12px; }
-
         .topbar { position: sticky; top: 0; z-index: 50; background: #111; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); }
         .topbar__inner { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 12px; }
         .brand { font-weight: 800; letter-spacing: .3px; display:flex; align-items:center; gap:8px; }
         .brandIcon { width: 22px; height: 22px; border-radius: 4px; }
-
         .cartBtn { background:#f4d03f; color:#111; border:none; padding:8px 12px; border-radius:12px; font-weight:800; cursor:pointer; white-space:nowrap; }
 
         .hero { position: relative; background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; overflow:hidden; }
@@ -448,9 +467,7 @@ export default function Home() {
         .center { text-align:center; }
 
         .twoCol { display:grid; grid-template-columns:1fr; gap:12px; margin-top:12px; }
-        @media (min-width: 900px) {
-          .twoCol { grid-template-columns: 1fr 1fr; }
-        }
+        @media (min-width: 900px) { .twoCol { grid-template-columns: 1fr 1fr; } }
 
         .shopCard { position:relative; background:#111; color:#fff; border-radius:16px; padding:16px; overflow:hidden; text-align:center; }
         .shopCard__bubble { position:absolute; right:-50px; bottom:-70px; width:180px; height:180px; background:#f4d03f; opacity:.25; border-radius:9999px; }
@@ -466,11 +483,10 @@ export default function Home() {
         .amp { font-size:20px; color:#222; line-height:1; }
         .servicesText { font-size:20px; font-weight:800; color:#111; }
 
-        /* Gas mini cards, centered */
         .cylinders { display:flex; justify-content:center; gap:14px; flex-wrap:wrap; }
         .cylCard { background:#fff; border:1px solid #eee; border-radius:12px; padding:12px; width:min(220px, 46%); display:flex; flex-direction:column; align-items:center; gap:8px; }
         .cylImg { height:74px; width:auto; object-fit:contain; }
-        .cylImg--tight { margin-bottom:-8px; } /* drop 6KG a bit closer to button */
+        .cylImg--tight { margin-bottom:-8px; }
 
         .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:12px; font-weight:800; text-decoration:none; cursor:pointer; }
         .btn--accent { background:#f4d03f; color:#111; padding:10px 14px; border:none; }
@@ -493,14 +509,11 @@ export default function Home() {
 
         .footer { border-top:1px solid #eaeaea; padding:18px 0 12px; background:#fafafa; }
         .footerGrid { display:grid; grid-template-columns:1fr; gap:16px; padding:14px 12px; }
-        @media (min-width: 900px) {
-          .footerGrid { grid-template-columns: 2fr 1fr 1fr; }
-        }
+        @media (min-width: 900px) { .footerGrid { grid-template-columns: 2fr 1fr 1fr; } }
         .footTitle { font-weight:800; color:#111; margin-bottom:6px; }
         .footText { color:#555; }
         .footList { margin: 6px 0 0; color:#555; padding-left:18px; }
 
-        /* Drawer */
         .overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:60; }
         .drawer { position:fixed; right:10px; top:12vh; width:min(440px, 92vw); max-height:76vh; overflow:auto; background:#fff; border-radius:16px; border:1px solid #eee; box-shadow:0 20px 40px rgba(0,0,0,.25); padding:12px; }
         .drawer__top { display:flex; justify-content:space-between; align-items:center; }
@@ -519,21 +532,7 @@ export default function Home() {
         .label { font-size:12px; color:#555; margin-top:4px; }
         .input { width:100%; height:42px; border-radius:10px; border:1px solid #ddd; padding:0 12px; outline:none; background:#fff; }
 
-        /* Floating WhatsApp */
-        .waFab {
-          position: fixed;
-          bottom: 22px;
-          right: 22px;
-          background: #25d366;
-          border-radius: 50%;
-          width: 56px;
-          height: 56px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-          z-index: 100;
-        }
+        .waFab { position: fixed; bottom: 22px; right: 22px; background: #25d366; border-radius: 50%; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 100; }
         .waIcon { width: 26px; height: 26px; }
       `}</style>
     </div>
