@@ -1,49 +1,95 @@
 // pages/paystack-success.tsx
+import Head from "next/head";
+import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 
 export default function PaystackSuccess() {
-  const [status, setStatus] = useState<"verifying"|"success"|"failed">("verifying");
+  const router = useRouter();
+  const { reference } = router.query;
+  const [status, setStatus] = useState<"checking" | "ok" | "fail">("checking");
   const [message, setMessage] = useState("Verifying payment…");
 
   useEffect(() => {
-    const url = new URL(window.location.href);
-    const ref = url.searchParams.get("reference");
-    if (!ref) {
-      setStatus("failed");
-      setMessage("Missing payment reference.");
-      return;
-    }
+    if (!reference) return;
+
     (async () => {
       try {
-        const res = await fetch(`/api/paystack/verify?reference=${encodeURIComponent(ref)}`);
-        const data = await res.json();
-        if (data?.status && data?.data?.status === "success") {
-          try {
-            localStorage.removeItem("mm_cart");
-          } catch {}
-          setStatus("success");
-          setMessage("Payment successful! Thank you for your order.");
+        const res = await fetch("/api/paystack/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reference }),
+        });
+        const json = await res.json();
+
+        if (json?.data?.status === "success") {
+          setStatus("ok");
+          setMessage("✅ Payment Successful! Thank you.");
         } else {
-          setStatus("failed");
-          setMessage(data?.message || "Payment not verified.");
+          setStatus("fail");
+          setMessage("❌ Payment not completed. Please try again.");
         }
       } catch {
-        setStatus("failed");
-        setMessage("Could not verify payment.");
+        setStatus("fail");
+        setMessage("❌ Could not verify payment.");
       }
     })();
-  }, []);
+  }, [reference]);
 
   return (
-    <div style={{minHeight:"100vh", display:"grid", placeItems:"center", background:"#fafafa", fontFamily:"Inter, ui-sans-serif"}}>
-      <div style={{background:"#fff", border:"1px solid #eee", borderRadius:16, padding:24, maxWidth:520, textAlign:"center"}}>
-        <h1 style={{marginTop:0}}>{status==="success" ? "✅ Success" : status==="verifying" ? "⏳ Please wait" : "❌ Payment Failed"}</h1>
-        <p style={{color:"#555"}}>{message}</p>
-        <Link href="/" style={{display:"inline-block", marginTop:14, background:"#111", color:"#fff", padding:"10px 16px", borderRadius:12, textDecoration:"none", fontWeight:800}}>
-          Back to shop
-        </Link>
+    <>
+      <Head>
+        <title>Payment Status • Mastermind</title>
+      </Head>
+      <div style={{ maxWidth: 680, margin: "60px auto", padding: 16, textAlign: "center" }}>
+        <h1 style={{ marginBottom: 8 }}>Payment Status</h1>
+        <p style={{ color: "#444", marginBottom: 18 }}>
+          Reference: <strong>{reference as string}</strong>
+        </p>
+        <div
+          style={{
+            background: "#fff",
+            border: "1px solid #eee",
+            borderRadius: 12,
+            padding: 24,
+            fontSize: 18,
+          }}
+        >
+          {message}
+        </div>
+
+        <div style={{ marginTop: 24, display: "flex", gap: 10, justifyContent: "center" }}>
+          <button
+            onClick={() => router.push("/")}
+            style={{
+              background: "#111",
+              color: "#fff",
+              border: "none",
+              padding: "10px 14px",
+              borderRadius: 10,
+              cursor: "pointer",
+              fontWeight: 800,
+            }}
+          >
+            Back to Shop
+          </button>
+          {status !== "ok" && (
+            <button
+              onClick={() => router.push("/")}
+              style={{
+                background: "#f4d03f",
+                color: "#111",
+                border: "none",
+                padding: "10px 14px",
+                borderRadius: 10,
+                cursor: "pointer",
+                fontWeight: 800,
+              }}
+            >
+              Try Again
+            </button>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
