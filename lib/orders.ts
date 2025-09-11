@@ -8,17 +8,17 @@ export type OrderItem = {
 };
 
 export type Order = {
-  id: string; // e.g. Paystack reference
-  dateISO: string;
+  id: string;            // e.g. Paystack reference
+  dateISO: string;       // new Date().toISOString()
   total: number;
-  currency: string; // "KES"
+  currency: string;      // "KES"
   items: OrderItem[];
   status?: "paid" | "pending" | "failed" | "refunded";
 };
 
-/** Save an order to localStorage (no-op on server) */
+/** Append an order to localStorage (mm_orders). Safe on SSR. */
 export function saveOrder(order: Order): void {
-  if (typeof window === "undefined") return; // SSR/Build guard
+  if (typeof window === "undefined") return;
   try {
     const raw = localStorage.getItem("mm_orders");
     const arr: Order[] = raw ? JSON.parse(raw) : [];
@@ -29,12 +29,13 @@ export function saveOrder(order: Order): void {
   }
 }
 
-/** Read orders from localStorage (empty on server) */
+/** Read orders (newest first). Returns [] if none or SSR. */
 export function getOrders(): Order[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem("mm_orders");
-    return raw ? (JSON.parse(raw) as Order[]) : [];
+    const arr: Order[] = raw ? JSON.parse(raw) : [];
+    return arr.sort((a, b) => (b.dateISO || "").localeCompare(a.dateISO || ""));
   } catch {
     return [];
   }
