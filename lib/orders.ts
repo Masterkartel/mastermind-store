@@ -1,62 +1,41 @@
 // lib/orders.ts
-export type CartLine = {
+
+export type OrderItem = {
   id: string;
   name: string;
-  price: number;
   qty: number;
+  price: number; // unit price
 };
 
 export type Order = {
-  id: string;              // same as paystack reference if available
-  createdAt: string;       // ISO date
-  items: CartLine[];
+  id: string; // e.g. Paystack reference
+  dateISO: string;
   total: number;
-  status: "pending" | "paid" | "failed" | "cancelled";
-  channel: "paystack";
+  currency: string; // "KES"
+  items: OrderItem[];
+  status?: "paid" | "pending" | "failed" | "refunded";
 };
 
-const ORDERS_KEY = "mm_orders_v1";
-const CART_KEY = "mm_cart_v1";
-
-// --- Storage helpers ---
-function read<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
+/** Save an order to localStorage (no-op on server) */
+export function saveOrder(order: Order): void {
+  if (typeof window === "undefined") return; // SSR/Build guard
   try {
-    const v = localStorage.getItem(key);
-    return v ? (JSON.parse(v) as T) : fallback;
+    const raw = localStorage.getItem("mm_orders");
+    const arr: Order[] = raw ? JSON.parse(raw) : [];
+    arr.push(order);
+    localStorage.setItem("mm_orders", JSON.stringify(arr));
   } catch {
-    return fallback;
+    // ignore storage errors
   }
 }
-function write<T>(key: string, value: T) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(key, JSON.stringify(value));
-}
 
-// --- Orders API (local) ---
+/** Read orders from localStorage (empty on server) */
 export function getOrders(): Order[] {
-  return read<Order[]>(ORDERS_KEY, []);
-}
-
-export function saveOrder(order: Order) {
-  const all = getOrders();
-  all.unshift(order); // newest first
-  write(ORDERS_KEY, all);
-}
-
-export function updateOrderStatus(id: string, status: Order["status"]) {
-  const all = getOrders();
-  const idx = all.findIndex(o => o.id === id);
-  if (idx >= 0) {
-    all[idx].status = status;
-    write(ORDERS_KEY, all);
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("mm_orders");
+    return raw ? (JSON.parse(raw) as Order[]) : [];
+  } catch {
+    return [];
   }
-}
-
-// --- Cart helpers used by Orders page for "Reorder" ---
-export function getCart(): CartLine[] {
-  return read<CartLine[]>(CART_KEY, []);
-}
-export function setCart(lines: CartLine[]) {
-  write(CART_KEY, lines);
 }
