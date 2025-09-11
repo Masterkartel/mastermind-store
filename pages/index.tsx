@@ -2,17 +2,16 @@
 import Head from "next/head";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import products from "@/data/products.json"; // <-- adjust if your path differs
 import { saveOrder, type Order } from "@/lib/orders";
 
-// ----------------- Types -----------------
+// ---------- Types ----------
 type Product = {
   id: string;
   name: string;
   price: number; // KES
   sku?: string;
   stock?: number;
-  img?: string; // /products/xxx.jpg
+  img?: string; // e.g. "/products/1-batt-torch.jpg"
 };
 
 type CartLine = {
@@ -22,7 +21,7 @@ type CartLine = {
   qty: number;
 };
 
-// --------------- Cart storage ------------
+// ---------- Cart storage ----------
 const CART_KEY = "mm_cart_v1";
 function readCart(): CartLine[] {
   if (typeof window === "undefined") return [];
@@ -38,14 +37,11 @@ function writeCart(lines: CartLine[]) {
   localStorage.setItem(CART_KEY, JSON.stringify(lines));
 }
 
-// ---------- Paystack checkout (NEW) ----------
-async function startPaystackCheckout(
-  totalKES: number,
-  cartLines: CartLine[]
-) {
+// ---------- Paystack checkout ----------
+async function startPaystackCheckout(totalKES: number, cartLines: CartLine[]) {
   if (typeof window === "undefined") return;
 
-  // Load Paystack JS if not already present
+  // ensure Paystack script is loaded
   if (!(window as any).PaystackPop) {
     const s = document.createElement("script");
     s.src = "https://js.paystack.co/v1/inline.js";
@@ -64,10 +60,9 @@ async function startPaystackCheckout(
     return;
   }
 
-  // Reference we also use as the local order id
   const ref = `MM-${Date.now()}`;
 
-  // Save a local 'pending' order immediately (so it appears in My Orders)
+  // save a local pending order so it shows in My Orders
   const pending: Order = {
     id: ref,
     createdAt: new Date().toISOString(),
@@ -78,15 +73,12 @@ async function startPaystackCheckout(
   };
   saveOrder(pending);
 
-  // IMPORTANT:
-  // Until Paystack enables KES/Mobile Money on your account,
-  // restrict channels to "card" to avoid "Currency not supported" popups.
   const handler = PaystackPop.setup({
     key: publicKey,
     email: "customer@mastermindelectricals.com",
-    amount: totalKES, // base units; Paystack will interpret based on enabled currency/channel
+    amount: totalKES,
     currency: "KES",
-    channels: ["card"], // change to ["card","mobile_money"] after Paystack enables KES/M-Pesa for your account
+    channels: ["card"], // add "mobile_money" here when Paystack enables KES/M-Pesa on your account
     ref,
     callback: function () {
       window.location.href = `/paystack-status?reference=${encodeURIComponent(
@@ -103,39 +95,49 @@ async function startPaystackCheckout(
   handler.openIframe();
 }
 
-// ----------------- Page -------------------
 export default function HomePage() {
+  const [catalog, setCatalog] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartLine[]>([]);
+
+  // fetch products from /public/products.json
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/products.json", { cache: "no-cache" });
+        const data = (await res.json()) as Product[];
+        setCatalog(data);
+      } catch (e) {
+        console.error("Failed to load products.json", e);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     setCart(readCart());
   }, []);
-
   useEffect(() => {
     writeCart(cart);
   }, [cart]);
 
   const total = useMemo(
-    () => cart.reduce((sum, l) => sum + l.price * l.qty, 0),
+    () => cart.reduce((s, l) => s + l.price * l.qty, 0),
     [cart]
   );
 
   function addToCart(p: Product) {
     setCart((prev) => {
-      const idx = prev.findIndex((l) => l.id === p.id);
-      if (idx >= 0) {
+      const i = prev.findIndex((l) => l.id === p.id);
+      if (i >= 0) {
         const cp = [...prev];
-        cp[idx] = { ...cp[idx], qty: cp[idx].qty + 1 };
+        cp[i] = { ...cp[i], qty: cp[i].qty + 1 };
         return cp;
       }
       return [...prev, { id: p.id, name: p.name, price: p.price, qty: 1 }];
     });
   }
-
   function removeFromCart(id: string) {
     setCart((prev) => prev.filter((l) => l.id !== id));
   }
-
   function decQty(id: string) {
     setCart((prev) =>
       prev
@@ -143,7 +145,6 @@ export default function HomePage() {
         .filter((l) => l.qty > 0)
     );
   }
-
   function incQty(id: string) {
     setCart((prev) => prev.map((l) => (l.id === id ? { ...l, qty: l.qty + 1 } : l)));
   }
@@ -166,14 +167,12 @@ export default function HomePage() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* NEW: My Orders */}
             <a
               href="/orders"
               className="hidden rounded-lg border px-3 py-2 text-sm font-medium hover:bg-gray-50 sm:inline-flex"
             >
               My Orders
             </a>
-
             <button
               className="rounded-full bg-yellow-400 px-3 py-2 text-sm font-semibold"
               onClick={() =>
@@ -186,9 +185,9 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Content */}
+      {/* Grid */}
       <main className="mx-auto grid max-w-6xl grid-cols-1 gap-4 px-4 py-6 sm:grid-cols-2 lg:grid-cols-3">
-        {(products as Product[]).map((p) => (
+        {catalog.map((p) => (
           <div key={p.id} className="rounded-2xl border p-4">
             <div className="mb-3 aspect-[4/3] overflow-hidden rounded-xl bg-gray-50">
               {p.img ? (
@@ -205,7 +204,7 @@ export default function HomePage() {
                 </div>
               )}
             </div>
-            <div className="mb-1 text-sm text-gray-500">{p.sku || ""}</div>
+            {p.sku && <div className="mb-1 text-sm text-gray-500">{p.sku}</div>}
             <div className="text-lg font-semibold">{p.name}</div>
             <div className="mb-3 text-gray-700">KES {p.price.toLocaleString()}</div>
             <button
@@ -256,20 +255,13 @@ export default function HomePage() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <button
-                        className="rounded-lg border px-2 py-1"
-                        onClick={() => decQty(l.id)}
-                      >
+                      <button className="rounded-lg border px-2 py-1" onClick={() => decQty(l.id)}>
                         −
                       </button>
                       <span className="w-8 text-center">{l.qty}</span>
-                      <button
-                        className="rounded-lg border px-2 py-1"
-                        onClick={() => incQty(l.id)}
-                      >
+                      <button className="rounded-lg border px-2 py-1" onClick={() => incQty(l.id)}>
                         +
                       </button>
-
                       <button
                         className="ml-2 rounded-lg border px-2 py-1 text-sm"
                         onClick={() => removeFromCart(l.id)}
@@ -289,7 +281,6 @@ export default function HomePage() {
                   </span>
                 </div>
 
-                {/* Paystack button (NEW color & copy) */}
                 <button
                   onClick={() => startPaystackCheckout(total, cart)}
                   className="mt-2 w-full rounded-xl bg-[#0AA5A0] px-4 py-3 font-semibold text-white hover:opacity-90"
@@ -297,7 +288,6 @@ export default function HomePage() {
                   Pay with Paystack
                 </button>
 
-                {/* My Orders quick link (mobile) */}
                 <a
                   href="/orders"
                   className="mt-3 block w-full rounded-xl border px-4 py-3 text-center font-medium hover:bg-gray-50"
