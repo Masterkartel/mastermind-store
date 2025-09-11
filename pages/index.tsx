@@ -2,7 +2,7 @@
 import Head from "next/head";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import { saveOrder, type Order } from "@/lib/orders";
+import { saveOrder, type Order } from "../lib/orders";;
 
 // ---------- Types ----------
 type Product = {
