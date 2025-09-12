@@ -125,9 +125,7 @@ export default function Home() {
           {
             display_name: "Items",
             variable_name: "items",
-            value: cartLines
-              .map((l) => `${l.product.name}×${l.qty}`)
-              .join(", "),
+            value: cartLines.map((l) => `${l.product.name}×${l.qty}`).join(", "),
           },
         ],
       },
@@ -135,8 +133,6 @@ export default function Home() {
         alert("Payment complete! Reference: " + response.reference);
         clear();
         setShowCart(false);
-        // optional: redirect to orders page with ref
-        // window.location.href = `/orders?ref=${response.reference}`;
       },
       onClose: function () {
         alert("Transaction was not completed, window closed.");
@@ -341,7 +337,7 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* ===== Cart Drawer ===== */}
+      {/* ===== Cart Drawer (scrollable body) ===== */}
       {showCart && (
         <div className="overlay" onClick={() => setShowCart(false)}>
           <aside className="drawer" onClick={(e) => e.stopPropagation()} aria-label="Cart">
@@ -359,84 +355,87 @@ export default function Home() {
               </div>
             </div>
 
-            {cartLines.length === 0 ? (
-              <div className="empty">Your cart is empty.</div>
-            ) : (
-              <div className="lines">
-                {cartLines.map((l) => {
-                  const price = Number(l.product.price) || 0;
-                  return (
-                    <div key={l.product.id} className="line">
-                      <div>
-                        <div className="line__name">{l.product.name}</div>
-                        <div className="line__price">
-                          {currency(price)} × {l.qty}
+            {/* SCROLLS from here to (and including) the small note */}
+            <div className="drawer__body">
+              {cartLines.length === 0 ? (
+                <div className="empty">Your cart is empty.</div>
+              ) : (
+                <div className="lines">
+                  {cartLines.map((l) => {
+                    const price = Number(l.product.price) || 0;
+                    return (
+                      <div key={l.product.id} className="line">
+                        <div>
+                          <div className="line__name">{l.product.name}</div>
+                          <div className="line__price">
+                            {currency(price)} × {l.qty}
+                          </div>
+                        </div>
+
+                        {/* controls on the right: −  +  ✕  (NO qty number between) */}
+                        <div className="qty">
+                          <button className="qtyBtn" onClick={() => sub(l.product.id)} aria-label="Decrease">
+                            −
+                          </button>
+                          <button className="qtyBtn" onClick={() => add(l.product.id)} aria-label="Increase">
+                            +
+                          </button>
+                          <button
+                            className="qtyBtn qtyBtn--danger"
+                            onClick={() => remove(l.product.id)}
+                            aria-label="Remove"
+                          >
+                            ✕
+                          </button>
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+              )}
 
-                      {/* controls on the right: −  +  ✕  (NO qty number between) */}
-                      <div className="qty">
-                        <button className="qtyBtn" onClick={() => sub(l.product.id)} aria-label="Decrease">
-                          −
-                        </button>
-                        <button className="qtyBtn" onClick={() => add(l.product.id)} aria-label="Increase">
-                          +
-                        </button>
-                        <button
-                          className="qtyBtn qtyBtn--danger"
-                          onClick={() => remove(l.product.id)}
-                          aria-label="Remove"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="totals">
+                <div className="row" style={{ marginBottom: 6 }}>
+                  <span>Total</span>
+                  <span className="strong">{currency(cartTotal)}</span>
+                </div>
+
+                {/* Customer details */}
+                <div className="fields">
+                  <input
+                    type="text"
+                    placeholder="Your name"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="input"
+                  />
+                  <input
+                    type="tel"
+                    placeholder="Phone (M-Pesa)"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    className="input"
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email (required)"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    className="input"
+                    required
+                  />
+                </div>
+
+                <button
+                  disabled={cartLines.length === 0 || !customerEmail}
+                  className={`btn ${cartLines.length && customerEmail ? "btn--paystack" : "btn--disabled"}`}
+                  onClick={handlePaystack}
+                >
+                  Pay with M-Pesa (Paystack)
+                </button>
+
+                <div className="note">You’ll be redirected to complete payment securely via Paystack.</div>
               </div>
-            )}
-
-            <div className="totals">
-              <div className="row" style={{ marginBottom: 6 }}>
-                <span>Total</span>
-                <span className="strong">{currency(cartTotal)}</span>
-              </div>
-
-              {/* Customer details */}
-              <div className="fields">
-                <input
-                  type="text"
-                  placeholder="Your name"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  className="input"
-                />
-                <input
-                  type="tel"
-                  placeholder="Phone (M-Pesa)"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  className="input"
-                />
-                <input
-                  type="email"
-                  placeholder="Email (required)"
-                  value={customerEmail}
-                  onChange={(e) => setCustomerEmail(e.target.value)}
-                  className="input"
-                  required
-                />
-              </div>
-
-              <button
-                disabled={cartLines.length === 0 || !customerEmail}
-                className={`btn ${cartLines.length && customerEmail ? "btn--paystack" : "btn--disabled"}`}
-                onClick={handlePaystack}
-              >
-                Pay with M-Pesa (Paystack)
-              </button>
-
-              <div className="note">You’ll be redirected to complete payment securely via Paystack.</div>
             </div>
           </aside>
         </div>
@@ -524,15 +523,16 @@ export default function Home() {
         .footText, .footList { color:#666; }
         .footList { margin:0; padding-left:16px; }
 
-        /* Cart overlay & drawer */
+        /* Cart overlay & drawer (SCROLLABLE BODY) */
         .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 60; display:flex; justify-content:flex-end; }
         .drawer {
-          width: min(520px, 100%); background:#fff; height: auto; max-height: 88vh;
-          margin: 6vh 8px 6vh 8px; border-radius: 16px; border:1px solid #eee;
+          width: min(520px, 100%); background:#fff; max-height: 88vh;
+          margin: 6vh 8px; border-radius: 16px; border:1px solid #eee;
           display:flex; flex-direction:column; overflow:hidden;
         }
         .drawer__top { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid #f0f0f0; position:sticky; top:0; background:#fff; z-index:1; }
-        .lines { padding: 8px 14px; overflow:auto; }
+        .drawer__body { flex:1; min-height:0; overflow:auto; padding: 8px 14px 16px; }
+        .lines { padding: 0; }
         .line { display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px dashed #eee; gap:10px; }
         .line__name { font-weight:800; }
         .line__price { color:#7b8794; font-size:13px; }
@@ -543,7 +543,7 @@ export default function Home() {
         }
         .qtyBtn--danger { background:#fde8ea; border-color:#fad1d7; color:#c81e1e; }
 
-        .totals { padding: 10px 14px 16px; border-top:1px solid #f0f0f0; }
+        .totals { padding-top: 10px; border-top:1px solid #f0f0f0; }
         .row { display:flex; align-items:center; justify-content:space-between; font-weight:800; font-size:20px; margin-bottom:8px; }
         .strong { font-weight:800; }
         .fields { display:grid; gap:8px; margin:8px 0 10px; }
