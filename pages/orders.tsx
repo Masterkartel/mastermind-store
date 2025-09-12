@@ -1,5 +1,5 @@
 // pages/orders.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Head from "next/head";
 
@@ -10,54 +10,67 @@ type OrderItem = {
   price: number;
   img?: string;
 };
-
 type Order = {
-  id: string;                 // e.g., payment reference
-  reference?: string;         // duplicate of id if you want
-  status: "PAID" | "FAILED" | "PENDING";
-  createdAt: string;          // ISO string
+  id: string;               // same as reference
+  reference: string;
+  status: string;           // "PAID" | "FAILED" | "PENDING" | etc.
+  createdAt?: string;       // ISO string
   items: OrderItem[];
-  total: number;              // KES
+  total: number;            // in KES
+  customer?: {
+    name?: string;
+    phone?: string;
+    email?: string;
+  };
 };
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [open, setOpen] = useState<Record<string, boolean>>({});
 
-  // Load orders from localStorage
   useEffect(() => {
     try {
       const raw = localStorage.getItem("mm_orders");
-      if (raw) {
-        const parsed = JSON.parse(raw) as Order[];
-        if (Array.isArray(parsed)) {
-          setOrders(parsed);
-        }
-      }
-    } catch {}
+      const parsed: Order[] = raw ? JSON.parse(raw) : [];
+      // newest first
+      parsed.sort((a, b) => {
+        const ta = a.createdAt ? Date.parse(a.createdAt) : 0;
+        const tb = b.createdAt ? Date.parse(b.createdAt) : 0;
+        return tb - ta;
+      });
+      setOrders(parsed);
+    } catch {
+      setOrders([]);
+    }
   }, []);
 
-  // newest first
-  const sorted = useMemo(
-    () =>
-      [...orders].sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ),
-    [orders]
-  );
+  const currency = (n: number) => `KES ${Math.round(n).toLocaleString("en-KE")}`;
 
-  const fmt = (n: number) => `KES ${Math.round(n).toLocaleString("en-KE")}`;
+  const statusChip = (status: string) => {
+    const s = (status || "").toUpperCase();
+    if (s === "PAID") return <span className="chip chip--paid">COMPLETED</span>;
+    if (s === "FAILED") return <span className="chip chip--failed">FAILED</span>;
+    return <span className="chip chip--pending">PENDING</span>;
+  };
 
-  const toggle = (id: string) => {
-    setExpanded((cur) => (cur === id ? null : id));
+  const fmtDate = (iso?: string) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleString("en-KE", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   return (
-    <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa", minHeight: "100vh" }}>
+    <div className="wrap">
       <Head>
         <title>My Orders • Mastermind</title>
-        <link rel="icon" href="/favicon.ico" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
           rel="stylesheet"
@@ -65,57 +78,46 @@ export default function OrdersPage() {
       </Head>
 
       <header className="topbar">
-        <div className="topbar__inner">
-          <div className="brand">
-            <img src="/favicon.ico" alt="" className="brandIcon" aria-hidden />
-            My Orders
-          </div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <Link href="/" className="btn btn--light small">⬅ Back to Shop</Link>
-          </div>
+        <div className="title">
+          <img src="/favicon.ico" className="logo" alt="" />
+          My Orders
         </div>
+        <Link href="/" className="backBtn">← Back to Shop</Link>
       </header>
 
-      <main className="container" style={{ padding: "16px 12px 40px" }}>
-        {sorted.length === 0 ? (
-          <div className="emptyWrap">
-            <div className="card emptyCard">
-              <div className="h3" style={{ marginBottom: 6 }}>No orders yet</div>
-              <div className="muted">You haven’t placed any orders. Start shopping and your orders will show up here.</div>
-              <div style={{ marginTop: 14 }}>
-                <Link href="/" className="btn btn--accent">Shop now</Link>
-              </div>
-            </div>
+      <main className="container">
+        {orders.length === 0 ? (
+          <div className="empty">
+            No orders yet. <Link href="/">Start shopping</Link>
           </div>
         ) : (
           <div className="list">
-            {sorted.map((o) => {
-              const isOpen = expanded === o.id;
+            {orders.map((o) => {
+              const isOpen = !!open[o.id];
               return (
-                <article key={o.id} className="orderCard">
-                  <button className="orderHead" onClick={() => toggle(o.id)}>
-                    <div className="headLeft">
-                      <div className="orderTitle">
-                        Order <span className="mono">#{o.id}</span>
-                      </div>
-                      <div className="muted smallText">
-                        {new Date(o.createdAt).toLocaleString()}
-                      </div>
+                <article key={o.id} className={`card ${isOpen ? "open" : ""}`}>
+                  <button
+                    className="cardHead"
+                    onClick={() => setOpen((m) => ({ ...m, [o.id]: !m[o.id] }))}
+                    aria-expanded={isOpen}
+                  >
+                    <div className="left">
+                      <div className="ordId">Order #{o.id}</div>
+                      <div className="date">{fmtDate(o.createdAt) || "\u2014"}</div>
                     </div>
-                    <div className="headRight">
-                      <span className={`badge ${o.status.toLowerCase()}`}>
-                        {o.status === "PAID" ? "PAID" : o.status === "FAILED" ? "FAILED" : "PENDING"}
-                      </span>
-                      <div className="total">{fmt(o.total)}</div>
-                      <div className={`chev ${isOpen ? "up" : "down"}`}>▾</div>
+                    <div className="right">
+                      {statusChip(o.status)}
+                      <div className="total">{currency(o.total)}</div>
+                      <div className="chev">{isOpen ? "▴" : "▾"}</div>
                     </div>
                   </button>
 
-                  {isOpen && (
-                    <div className="orderBody">
-                      <ul className="items">
-                        {o.items.map((it, i) => (
-                          <li key={`${o.id}-${i}`} className="row">
+                  <div className="body">
+                    <ul className="items">
+                      {o.items.map((it, i) => {
+                        const lineTotal = it.price * it.qty;
+                        return (
+                          <li key={`${it.id}-${i}`} className="row">
                             <div className="thumb">
                               {it.img ? (
                                 <img src={it.img} alt={it.name} />
@@ -125,32 +127,33 @@ export default function OrdersPage() {
                             </div>
                             <div className="info">
                               <div className="name">{it.name}</div>
-                              <div className="muted">
-                                {fmt(it.price)} × {it.qty} = <b>{fmt(it.price * it.qty)}</b>
+                              <div className="meta">
+                                {currency(it.price)} × {it.qty} ={" "}
+                                <b>{currency(lineTotal)}</b>
                               </div>
                             </div>
                           </li>
-                        ))}
-                      </ul>
+                        );
+                      })}
+                    </ul>
 
-                      <div className="meta">
-                        <div className="metaRow">
-                          <span className="muted">Reference</span>
-                          <span className="mono">{o.reference || o.id}</span>
-                        </div>
-                        <div className="metaRow">
-                          <span className="muted">Status</span>
-                          <span className={`badge ${o.status.toLowerCase()}`}>
-                            {o.status}
-                          </span>
-                        </div>
-                        <div className="metaRow">
-                          <span className="muted">Total</span>
-                          <span className="strong">{fmt(o.total)}</span>
-                        </div>
+                    <dl className="summary">
+                      <div>
+                        <dt>Reference</dt>
+                        <dd>{o.reference}</dd>
                       </div>
-                    </div>
-                  )}
+                      <div>
+                        <dt>Status</dt>
+                        <dd>
+                          {statusChip(o.status)}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Total</dt>
+                        <dd className="bold">{currency(o.total)}</dd>
+                      </div>
+                    </dl>
+                  </div>
                 </article>
               );
             })}
@@ -159,78 +162,64 @@ export default function OrdersPage() {
       </main>
 
       <style jsx>{`
-        .container { max-width: 1100px; margin: 0 auto; }
-
-        .topbar { position: sticky; top: 0; z-index: 40; background: #111; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); }
-        .topbar__inner { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; padding: 10px 12px; }
-        .brand { font-weight: 700; letter-spacing: .2px; display:flex; align-items:center; gap:8px; }
-        .brandIcon { width: 20px; height: 20px; border-radius: 4px; }
-
-        .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:12px; font-weight:700; text-decoration:none; cursor:pointer; }
-        .btn--light { background:#fff; color:#111; padding:8px 14px; border:1px solid #eee; }
-        .btn--accent { background:#f4d03f; color:#111; padding:10px 16px; border:none; }
-        .small { padding:8px 12px; font-size: 14px; }
-
-        .emptyWrap { display:flex; justify-content:center; padding-top: 24px; }
-        .emptyCard { max-width:560px; text-align:center; }
-
-        .list { display: grid; gap: 12px; padding-top: 16px; }
-        .orderCard { background:#fff; border:1px solid #eee; border-radius:14px; overflow:hidden; }
-
-        .orderHead {
-          width: 100%;
-          background: #fff;
-          border: none;
-          padding: 14px 14px;
-          display: grid;
-          grid-template-columns: 1fr auto;
-          gap: 10px;
-          align-items: center;
-          cursor: pointer;
-          text-align: left;
+        :global(html, body) { font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+        .wrap { background:#fafafa; min-height:100vh; }
+        .container { max-width:900px; margin:0 auto; padding:12px; }
+        .topbar {
+          position:sticky; top:0; z-index:5;
+          display:flex; justify-content:space-between; align-items:center;
+          background:#111; color:#fff; padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.08);
         }
-        .orderHead:hover { background: #fcfcfc; }
-
-        .headLeft { display:flex; flex-direction:column; gap:4px; }
-        .orderTitle { font-weight: 700; }
-        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-
-        .headRight {
-          display: grid;
-          grid-auto-flow: column;
-          align-items: center;
-          gap: 10px;
+        .title { display:flex; align-items:center; gap:8px; font-weight:700; }
+        .logo { width:22px; height:22px; border-radius:4px; }
+        .backBtn {
+          background:#fff; color:#111; text-decoration:none; font-weight:600;
+          padding:8px 12px; border-radius:10px; border:1px solid #eee;
         }
-        .chev { transform: rotate(0deg); transition: transform .15s ease; color:#777; }
-        .chev.up { transform: rotate(180deg); }
 
-        .badge {
-          padding: 4px 10px;
-          border-radius: 999px;
-          font-size: 12px;
-          font-weight: 700;
+        .empty { margin:24px 0; color:#555; }
+        .list { display:grid; gap:14px; }
+
+        .card {
+          background:#fff; border:1px solid #eee; border-radius:14px; overflow:hidden;
+          box-shadow:0 1px 0 rgba(0,0,0,.03);
         }
-        .badge.paid { background: #e8f9ef; color: #0a7a3b; border: 1px solid #b9eccf; }
-        .badge.failed { background: #ffecec; color: #b40000; border: 1px solid #ffb6b6; }
-        .badge.pending { background: #f2f2f2; color: #555; border: 1px solid #e5e5e5; }
+        .cardHead {
+          width:100%; display:flex; align-items:center; justify-content:space-between;
+          padding:12px; background:#fff; border:none; text-align:left; cursor:pointer;
+        }
+        .left { display:flex; flex-direction:column; gap:4px; }
+        .ordId { font-weight:700; }
+        .date { color:#888; font-size:12px; }
+        .right { display:flex; align-items:center; gap:10px; }
+        .total { font-weight:800; color:#0b1; }
+        .chev { color:#888; }
 
-        .total { font-weight: 700; }
+        .chip {
+          padding:4px 8px; border-radius:999px; font-size:12px; font-weight:700;
+          border:1px solid transparent; line-height:1;
+        }
+        .chip--paid { background:#e9f8ef; color:#0a7a3c; border-color:#c9efd8; }
+        .chip--failed { background:#ffecec; color:#c22727; border-color:#ffd5d5; }
+        .chip--pending { background:#f2f2f2; color:#555; border-color:#e7e7e7; }
 
-        .orderBody { border-top: 1px solid #f0f0f0; padding: 10px 14px 14px; display: grid; gap: 12px; }
-
-        .items { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
-        .row { display: grid; grid-template-columns: 56px 1fr; gap: 10px; align-items: center; }
-        .thumb { width:56px; height:56px; border-radius:10px; overflow:hidden; background:#f4f4f4; display:flex; align-items:center; justify-content:center; border:1px solid #eee; }
+        .body { padding:10px 12px 14px; border-top:1px solid #f2f2f2; }
+        .items { list-style:none; margin:0; padding:0; display:grid; gap:10px; }
+        .row { display:flex; gap:10px; align-items:center; border:1px solid #f1f1f1; border-radius:12px; padding:10px; }
+        .thumb { width:54px; height:54px; border-radius:10px; overflow:hidden; background:#f7f7f7; display:flex; align-items:center; justify-content:center; }
         .thumb img { width:100%; height:100%; object-fit:cover; }
-        .ph { width:100%; height:100%; background: linear-gradient(180deg,#f7f7f7,#ececec); }
+        .ph { width:100%; height:100%; background:#f0f0f0; }
+        .info { display:flex; flex-direction:column; gap:4px; }
+        .name { font-weight:700; }
+        .meta { color:#666; font-size:13px; }
 
-        .info .name { font-weight: 600; }
-        .muted { color:#777; }
-        .smallText { font-size: 12px; }
-
-        .meta { border-top: 1px dashed #eee; padding-top: 8px; display: grid; gap: 6px; }
-        .metaRow { display: grid; grid-template-columns: 120px 1fr; gap: 8px; align-items: center; }
-        .strong { font-weight: 700; }
+        .summary {
+          display:grid; gap:10px; margin-top:12px;
+          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        }
+        dt { color:#777; font-size:13px; }
+        dd { margin:2px 0 0; }
+        .bold { font-weight:800; }
       `}</style>
     </div>
   );
