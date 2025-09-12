@@ -1,7 +1,6 @@
 // pages/index.tsx
 import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
-import Link from "next/link";
 
 type Product = {
   id: string;
@@ -19,10 +18,6 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [showCart, setShowCart] = useState(false);
   const [cartMap, setCartMap] = useState<Record<string, number>>({});
-
-  // Checkout fields
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
 
   // ---- Load products.json ----
@@ -91,21 +86,10 @@ export default function Home() {
     [cartLines]
   );
 
-  // ---- Search filter ----
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter((p) => {
-      const hay =
-        `${p.name} ${p.sku ?? ""} ${p.id}`.toLowerCase().replace(/\s+/g, " ");
-      return hay.includes(q);
-    });
-  }, [products, query]);
-
   const currency = (n: number) =>
     `KES ${Math.round(n).toLocaleString("en-KE")}`;
 
-  // ---- Paystack handler (uses customerEmail) ----
+  // ---- Paystack handler ----
   const handlePaystack = () => {
     const PaystackPop =
       typeof window !== "undefined"
@@ -121,54 +105,18 @@ export default function Home() {
       return;
     }
 
-    const publicKey =
-      "pk_live_10bc141ee6ae2ae48edcd102c06540ffe1cb3ae6"; // LIVE PUBLIC KEY
-
     const handler = PaystackPop.setup({
-      key: publicKey,
+      key: "pk_live_10bc141ee6ae2ae48edcd102c06540ffe1cb3ae6",
       email: customerEmail,
-      amount: Math.round(cartTotal) * 100, // amount in kobo (KES x 100)
+      amount: Math.round(cartTotal) * 100, // kobo (KES × 100)
       currency: "KES",
-      metadata: {
-        custom_fields: [
-          { display_name: "Name", variable_name: "customer_name", value: customerName || "N/A" },
-          { display_name: "Phone", variable_name: "customer_phone", value: customerPhone || "N/A" },
-        ],
-      },
       callback: function (response: any) {
-        // Save order to localStorage
-        try {
-          const prev = JSON.parse(localStorage.getItem("mm_orders") || "[]");
-          const order = {
-            id: response.reference,
-            reference: response.reference,
-            status: "PAID",
-            createdAt: new Date().toISOString(),
-            items: cartLines.map((l) => ({
-              id: l.product.id,
-              name: l.product.name,
-              qty: l.qty,
-              price: Number(l.product.price) || 0,
-              img: l.product.img,
-            })),
-            total: Math.round(cartTotal),
-            customer: {
-              name: customerName,
-              phone: customerPhone,
-              email: customerEmail,
-            },
-          };
-          localStorage.setItem("mm_orders", JSON.stringify([...prev, order]));
-        } catch {}
-
         alert("Payment complete! Reference: " + response.reference);
         clear();
         setShowCart(false);
-        // Optional: redirect to orders page
-        // window.location.href = "/orders";
       },
       onClose: function () {
-        // User closed the widget; no order saved
+        alert("Transaction was not completed, window closed.");
       },
     });
 
@@ -184,11 +132,6 @@ export default function Home() {
           content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
         <link rel="icon" href="/favicon.ico" />
-        {/* Inter font (normal weights to avoid “too bold” look) */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
-          rel="stylesheet"
-        />
         {/* Paystack script */}
         <script src="https://js.paystack.co/v1/inline.js" async></script>
       </Head>
@@ -198,15 +141,15 @@ export default function Home() {
         <div className="topbar__inner">
           <div className="brand">
             <img src="/favicon.ico" alt="" className="brandIcon" aria-hidden />
-            <span className="brandName">Mastermind Electricals & Electronics</span>
+            Mastermind Electricals & Electronics
           </div>
-          <div className="topActions">
-            <Link href="/orders" className="btn btn--light small">
-              My Orders
-            </Link>
+          <div className="topbar__actions">
+            <a href="/orders" className="pillBtn">
+              📑 My Orders
+            </a>
             <button
               onClick={() => setShowCart(true)}
-              className="cartBtn"
+              className="pillBtn"
               aria-label="Open cart"
             >
               🛒 Cart: {cartCount}
@@ -319,7 +262,19 @@ export default function Home() {
       {/* ===== Product Grid ===== */}
       <section className="container" style={{ paddingBottom: 24 }}>
         <div className="productGrid">
-          {filtered.map((p) => {
+          {useMemo(() => {
+            const q = query.trim().toLowerCase();
+            const list = !q
+              ? products
+              : products.filter((p) => {
+                  const hay =
+                    `${p.name} ${p.sku ?? ""} ${p.id}`
+                      .toLowerCase()
+                      .replace(/\s+/g, " ");
+                  return hay.includes(q);
+                });
+            return list;
+          }, [products, query]).map((p) => {
             const price = Number(p.price) || 0;
             const stock = Number(p.stock) || 0;
             return (
@@ -396,7 +351,7 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* ===== Cart Drawer (redesigned) ===== */}
+      {/* ===== Cart Drawer ===== */}
       {showCart && (
         <div className="overlay" onClick={() => setShowCart(false)}>
           <aside
@@ -405,7 +360,7 @@ export default function Home() {
             aria-label="Cart"
           >
             <div className="drawer__top">
-              <div className="h4" style={{ fontWeight: 700 }}>Your Cart</div>
+              <div className="h4">Your Cart</div>
               <div style={{ display: "flex", gap: 8 }}>
                 {cartCount > 1 && (
                   <button
@@ -425,102 +380,79 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="drawer__body">
-              {cartLines.length === 0 ? (
-                <div className="empty">Your cart is empty.</div>
-              ) : (
-                <div className="lines">
-                  {cartLines.map((l) => {
-                    const price = Number(l.product.price) || 0;
-                    const lineTotal = price * l.qty;
-                    return (
-                      <div key={l.product.id} className="line">
-                        <div className="lineInfo">
-                          <div className="line__name">{l.product.name}</div>
-                          <div className="line__meta">
-                            {currency(price)} × {l.qty} ={" "}
-                            <b>{currency(lineTotal)}</b>
-                          </div>
-                        </div>
-
-                        <div className="qty">
-                          <button
-                            className="qtyBtn"
-                            onClick={() => sub(l.product.id)}
-                            aria-label="Decrease"
-                            title="Decrease"
-                          >
-                            −
-                          </button>
-                          <div className="qtyNum">{l.qty}</div>
-                          <button
-                            className="qtyBtn"
-                            onClick={() => add(l.product.id)}
-                            aria-label="Increase"
-                            title="Increase"
-                          >
-                            +
-                          </button>
-                          <button
-                            className="qtyBtn removeBtn"
-                            onClick={() => remove(l.product.id)}
-                            aria-label="Remove"
-                            title="Remove"
-                          >
-                            ❌
-                          </button>
+            {cartLines.length === 0 ? (
+              <div className="empty">Your cart is empty.</div>
+            ) : (
+              <div className="lines">
+                {cartLines.map((l) => {
+                  const price = Number(l.product.price) || 0;
+                  return (
+                    <div key={l.product.id} className="line">
+                      <div>
+                        <div className="line__name">{l.product.name}</div>
+                        <div className="line__price">
+                          {currency(price)} × {l.qty}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                      <div className="qty">
+                        <button
+                          className="qtyBtn"
+                          onClick={() => sub(l.product.id)}
+                          aria-label="Decrease"
+                        >
+                          −
+                        </button>
+                        <div className="qtyNum">{l.qty}</div>
+                        <button
+                          className="qtyBtn"
+                          onClick={() => add(l.product.id)}
+                          aria-label="Increase"
+                        >
+                          +
+                        </button>
+                        <button
+                          className="qtyBtn"
+                          onClick={() => remove(l.product.id)}
+                          aria-label="Remove"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
-              <div className="note">
-                Please confirm quantities and contact details. You’ll be redirected to Paystack to complete payment.
+            <div className="totals">
+              <div className="row">
+                <span>Total</span>
+                <span className="strong">{currency(cartTotal)}</span>
               </div>
 
-              <div className="totals">
-                <div className="row">
-                  <span>Total</span>
-                  <span className="strong">{currency(cartTotal)}</span>
-                </div>
+              {/* Customer email for Paystack */}
+              <input
+                type="email"
+                placeholder="Enter your email"
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+                className="input"
+                style={{ marginTop: 6 }}
+                required
+              />
 
-                {/* Checkout fields */}
-                <div className="fields">
-                  <input
-                    type="text"
-                    placeholder="Full name"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    className="input"
-                  />
-                  <input
-                    type="tel"
-                    placeholder="Phone (e.g., 0715 151 010)"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    className="input"
-                  />
-                  <input
-                    type="email"
-                    placeholder="Email (required for Paystack)"
-                    value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                    className="input"
-                    required
-                  />
-                </div>
+              <button
+                disabled={cartLines.length === 0 || !customerEmail}
+                className={`btn ${
+                  cartLines.length && customerEmail ? "btn--paystack" : "btn--disabled"
+                }`}
+                onClick={handlePaystack}
+              >
+                Pay with M-Pesa (Paystack)
+              </button>
 
-                <button
-                  disabled={cartLines.length === 0 || !customerEmail}
-                  className={`btn ${
-                    cartLines.length && customerEmail ? "btn--paystack" : "btn--disabled"
-                  }`}
-                  onClick={handlePaystack}
-                >
-                  Pay with Paystack
-                </button>
+              <div className="note">
+                You’ll be redirected to complete payment securely via Paystack.
               </div>
             </div>
           </aside>
@@ -542,142 +474,94 @@ export default function Home() {
       <style jsx>{`
         .container { max-width: 1200px; margin: 0 auto; padding: 0 12px; }
 
-        .topbar { position: sticky; top: 0; z-index: 50; background: #111; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); }
-        .topbar__inner { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 12px; }
-        .brand { display:flex; align-items:center; gap:8px; }
+        /* Topbar full-width black with pill buttons */
+        .topbar { position: sticky; top: 0; z-index: 50; background: #111; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); width: 100%; }
+        .topbar__inner { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 16px; }
+        .brand { font-weight: 800; letter-spacing: .3px; display:flex; align-items:center; gap:8px; }
         .brandIcon { width: 22px; height: 22px; border-radius: 4px; }
-        .brandName { font-weight: 700; letter-spacing: .2px; }
-        .topActions { display:flex; gap: 8px; }
-
-        .cartBtn { background:#f4d03f; color:#111; border:none; padding:8px 12px; border-radius:12px; font-weight:700; cursor:pointer; white-space:nowrap; }
+        .topbar__actions { display:flex; gap:10px; }
+        .pillBtn { background:#f4d03f; color:#111; border:none; padding:8px 12px; border-radius:12px; font-weight:800; cursor:pointer; white-space:nowrap; text-decoration:none; display:inline-flex; align-items:center; }
 
         .hero { position: relative; background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; overflow:hidden; }
         .hero__bubble { position:absolute; right:-60px; top:-40px; width:240px; height:240px; background:#f4d03f; opacity:.28; border-radius:9999px; z-index:0; }
-        .eyebrow { color:#666; font-weight:600; font-size:12px; position:relative; z-index:1; }
-        .h1 { margin:6px 0 8px; font-size:28px; line-height:1.15; letter-spacing:-.2px; position:relative; z-index:1; font-weight:700; }
-        .h3 { margin:4px 0 8px; font-size:20px; font-weight:700; }
-        .h4 { font-weight:700; font-size:18px; }
-        .lead { color:#444; font-size:15px; position:relative; z-index:1; font-weight:400; }
-        .muted { color:#777; }
+        .eyebrow { color:#666; font-weight:700; font-size:12px; position:relative; z-index:1; }
+        .h1 { margin:6px 0 8px; font-size:28px; line-height:1.15; letter-spacing:-.2px; position:relative; z-index:1; }
+        .h3 { margin:4px 0 8px; font-size:20px; font-weight:800; }
+        .h4 { font-weight:800; font-size:18px; }
+        .lead { color:#444; font-size:15px; position:relative; z-index:1; }
+        .muted { color:#888; }
         .center { text-align:center; }
 
         .twoCol { display:grid; grid-template-columns:1fr; gap:12px; margin-top:12px; }
-        @media (min-width: 900px) {
-          .twoCol { grid-template-columns: 1fr 1fr; }
-        }
+        @media (min-width: 900px) { .twoCol { grid-template-columns: 1fr 1fr; } }
 
         .shopCard { position:relative; background:#111; color:#fff; border-radius:16px; padding:16px; overflow:hidden; text-align:center; }
         .shopCard__bubble { position:absolute; right:-50px; bottom:-70px; width:180px; height:180px; background:#f4d03f; opacity:.25; border-radius:9999px; }
-        .shopCard__title { font-weight:700; margin-bottom:6px; }
+        .shopCard__title { font-weight:800; margin-bottom:6px; }
         .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
         .actions--center { justify-content:center; }
 
         .infoCard { position:relative; background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; overflow:hidden; }
         .infoCard__bubble { position:absolute; right:-40px; bottom:-60px; width:160px; height:160px; background:#f4d03f; opacity:.25; border-radius:9999px; }
 
-        .servicesHeader { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-weight:700; font-size:20px; margin:4px 0 12px; justify-content:center; }
+        .servicesHeader { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-weight:800; font-size:20px; margin:4px 0 12px; justify-content:center; }
         .mpesaLogo { height:60px; width:auto; display:block; }
         .amp { font-size:20px; color:#222; line-height:1; }
-        .servicesText { font-size:20px; font-weight:700; color:#111; }
+        .servicesText { font-size:20px; font-weight:800; color:#111; }
 
-        /* Gas mini cards, centered */
         .cylinders { display:flex; justify-content:center; gap:14px; flex-wrap:wrap; }
         .cylCard { background:#fff; border:1px solid #eee; border-radius:12px; padding:12px; width:min(220px, 46%); display:flex; flex-direction:column; align-items:center; gap:8px; }
         .cylImg { height:74px; width:auto; object-fit:contain; }
         .cylImg--tight { margin-bottom:-8px; }
 
-        .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:12px; font-weight:700; text-decoration:none; cursor:pointer; }
+        .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:12px; font-weight:800; text-decoration:none; cursor:pointer; }
         .btn--accent { background:#f4d03f; color:#111; padding:10px 14px; border:none; }
         .btn--light { background:#fff; color:#111; padding:10px 14px; border:1px solid #eee; }
         .btn--dark { background:#111; color:#fff; padding:10px 16px; border:none; }
         .btn--ghost { background:#fff; color:#111; border:1px solid #ddd; padding:8px 12px; border-radius:10px; }
         .btn--disabled { background:#eee; color:#888; pointer-events:none; }
-        .btn--paystack { background:#45c37a; color:#fff; border:none; padding:12px 16px; border-radius:12px; font-weight:800; }
-
-        .small { padding:8px 14px; font-weight:600; }
+        .btn--paystack { background:#3bb75e; color:#fff; border:none; padding:12px 16px; border-radius:12px; font-weight:800; }
+        .small { padding:8px 14px; }
 
         .search { width:100%; height:44px; padding:0 14px; border-radius:12px; border:1px solid #ddd; background:#fff; font-size:15px; outline:none; }
 
         .productGrid { display:grid; gap:16px; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
         .card { background:#fff; border:1px solid #eee; border-radius:16px; padding:12px; display:grid; gap:10px; box-shadow:0 1px 0 rgba(0,0,0,.03); }
         .card__img { height:160px; background:#f3f3f3; border-radius:14px; overflow:hidden; display:flex; align-items:center; justify-content:center; }
-        .sku { color:#777; font-size:12px; font-weight:400; }
-        .name { font-weight:700; }
-        .price { color:#111; font-weight:700; }
-        .stock { color:#666; font-size:12px; font-weight:400; }
+        .sku { color:#777; font-size:12px; }
+        .name { font-weight:800; }
+        .price { color:#111; font-weight:800; }
+        .stock { color:#666; font-size:12px; }
 
         .footer { border-top:1px solid #eaeaea; padding:18px 0 12px; background:#fafafa; }
         .footerGrid { display:grid; grid-template-columns:1fr; gap:16px; padding:14px 12px; }
-        @media (min-width: 900px) {
-          .footerGrid { grid-template-columns: 2fr 1fr 1fr; }
-        }
-        .footTitle { font-weight:700; margin-bottom:4px; }
-        .footText, .footList, .muted { font-weight:400; }
-        .footList { margin:0; padding-left:16px; color:#444; }
+        @media (min-width: 900px) { .footerGrid { grid-template-columns: 2fr 1fr 1fr; } }
+        .footTitle { font-weight:800; margin-bottom:6px; }
+        .footText { color:#555; }
+        .footList { list-style:none; padding:0; margin:0; color:#555; display:grid; gap:6px; }
 
-        /* ===== Cart Drawer ===== */
-        .overlay {
-          position: fixed; inset: 0; background: rgba(0,0,0,.35);
-          display: flex; justify-content: flex-end; z-index: 60;
-        }
-        .drawer {
-          background:#fff; width:min(520px, 100%); height:auto;
-          margin: 24px 12px; border-radius:16px; border:1px solid #eee;
-          display:flex; flex-direction:column; max-height: 88vh; overflow:hidden;
-        }
-        .drawer__top {
-          padding: 12px; border-bottom: 1px solid #f0f0f0;
-          display:flex; align-items:center; justify-content:space-between;
-          background:#fff;
-        }
-        .drawer__body {
-          padding: 10px 12px 14px; display:flex; flex-direction:column; gap:12px;
-          overflow: auto;
-        }
+        /* Drawer */
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: grid; place-items: center; padding: 10px; z-index: 70; }
+        .drawer { width: min(560px, 100%); background:#fff; border-radius:16px; border:1px solid #eee; max-height: 90vh; overflow: hidden; display: grid; grid-template-rows: auto 1fr auto; }
+        .drawer__top { display:flex; align-items:center; justify-content:space-between; padding:14px 14px 10px; border-bottom:1px dashed #eee; }
+        .empty { padding: 14px; color:#666; }
+        .lines { padding: 4px 14px 10px; display: grid; gap: 10px; overflow: auto; }
+        .line { display:flex; align-items:center; justify-content:space-between; border-bottom:1px dashed #eee; padding: 10px 0; }
+        .line__name { font-weight:800; }
+        .line__price { color:#666; font-size:12px; margin-top:4px; }
+        .qty { display:flex; align-items:center; gap:8px; }
+        .qtyBtn { height:36px; width:36px; border-radius:10px; border:1px solid #eee; background:#f6f7f8; cursor:pointer; font-weight:800; }
+        .qtyNum { min-width: 20px; text-align:center; }
 
-        .empty { color:#777; text-align:center; padding: 16px 6px; }
-
-        .lines { display:grid; gap:10px; }
-        .line {
-          display:grid; grid-template-columns: 1fr auto; gap: 10px;
-          align-items:center; border:1px solid #f1f1f1; border-radius:12px;
-          padding: 10px; background:#fff;
-        }
-        .lineInfo { display:flex; flex-direction:column; gap:4px; }
-        .line__name { font-weight:700; }
-        .line__meta { color:#666; font-size:13px; }
-
-        .qty { display:flex; align-items:center; gap:6px; }
-        .qtyBtn {
-          background:#f5f5f5; border:1px solid #e8e8e8; border-radius:10px;
-          min-width: 34px; height: 34px; display:flex; align-items:center; justify-content:center;
-          cursor:pointer; font-weight:700;
-        }
-        .qtyNum { min-width: 22px; text-align:center; }
-        .removeBtn { background:#fff0f0; border-color:#ffd9d9; }
-
-        .note {
-          color:#666; font-size:12px; line-height:1.4; background:#fafafa;
-          border:1px dashed #e7e7e7; padding:8px 10px; border-radius:10px;
-        }
-
-        .totals { display:grid; gap:10px; border-top:1px solid #f0f0f0; padding-top:10px; }
-        .row { display:flex; align-items:center; justify-content:space-between; }
+        .totals { padding: 10px 14px 16px; border-top:1px dashed #eee; display:grid; gap:10px; }
+        .row { display:flex; align-items:center; justify-content:space-between; font-weight:800; }
         .strong { font-weight:800; }
-
-        .fields { display:grid; gap:8px; margin-top:6px; }
-        .input {
-          width:100%; height:42px; padding:0 12px; border-radius:10px; border:1px solid #ddd;
-          font-size:14px; outline:none; background:#fff;
-        }
+        .input { width:100%; height:44px; border:1px solid #ddd; border-radius:12px; padding:0 12px; }
+        .note { color:#6b7280; font-size:12px; line-height:1.3; }
 
         /* WhatsApp FAB */
-        .waFab {
-          position: fixed; right: 14px; bottom: 14px; z-index: 55;
-          width: 56px; height: 56px; display:flex; align-items:center; justify-content:center;
-          background:#25D366; border-radius:9999px; box-shadow: 0 6px 20px rgba(0,0,0,.18);
-        }
-        .waIcon { width: 30px; height: 30px; }
+        .waFab { position: fixed; right: 16px; bottom: 16px; width: 56px; height: 56px; border-radius: 9999px; background: #25D366; display:grid; place-items:center; box-shadow: 0 10px 25px rgba(0,0,0,.18); z-index:60; }
+        .waIcon { width: 28px; height: 28px; filter: brightness(0) invert(1); }
       `}</style>
     </div>
   );
