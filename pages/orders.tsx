@@ -10,16 +10,22 @@ type OrderItem = {
 
 type Order = {
   id: string;
-  reference?: string;        // same as order number when paid
-  createdAt?: string;        // stored or derived
+  reference?: string;
+  createdAt?: string;
   total: number;
   items: OrderItem[];
 };
 
-const GREEN = "#4fd18b";     // previous lighter green you liked
+const GREEN = "#4fd18b";      // (header pill) keep as before
 const GREY  = "#bfc4cc";
 const RED   = "#e85d5d";
 const COPY  = "#f4d03f";
+
+// Lighter colors for STATUS row (only)
+const STATUS_BG_GREEN = "#e9fbf2";
+const STATUS_TXT_GREEN = "#0b7a43";
+const STATUS_BG_RED = "#fdeaea";
+const STATUS_TXT_RED = "#a33a3a";
 
 const fmtDateTime = (v?: string) => {
   const d = v ? new Date(v) : new Date();
@@ -31,6 +37,18 @@ const fmtDateTime = (v?: string) => {
   const mi = pad(d.getMinutes());
   const ss = pad(d.getSeconds());
   return `${dd}/${mm}/${yy}, ${hh}:${mi}:${ss}`;
+};
+
+// Ensure relative /public paths render anywhere
+const resolveImg = (src?: string) => {
+  if (!src) return "https://via.placeholder.com/56x56.png?text=%20";
+  if (/^https?:\/\//i.test(src)) return src;
+  if (typeof window !== "undefined") {
+    const base = window.location.origin;
+    if (src.startsWith("/")) return base + src;
+    return base + "/" + src.replace(/^\.?\//, "");
+  }
+  return src;
 };
 
 const HeaderPill = ({ reference }: { reference?: string }) => {
@@ -53,11 +71,13 @@ const HeaderPill = ({ reference }: { reference?: string }) => {
 
 const StatusPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
+  const bg = paid ? STATUS_BG_GREEN : STATUS_BG_RED;
+  const color = paid ? STATUS_TXT_GREEN : STATUS_TXT_RED;
   return (
     <span
       style={{
-        background: paid ? GREEN : RED,
-        color: "#fff",
+        background: bg,
+        color,
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
@@ -82,13 +102,10 @@ export default function OrdersPage() {
     } catch {
       parsed = [];
     }
-
-    // normalize createdAt into our display format (once for UI only)
     const normalized = parsed.map((o) => ({
       ...o,
       createdAt: fmtDateTime(o.createdAt),
     }));
-
     setOrders(normalized);
   }, []);
 
@@ -195,7 +212,6 @@ export default function OrdersPage() {
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                       <span style={{ color: "#666" }}>Order</span>
                       <span style={{ fontWeight: 800 }}>#{order.id}</span>
-                      {/* date is no longer in header */}
                     </div>
                     <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                       <HeaderPill reference={order.reference} />
@@ -211,7 +227,10 @@ export default function OrdersPage() {
                       {/* Item(s) */}
                       {order.items.map((it, i) => {
                         const price = Number(it.price) || 0;
-                        const qty = Number(it.quantity) || 0;
+                        // default qty to 1 if empty/0 to avoid "× 0" or NaN
+                        const qty = Number(
+                          (it.quantity ?? 1) === 0 ? 1 : it.quantity ?? 1
+                        ) || 1;
                         const lineTotal = Math.round(price * qty);
                         return (
                           <div
@@ -224,10 +243,7 @@ export default function OrdersPage() {
                             }}
                           >
                             <img
-                              src={
-                                it.image ||
-                                "https://via.placeholder.com/56x56.png?text=%20"
-                              }
+                              src={resolveImg(it.image)}
                               alt={it.name}
                               style={{
                                 width: 56,
@@ -247,7 +263,6 @@ export default function OrdersPage() {
                                   KES {lineTotal}
                                 </span>
                               </div>
-                              {/* date sits under the item */}
                               {order.createdAt && (
                                 <div style={{ color: "#999", fontSize: 12, marginTop: 2 }}>
                                   {order.createdAt}
@@ -302,13 +317,13 @@ export default function OrdersPage() {
                         )}
                       </div>
 
-                      {/* Status */}
+                      {/* Status (lighter colors) */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ color: "#777" }}>Status</span>
                         <StatusPill reference={order.reference} />
                       </div>
 
-                      {/* Total (amount moved next to label, not far right) */}
+                      {/* Total (next to label) */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ color: "#777" }}>Total</span>
                         <span style={{ fontWeight: 800 }}>
@@ -325,4 +340,4 @@ export default function OrdersPage() {
       </div>
     </div>
   );
-                            }
+}
