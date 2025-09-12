@@ -20,7 +20,7 @@ const GREEN = "#4fd18b";      // header pill (completed)
 const GREY  = "#bfc4cc";      // header pill (pending)
 const COPY  = "#f4d03f";
 
-// Lighter colors for STATUS row (requested)
+// Lighter colors for STATUS row
 const STATUS_BG_GREEN = "#e9fbf2";
 const STATUS_TXT_GREEN = "#0b7a43";
 const STATUS_BG_RED = "#fdeaea";
@@ -38,19 +38,17 @@ const fmtDateTime = (v?: string) => {
   return `${dd}/${mm}/${yy}, ${hh}:${mi}:${ss}`;
 };
 
-// Fallback image guesses from item name
+// Guess public image from product name (used as fallback)
 const guessImageFromName = (name?: string): string | undefined => {
   if (!name) return undefined;
   const n = name.toLowerCase();
-
   if (n.includes("torch")) return "/torch.png";
   if (n.includes("6kg") || n.includes("6 kg")) return "/6kg.png";
   if (n.includes("13kg") || n.includes("13 kg")) return "/13kg.png";
   if (n.includes("bulb")) return "/bulb.png";
   if (n.includes("tv") || n.includes("television")) return "/tv.png";
   if (n.includes("woofer") || n.includes("speaker")) return "/woofer.png";
-
-  return undefined; // fallback to placeholder later
+  return undefined;
 };
 
 // Ensure relative /public paths render anywhere
@@ -112,11 +110,7 @@ export default function OrdersPage() {
     if (typeof window === "undefined") return;
     const raw = localStorage.getItem("orders");
     let parsed: Order[] = [];
-    try {
-      parsed = raw ? JSON.parse(raw) : [];
-    } catch {
-      parsed = [];
-    }
+    try { parsed = raw ? JSON.parse(raw) : []; } catch { parsed = []; }
     const normalized = parsed.map((o) => ({
       ...o,
       createdAt: fmtDateTime(o.createdAt),
@@ -225,11 +219,18 @@ export default function OrdersPage() {
                     }}
                   >
                     <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                      <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 8,
+                          alignItems: "baseline",
+                          flexWrap: "wrap",
+                        }}
+                      >
                         <span style={{ color: "#666" }}>Order</span>
                         <span style={{ fontWeight: 800 }}>#{order.id}</span>
                       </div>
-                      {/* DATE now under order number on small screens */}
+                      {/* DATE sits under order number on small screens */}
                       <div style={{ width: "100%" }}>
                         <span style={{ color: "#999", fontSize: 12 }}>
                           {order.createdAt}
@@ -253,9 +254,11 @@ export default function OrdersPage() {
                         const qty =
                           Number((it.quantity ?? 1) === 0 ? 1 : it.quantity ?? 1) ||
                           1;
-                        const chosen =
-                          it.image || guessImageFromName(it.name) || undefined;
-                        const imgSrc = resolveImg(chosen);
+                        const picked = it.image || guessImageFromName(it.name);
+                        const imgSrc = resolveImg(picked);
+                        const fallbackSrc =
+                          resolveImg(guessImageFromName(it.name) || "/torch.png");
+
                         const lineTotal = Math.round(price * qty);
                         return (
                           <div
@@ -279,6 +282,10 @@ export default function OrdersPage() {
                                 border: "1px solid #eee",
                               }}
                               loading="lazy"
+                              onError={(e) => {
+                                const el = e.currentTarget as HTMLImageElement;
+                                if (el.src !== fallbackSrc) el.src = fallbackSrc;
+                              }}
                             />
                             <div>
                               <div style={{ fontWeight: 800 }}>{it.name}</div>
@@ -319,9 +326,14 @@ export default function OrdersPage() {
                         </span>
                         {order.reference && (
                           <button
-                            onClick={() =>
-                              navigator.clipboard.writeText(order.reference!)
-                            }
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(order.reference!);
+                                alert("Copied!");
+                              } catch {
+                                alert("Unable to copy.");
+                              }
+                            }}
                             style={{
                               background: COPY,
                               color: "#111",
@@ -360,4 +372,4 @@ export default function OrdersPage() {
       </div>
     </div>
   );
-}
+                        }
