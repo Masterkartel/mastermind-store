@@ -26,7 +26,9 @@ const POSSIBLE_KEYS = ["orders", "mm_orders", "mastermind_orders", "cart_orders"
 /** -------- Helpers -------- */
 const pad = (n: number) => String(n).padStart(2, "0");
 const formatDateTime = (d: Date) =>
-  `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
 const createdFromId = (id: string): string | undefined => {
   const ts = Number(id?.replace(/^\D+/, ""));
@@ -64,15 +66,14 @@ const resolveItemImage = (it: OrderItem) => {
   return PLACEHOLDER;
 };
 
-/** -------- Pills (extra-light pastel shades) -------- */
+/** -------- Pills (pastel shades with clearer text) -------- */
 const HeaderPill = ({ reference }: { reference?: string }) => {
   if (!reference) {
-    // FAILED — very light red
     return (
       <span
         style={{
           background: "#FFE4E6", // rose-100
-          color: "#7f1d1d",      // rose-900
+          color: "#991B1B", // dark red
           fontSize: 12,
           fontWeight: 800,
           padding: "4px 10px",
@@ -84,12 +85,11 @@ const HeaderPill = ({ reference }: { reference?: string }) => {
       </span>
     );
   }
-  // COMPLETED — very light green
   return (
     <span
       style={{
-        background: "#DCFCE7", // green-100
-        color: "#166534",      // green-700
+        background: "#ECFDF5", // emerald-50
+        color: "#065F46", // emerald-800
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
@@ -104,12 +104,11 @@ const HeaderPill = ({ reference }: { reference?: string }) => {
 
 const StatusPill = ({ reference }: { reference?: string }) => {
   if (!reference) {
-    // FAILED — very light red
     return (
       <span
         style={{
-          background: "#FECDD3", // rose-200
-          color: "#7f1d1d",      // rose-900
+          background: "#FFE4E6", // rose-100
+          color: "#991B1B", // dark red
           fontSize: 12,
           fontWeight: 800,
           padding: "4px 10px",
@@ -121,12 +120,11 @@ const StatusPill = ({ reference }: { reference?: string }) => {
       </span>
     );
   }
-  // PAID — very light green
   return (
     <span
       style={{
-        background: "#D1FAE5", // green-200
-        color: "#065f46",      // green-800
+        background: "#D1FAE5", // green-100
+        color: "#065F46", // green-800
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
@@ -286,6 +284,7 @@ export default function OrdersPage() {
                     overflow: "hidden",
                   }}
                 >
+                  {/* Header row */}
                   <button
                     onClick={() => toggle(order.id)}
                     style={{ all: "unset", cursor: "pointer", width: "100%" }}
@@ -302,12 +301,20 @@ export default function OrdersPage() {
                       }}
                     >
                       <div style={{ display: "flex", flexDirection: "column" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div
+                          style={{ display: "flex", alignItems: "center", gap: 8 }}
+                        >
                           <span style={{ color: "#666" }}>Order</span>
                           <span style={{ fontWeight: 800 }}>#{order.id}</span>
                         </div>
                         {order.createdAt ? (
-                          <span style={{ color: "#9aa3af", fontSize: 12, marginTop: 4 }}>
+                          <span
+                            style={{
+                              color: "#9aa3af",
+                              fontSize: 12,
+                              marginTop: 4,
+                            }}
+                          >
                             {order.createdAt}
                           </span>
                         ) : null}
@@ -322,7 +329,9 @@ export default function OrdersPage() {
                         }}
                       >
                         <HeaderPill reference={order.reference} />
-                        <span style={{ fontWeight: 800, whiteSpace: "nowrap" }}>
+                        <span
+                          style={{ fontWeight: 800, whiteSpace: "nowrap" }}
+                        >
                           KES {Math.round(order.total).toLocaleString("en-KE")}
                         </span>
                       </div>
@@ -350,7 +359,8 @@ export default function OrdersPage() {
                               alt={it.name}
                               loading="lazy"
                               onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).src = PLACEHOLDER;
+                                (e.currentTarget as HTMLImageElement).src =
+                                  PLACEHOLDER;
                               }}
                               style={{
                                 width: 56,
@@ -374,7 +384,6 @@ export default function OrdersPage() {
                         );
                       })}
 
-                      {/* Reference */}
                       <div
                         style={{
                           display: "flex",
@@ -391,7 +400,8 @@ export default function OrdersPage() {
                             border: "1px solid #eee",
                             borderRadius: 10,
                             padding: "6px 10px",
-                            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                            fontFamily:
+                              "ui-monospace, SFMono-Regular, Menlo, monospace",
                             fontSize: 13,
                           }}
                         >
@@ -399,20 +409,9 @@ export default function OrdersPage() {
                         </span>
                         {order.reference ? (
                           <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              navigator.clipboard.writeText(order.reference!);
-                              const btn = e.currentTarget;
-                              const original = btn.innerHTML;
-                              btn.style.background = "#bbf7d0"; // light green
-                              btn.style.color = "#065f46";
-                              btn.innerHTML = "✅ Copied";
-                              setTimeout(() => {
-                                btn.style.background = "#fde68a"; // restore yellow
-                                btn.style.color = "#111";
-                                btn.innerHTML = original;
-                              }, 1200);
-                            }}
+                            onClick={() =>
+                              navigator.clipboard.writeText(order.reference!)
+                            }
                             style={{
                               background: "#fde68a",
                               color: "#111",
@@ -421,7 +420,6 @@ export default function OrdersPage() {
                               padding: "6px 10px",
                               borderRadius: 10,
                               cursor: "pointer",
-                              transition: "all 0.3s ease",
                             }}
                           >
                             Copy
@@ -429,13 +427,13 @@ export default function OrdersPage() {
                         ) : null}
                       </div>
 
-                      {/* Status */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div
+                        style={{ display: "flex", alignItems: "center", gap: 8 }}
+                      >
                         <span style={{ color: "#777" }}>Status</span>
                         <StatusPill reference={order.reference} />
                       </div>
 
-                      {/* Total */}
                       <div
                         style={{
                           display: "grid",
