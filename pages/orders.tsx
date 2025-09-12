@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 type OrderItem = {
   name: string;
   price: number;
-  quantity?: number;
+  quantity?: number; // accept quantity or qty (legacy)
   qty?: number;
   image?: string;
   [key: string]: any;
@@ -13,8 +13,8 @@ type OrderItem = {
 
 type Order = {
   id: string;
-  reference?: string;
-  createdAt?: string;
+  reference?: string;   // exists when paid (same as order number in your flow)
+  createdAt?: string;   // human-friendly date/time
   total: number;
   items: OrderItem[];
 };
@@ -45,9 +45,11 @@ const slugify = (s: string) =>
     .replace(/(^-|-$)/g, "");
 
 const resolveItemImage = (it: OrderItem) => {
+  // 1) direct fields
   const direct = it.image || it.img || it.imageUrl || it.photo || it.picture;
   if (typeof direct === "string" && direct.trim()) return direct.trim();
 
+  // 2) localStorage map (optional): { "<item name>": "url" }
   if (typeof window !== "undefined") {
     try {
       const raw = localStorage.getItem("productImages");
@@ -60,20 +62,26 @@ const resolveItemImage = (it: OrderItem) => {
     } catch {}
   }
 
+  // 3) public images by slug
   const slug = slugify(it.name);
   if (slug) return `/images/${slug}.webp`;
 
+  // 4) final fallback
   return PLACEHOLDER;
 };
 
-/** -------- Pills -------- */
+/** -------- Pills (extra-light shades) -------- */
 const HeaderPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
+  // COMPLETED (very light green) / FAILED (very light red) — header now mirrors status
+  const bg = paid ? "#ECFDF5" : "#FEE2E2"; // emerald-50 / red-100
+  const fg = paid ? "#065F46" : "#7F1D1D"; // emerald-800 / red-900
+  const text = paid ? "COMPLETED" : "FAILED";
   return (
     <span
       style={{
-        background: paid ? "#86efac" : "#e2e8f0",
-        color: paid ? "#065f46" : "#334155",
+        background: bg,
+        color: fg,
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
@@ -81,18 +89,22 @@ const HeaderPill = ({ reference }: { reference?: string }) => {
         whiteSpace: "nowrap",
       }}
     >
-      {paid ? "COMPLETED" : "PENDING"}
+      {text}
     </span>
   );
 };
 
 const StatusPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
+  // PAID (light green) / FAILED (light red)
+  const bg = paid ? "#DCFCE7" : "#FEE2E2"; // green-100 / red-100
+  const fg = paid ? "#166534" : "#7F1D1D"; // green-800 / red-900
+  const text = paid ? "PAID" : "FAILED";
   return (
     <span
       style={{
-        background: paid ? "#34d399" : "#fca5a5",
-        color: paid ? "#064e3b" : "#7f1d1d",
+        background: bg,
+        color: fg,
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
@@ -100,7 +112,7 @@ const StatusPill = ({ reference }: { reference?: string }) => {
         whiteSpace: "nowrap",
       }}
     >
-      {paid ? "PAID" : "FAILED"}
+      {text}
     </span>
   );
 };
@@ -108,8 +120,9 @@ const StatusPill = ({ reference }: { reference?: string }) => {
 /** -------- Page -------- */
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[] | null>(null);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({}); // per-order toggle
 
+  // Load orders, normalize, migrate to canonical key
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -132,6 +145,7 @@ export default function OrdersPage() {
         return { ...o, createdAt: created, items };
       });
 
+    // newest first (if ids are timestamp-like)
     normalized.sort((a, b) => {
       const na = Number(a.id.replace(/^\D+/, ""));
       const nb = Number(b.id.replace(/^\D+/, ""));
@@ -146,6 +160,7 @@ export default function OrdersPage() {
       }
     } catch {}
 
+    // default: collapsed on first load (open on tap)
     const initialExpanded: Record<string, boolean> = {};
     normalized.forEach((o) => (initialExpanded[o.id] = false));
 
@@ -162,7 +177,7 @@ export default function OrdersPage() {
 
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
-      {/* Header */}
+      {/* Header bar (edge-to-edge black) */}
       <div
         style={{
           background: "#111",
@@ -252,6 +267,7 @@ export default function OrdersPage() {
                     overflow: "hidden",
                   }}
                 >
+                  {/* Header row (tap to toggle) */}
                   <button
                     onClick={() => toggle(order.id)}
                     style={{ all: "unset", cursor: "pointer", width: "100%" }}
@@ -267,6 +283,7 @@ export default function OrdersPage() {
                         borderBottom: "1px solid #f0f0f0",
                       }}
                     >
+                      {/* Left: order id + date BELOW */}
                       <div style={{ display: "flex", flexDirection: "column" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ color: "#666" }}>Order</span>
@@ -279,6 +296,7 @@ export default function OrdersPage() {
                         ) : null}
                       </div>
 
+                      {/* Right: pill + total (compact) */}
                       <div
                         style={{
                           display: "flex",
@@ -295,6 +313,7 @@ export default function OrdersPage() {
                     </div>
                   </button>
 
+                  {/* Body */}
                   {isOpen && (
                     <div style={{ padding: 14, display: "grid", gap: 10 }}>
                       {order.items.map((it, i) => {
@@ -340,6 +359,7 @@ export default function OrdersPage() {
                         );
                       })}
 
+                      {/* Reference */}
                       <div
                         style={{
                           display: "flex",
@@ -352,8 +372,8 @@ export default function OrdersPage() {
                         <span style={{ color: "#777" }}>Reference</span>
                         <span
                           style={{
-                            background: "#f5f6f8",
-                            border: "1px solid #eee",
+                            background: "#F8FAFC", // slate-50
+                            border: "1px solid #E2E8F0", // slate-200
                             borderRadius: 10,
                             padding: "6px 10px",
                             fontFamily:
@@ -365,12 +385,11 @@ export default function OrdersPage() {
                         </span>
                         {order.reference ? (
                           <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(order.reference!);
-                              alert("Copied");
-                            }}
+                            onClick={() =>
+                              navigator.clipboard.writeText(order.reference!)
+                            }
                             style={{
-                              background: "#fde68a",
+                              background: "#FDE68A", // amber-200
                               color: "#111",
                               fontWeight: 800,
                               border: "none",
@@ -384,11 +403,13 @@ export default function OrdersPage() {
                         ) : null}
                       </div>
 
+                      {/* Status */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ color: "#777" }}>Status</span>
                         <StatusPill reference={order.reference} />
                       </div>
 
+                      {/* Total */}
                       <div
                         style={{
                           display: "grid",
