@@ -26,7 +26,9 @@ const POSSIBLE_KEYS = ["orders", "mm_orders", "mastermind_orders", "cart_orders"
 /** -------- Helpers -------- */
 const pad = (n: number) => String(n).padStart(2, "0");
 const formatDateTime = (d: Date) =>
-  `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
 const createdFromId = (id: string): string | undefined => {
   const ts = Number(id?.replace(/^\D+/, ""));
@@ -67,12 +69,11 @@ const resolveItemImage = (it: OrderItem) => {
 /** -------- Pills -------- */
 const HeaderPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
-  const failed = !reference;
   return (
     <span
       style={{
-        background: paid ? "#dcfce7" : "#f1f5f9", // very light green / very light gray
-        color: paid ? "#16a34a" : "#334155", // ✅ green same as Copied!
+        background: paid ? "#dcfce7" : "#f1f5f9", // light pastel green / grey
+        color: paid ? "#16a34a" : "#64748b",
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
@@ -90,8 +91,8 @@ const StatusPill = ({ reference }: { reference?: string }) => {
   return (
     <span
       style={{
-        background: paid ? "#bbf7d0" : "#fecaca", // very light green / very light red
-        color: paid ? "#16a34a" : "#b91c1c", // ✅ green same as Copied!
+        background: paid ? "#bbf7d0" : "#fee2e2", // light pastel green / red
+        color: paid ? "#16a34a" : "#dc2626",
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
@@ -364,7 +365,8 @@ export default function OrdersPage() {
                             border: "1px solid #eee",
                             borderRadius: 10,
                             padding: "6px 10px",
-                            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                            fontFamily:
+                              "ui-monospace, SFMono-Regular, Menlo, monospace",
                             fontSize: 13,
                           }}
                         >
