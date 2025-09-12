@@ -4,21 +4,24 @@ import { useEffect, useState } from "react";
 type OrderItem = {
   name: string;
   price: number;
-  quantity: number;
+  quantity?: number;   // might come as quantity or qty
+  qty?: number;
   image?: string;
 };
 
 type Order = {
   id: string;
-  reference?: string;   // when paid, this exists (same as order number in your flow)
-  createdAt?: string;   // human-friendly date/time string; we will auto-fill if missing
+  reference?: string;  // when paid, this exists (same as order number in your flow)
+  createdAt?: string;  // human-friendly date/time string
   total: number;
   items: OrderItem[];
-  // status?: never  // we derive status from `reference`, so no compile-time mismatch
 };
 
+// --- shared key (make sure index.tsx uses the same one) ---
+const LS_ORDERS_KEY = "orders";
+
+// DD/MM/YYYY, HH:MM (24h)
 const formatDateTime = (d: Date) => {
-  // DD/MM/YYYY, HH:MM (24h)
   const pad = (n: number) => String(n).padStart(2, "0");
   const day = pad(d.getDate());
   const month = pad(d.getMonth() + 1);
@@ -28,36 +31,56 @@ const formatDateTime = (d: Date) => {
   return `${day}/${month}/${year}, ${hours}:${mins}`;
 };
 
+// Try to parse a timestamp from ids like "T1698660489556561"
+const createdFromId = (id: string): string | undefined => {
+  const ts = Number(id?.slice(1));
+  if (!Number.isFinite(ts)) return;
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return;
+  return formatDateTime(d);
+};
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [hydrated, setHydrated] = useState(false);
 
   // Load and normalize orders (add createdAt if missing)
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const raw = localStorage.getItem("orders");
-    let parsed: Order[] = [];
+
+    let parsed: unknown = [];
     try {
+      const raw = localStorage.getItem(LS_ORDERS_KEY);
       parsed = raw ? JSON.parse(raw) : [];
     } catch {
       parsed = [];
     }
 
-    // add createdAt if missing and persist back if we made changes
     let changed = false;
-    const normalized = parsed.map((o) => {
-      if (!o.createdAt) {
-        changed = true;
-        return { ...o, createdAt: formatDateTime(new Date()) };
-      }
-      return o;
-    });
+    const normalized: Order[] = (Array.isArray(parsed) ? parsed : [])
+      .filter((o) => o && typeof (o as any).id === "string")
+      .map((o: any) => {
+        const withCreated =
+          o.createdAt ||
+          createdFromId(o.id) ||
+          formatDateTime(new Date());
+
+        if (!o.createdAt) changed = true;
+
+        // ensure items is an array
+        const items: OrderItem[] = Array.isArray(o.items) ? o.items : [];
+
+        return { ...o, createdAt: withCreated, items };
+      });
 
     if (changed) {
       try {
-        localStorage.setItem("orders", JSON.stringify(normalized));
+        localStorage.setItem(LS_ORDERS_KEY, JSON.stringify(normalized));
       } catch {}
     }
+
     setOrders(normalized);
+    setHydrated(true);
   }, []);
 
   // Pills
@@ -100,6 +123,11 @@ export default function OrdersPage() {
       </span>
     );
   };
+
+  if (!hydrated) {
+    // avoid SSR flicker and “No orders yet” before localStorage loads
+    return <div style={{ background: "#f6f6f6", minHeight: "100vh" }} />;
+  }
 
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
@@ -222,43 +250,47 @@ export default function OrdersPage() {
                 {/* Body */}
                 <div style={{ padding: 14, display: "grid", gap: 10 }}>
                   {/* items */}
-                  {order.items.map((it, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "auto 1fr",
-                        gap: 10,
-                        alignItems: "center",
-                      }}
-                    >
-                      <img
-                        src={
-                          it.image ||
-                          "https://via.placeholder.com/56x56.png?text=%20"
-                        }
-                        alt={it.name}
+                  {order.items.map((it, i) => {
+                    const qty = Number(it.quantity ?? it.qty ?? 1);
+                    const price = Number(it.price) || 0;
+                    return (
+                      <div
+                        key={i}
                         style={{
-                          width: 56,
-                          height: 56,
-                          borderRadius: 10,
-                          objectFit: "cover",
-                          background: "#f4f4f4",
-                          border: "1px solid #eee",
+                          display: "grid",
+                          gridTemplateColumns: "auto 1fr",
+                          gap: 10,
+                          alignItems: "center",
                         }}
-                        loading="lazy"
-                      />
-                      <div>
-                        <div style={{ fontWeight: 800 }}>{it.name}</div>
-                        <div style={{ color: "#666" }}>
-                          KES {Math.round(it.price)} × {it.quantity} ={" "}
-                          <span style={{ fontWeight: 700, color: "#111" }}>
-                            KES {Math.round(it.price * it.quantity)}
-                          </span>
+                      >
+                        <img
+                          src={
+                            it.image ||
+                            "https://via.placeholder.com/56x56.png?text=%20"
+                          }
+                          alt={it.name}
+                          style={{
+                            width: 56,
+                            height: 56,
+                            borderRadius: 10,
+                            objectFit: "cover",
+                            background: "#f4f4f4",
+                            border: "1px solid #eee",
+                          }}
+                          loading="lazy"
+                        />
+                        <div>
+                          <div style={{ fontWeight: 800 }}>{it.name}</div>
+                          <div style={{ color: "#666" }}>
+                            KES {Math.round(price)} × {qty} ={" "}
+                            <span style={{ fontWeight: 700, color: "#111" }}>
+                              KES {Math.round(price * qty)}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {/* Reference */}
                   <div
@@ -277,7 +309,8 @@ export default function OrdersPage() {
                         border: "1px solid #eee",
                         borderRadius: 10,
                         padding: "6px 10px",
-                        fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                        fontFamily:
+                          "ui-monospace, SFMono-Regular, Menlo, monospace",
                         fontSize: 13,
                       }}
                     >
@@ -331,4 +364,4 @@ export default function OrdersPage() {
       </div>
     </div>
   );
-                }
+}
