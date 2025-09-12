@@ -5,36 +5,33 @@ type OrderItem = {
   name: string;
   price: number;
   quantity: number;
-  image?: string;
+  image?: string;      // primary
+  // some carts might have used other keys — we’ll probe them in getItemImage()
+  // img?: string;
+  // thumbnail?: string;
 };
 
 type Order = {
   id: string;
-  reference?: string;     // when paid, this exists (same as order number in your flow)
-  createdAt?: string;     // human-friendly date/time string
+  reference?: string;   // exists when paid
+  createdAt?: string;   // human date string
   total: number;
   items: OrderItem[];
 };
 
-const EXPANDED_KEY = "orders_expanded";
-
 const formatDateTime = (d: Date) => {
-  // DD/MM/YYYY, HH:MM
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
-// Pills (kept as before, just slightly light colors)
+// --- UI pills (same look, slightly lightened) ---
 const HeaderPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
-  const bg = paid ? "#36c06a" : "#dde1e7";
-  const color = paid ? "#0b4d27" : "#3b3f46";
-  const text = paid ? "COMPLETED" : "PENDING";
   return (
     <span
       style={{
-        background: bg,
-        color,
+        background: paid ? "#36c06a" : "#dde1e7",
+        color: paid ? "#0b4d27" : "#3b3f46",
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
@@ -42,21 +39,18 @@ const HeaderPill = ({ reference }: { reference?: string }) => {
         whiteSpace: "nowrap",
       }}
     >
-      {text}
+      {paid ? "COMPLETED" : "PENDING"}
     </span>
   );
 };
 
 const StatusPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
-  const bg = paid ? "#dff7e8" : "#fde2e2";
-  const color = paid ? "#117a39" : "#b02a2a";
-  const text = paid ? "PAID" : "FAILED";
   return (
     <span
       style={{
-        background: bg,
-        color,
+        background: paid ? "#dff7e8" : "#fde2e2",
+        color: paid ? "#117a39" : "#b02a2a",
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
@@ -64,20 +58,39 @@ const StatusPill = ({ reference }: { reference?: string }) => {
         whiteSpace: "nowrap",
       }}
     >
-      {text}
+      {paid ? "PAID" : "FAILED"}
     </span>
   );
+};
+
+// Robust image resolver: prefer stored URL, then try a public asset guess, then final placeholder
+const getItemImage = (it: OrderItem): string => {
+  const anyIt = it as any;
+  const first =
+    it.image ||
+    anyIt?.img ||
+    anyIt?.thumbnail ||
+    "";
+
+  if (first) return first;
+
+  // Try to derive a filename in /public/products (you can adjust folder/name rules to your catalog)
+  const slug = it.name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+  const guessed = `/products/${slug}.webp`;
+  // We can’t pre-check existence without a request; provide it and let browser try.
+  return guessed || "https://placehold.co/56x56/png";
 };
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({}); // per-order open/closed
 
-  // Load & normalize orders + restore expansion state
+  // Load & normalize orders; start all COLLAPSED every refresh
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    // Orders
     let parsed: Order[] = [];
     try {
       parsed = JSON.parse(localStorage.getItem("orders") || "[]");
@@ -85,7 +98,7 @@ export default function OrdersPage() {
       parsed = [];
     }
 
-    // Ensure createdAt exists
+    // ensure createdAt exists
     let changed = false;
     const normalized = parsed.map((o) => {
       if (!o.createdAt) {
@@ -101,33 +114,18 @@ export default function OrdersPage() {
     }
     setOrders(normalized);
 
-    // Expansion: default collapsed; restore saved state if we have it
-    let saved: Record<string, boolean> | null = null;
-    try {
-      const raw = localStorage.getItem(EXPANDED_KEY);
-      if (raw) saved = JSON.parse(raw);
-    } catch {}
-
+    // default collapsed (no persistence)
     const initial: Record<string, boolean> = {};
-    normalized.forEach((o) => {
-      initial[o.id] = saved?.[o.id] ?? false; // false => collapsed by default
-    });
+    normalized.forEach((o) => (initial[o.id] = false));
     setExpanded(initial);
   }, []);
 
-  // Toggle + persist per order
   const toggle = (id: string) =>
-    setExpanded((prev) => {
-      const next = { ...prev, [id]: !prev[id] };
-      try {
-        localStorage.setItem(EXPANDED_KEY, JSON.stringify(next));
-      } catch {}
-      return next;
-    });
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
-      {/* Header bar (unchanged) */}
+      {/* Header bar */}
       <div
         style={{
           background: "#111",
@@ -217,14 +215,10 @@ export default function OrdersPage() {
                     overflow: "hidden",
                   }}
                 >
-                  {/* Header row (tap to open/close) */}
+                  {/* Header row (tap to toggle) */}
                   <button
                     onClick={() => toggle(order.id)}
-                    style={{
-                      all: "unset",
-                      width: "100%",
-                      cursor: "pointer",
-                    }}
+                    style={{ all: "unset", width: "100%", cursor: "pointer" }}
                     aria-expanded={isOpen}
                     aria-controls={`order-body-${order.id}`}
                   >
@@ -243,7 +237,6 @@ export default function OrdersPage() {
                           <span style={{ color: "#666" }}>Order</span>
                           <span style={{ fontWeight: 800 }}>#{order.id}</span>
                         </div>
-                        {/* date under the order number on mobile so pill doesn't wrap */}
                         {order.createdAt ? (
                           <span style={{ color: "#999", fontSize: 12 }}>{order.createdAt}</span>
                         ) : null}
@@ -258,12 +251,9 @@ export default function OrdersPage() {
                     </div>
                   </button>
 
-                  {/* Body (collapsible) */}
+                  {/* Collapsible body */}
                   {isOpen && (
-                    <div
-                      id={`order-body-${order.id}`}
-                      style={{ padding: 14, display: "grid", gap: 10 }}
-                    >
+                    <div id={`order-body-${order.id}`} style={{ padding: 14, display: "grid", gap: 10 }}>
                       {/* items */}
                       {order.items.map((it, i) => (
                         <div
@@ -276,7 +266,7 @@ export default function OrdersPage() {
                           }}
                         >
                           <img
-                            src={it.image || "https://via.placeholder.com/56x56.png?text=%20"}
+                            src={getItemImage(it)}
                             alt={it.name}
                             style={{
                               width: 56,
@@ -286,7 +276,8 @@ export default function OrdersPage() {
                               background: "#f4f4f4",
                               border: "1px solid #eee",
                             }}
-                            loading="lazy"
+                            // eager load to avoid missing thumbnails
+                            loading="eager"
                           />
                           <div>
                             <div style={{ fontWeight: 800 }}>{it.name}</div>
@@ -326,9 +317,7 @@ export default function OrdersPage() {
                         </span>
                         {order.reference ? (
                           <button
-                            onClick={() =>
-                              navigator.clipboard.writeText(order.reference!)
-                            }
+                            onClick={() => navigator.clipboard.writeText(order.reference!)}
                             style={{
                               background: "#f4d03f",
                               color: "#111",
@@ -347,7 +336,6 @@ export default function OrdersPage() {
                       {/* Status */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ color: "#777" }}>Status</span>
-                        {/* Rule: if reference exists => PAID (green); otherwise FAILED (red) */}
                         <StatusPill reference={order.reference} />
                       </div>
 
