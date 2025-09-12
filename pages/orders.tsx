@@ -1,5 +1,5 @@
 // pages/orders.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Head from "next/head";
 
 type OrderItem = {
@@ -11,10 +11,10 @@ type OrderItem = {
 };
 
 type Order = {
-  id: string;                 // our local id (e.g. T<timestamp>)
-  reference: string;          // paystack reference
-  createdAt?: string;         // ISO date string
-  total: number;              // KES
+  id: string; // local id (e.g. T<timestamp>)
+  reference: string; // paystack reference
+  createdAt?: string; // ISO
+  total: number; // KES
   status?: "PENDING" | "COMPLETED" | "FAILED";
   paymentStatus?: "PENDING" | "PAID" | "FAILED";
   items: OrderItem[];
@@ -37,23 +37,22 @@ export default function Orders() {
     }
   }, []);
 
-  // If query has ?ref=..., nudge verify for that one
+  // If ?ref= is present, trigger verify for that order
   useEffect(() => {
     const url = new URL(window.location.href);
     const ref = url.searchParams.get("ref");
     if (!ref) return;
-    // kick verification for the matching order
     const match = orders.find((o) => o.reference === ref);
     if (match && match.paymentStatus !== "PAID") {
       verifyOne(match);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders]);
 
   const fmtDate = (iso?: string) => {
     try {
       if (!iso) return "";
-      const d = new Date(iso);
-      return d.toLocaleString();
+      return new Date(iso).toLocaleString();
     } catch {
       return "";
     }
@@ -87,40 +86,45 @@ export default function Orders() {
 
   const persist = (next: Order[]) => {
     try {
+      // Save in original order (oldest first)
       localStorage.setItem(ORDERS_KEY, JSON.stringify([...next].reverse()));
     } catch {}
     setOrders(next);
   };
 
-  // Verify one order by calling our API
+  // Verify one order using our API (Cloudflare function /api/paystack-verify)
   const verifyOne = async (order: Order) => {
     setVerifying((v) => ({ ...v, [order.reference]: true }));
     try {
       const res = await fetch(`/api/paystack-verify?reference=${encodeURIComponent(order.reference)}`);
-      const data = await res.json(); // { status: 'PAID'|'FAILED'|'PENDING', paidAt?: string }
-      const next = orders.map((o) =>
-        o.reference === order.reference
-          ? {
-              ...o,
-              paymentStatus: (data.status as Order["paymentStatus"]) ?? "PENDING",
-              status:
-                data.status === "PAID"
-                  ? "COMPLETED"
-                  : data.status === "FAILED"
-                  ? "FAILED"
-                  : "PENDING",
-            }
-          : o
-      );
+      const data: { status?: "PAID" | "FAILED" | "PENDING"; paidAt?: string } = await res.json();
+
+      const next: Order[] = orders.map((o) => {
+        if (o.reference !== order.reference) return o;
+
+        const newPayment: Order["paymentStatus"] =
+          data.status === "PAID" ? "PAID" : data.status === "FAILED" ? "FAILED" : "PENDING";
+
+        const newStatus: Order["status"] =
+          newPayment === "PAID" ? "COMPLETED" : newPayment === "FAILED" ? "FAILED" : "PENDING";
+
+        const updated: Order = {
+          ...o,
+          paymentStatus: newPayment,
+          status: newStatus,
+        };
+        return updated;
+      });
+
       persist(next);
     } catch {
-      // leave as is
+      // ignore
     } finally {
       setVerifying((v) => ({ ...v, [order.reference]: false }));
     }
   };
 
-  // Auto-verify all with PENDING (on first load)
+  // Auto-verify all pending on first load
   useEffect(() => {
     orders.forEach((o) => {
       if (o.paymentStatus === "PENDING") verifyOne(o);
@@ -140,7 +144,17 @@ export default function Orders() {
 
       {/* Top black header with favicon + visible back button */}
       <header style={{ background: "#111", color: "#fff", position: "sticky", top: 0, zIndex: 50 }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "12px 16px", display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", gap: 8 }}>
+        <div
+          style={{
+            maxWidth: 1200,
+            margin: "0 auto",
+            padding: "12px 16px",
+            display: "grid",
+            gridTemplateColumns: "1fr auto",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 800 }}>
             <img src="/favicon.ico" alt="" width={22} height={22} style={{ borderRadius: 4 }} />
             {headerTitle}
@@ -192,9 +206,7 @@ export default function Orders() {
                   }}
                 >
                   <div style={{ color: "#666", fontWeight: 800 }}>Order</div>
-                  <div style={{ fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis" }}>
-                    #{o.id}
-                  </div>
+                  <div style={{ fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis" }}>#{o.id}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     {headStatus}
                     <div style={{ fontWeight: 800 }}>{currency(o.total || sum)}</div>
@@ -232,9 +244,7 @@ export default function Orders() {
                         <div style={{ fontWeight: 800 }}>{o.items[0].name}</div>
                         <div style={{ color: "#666" }}>
                           KES {o.items[0].price} × {o.items[0].qty} ={" "}
-                          <span style={{ fontWeight: 800 }}>
-                            KES {o.items[0].price * o.items[0].qty}
-                          </span>
+                          <span style={{ fontWeight: 800 }}>KES {o.items[0].price * o.items[0].qty}</span>
                         </div>
                       </div>
                     </div>
@@ -243,9 +253,7 @@ export default function Orders() {
                   {/* Reference + copy */}
                   <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 10, alignItems: "center" }}>
                     <div style={{ color: "#666" }}>Reference</div>
-                    <div style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
-                      {o.reference}
-                    </div>
+                    <div style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{o.reference}</div>
                     <button
                       onClick={() => copyToClipboard(o.reference)}
                       style={{
@@ -262,7 +270,7 @@ export default function Orders() {
                     </button>
                   </div>
 
-                  {/* Status line */}
+                  {/* Status + reverify */}
                   <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 10, alignItems: "center" }}>
                     <div style={{ color: "#666" }}>Status</div>
                     <div>
