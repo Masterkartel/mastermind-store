@@ -19,29 +19,60 @@ type Order = {
   items: OrderItem[];
 };
 
+/** -------- Storage keys -------- */
+const CANONICAL_KEY = "orders";
+const POSSIBLE_KEYS = ["orders", "mm_orders", "mastermind_orders", "cart_orders"];
+
 /** -------- Helpers -------- */
 const pad = (n: number) => String(n).padStart(2, "0");
 const formatDateTime = (d: Date) =>
-  `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(
-    d.getHours()
-  )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+
+const createdFromId = (id: string): string | undefined => {
+  const ts = Number(id?.replace(/^\D+/, ""));
+  if (!Number.isFinite(ts)) return;
+  const d = new Date(ts);
+  return isNaN(d.getTime()) ? undefined : formatDateTime(d);
+};
 
 const PLACEHOLDER = "https://via.placeholder.com/56x56.png?text=%20";
+const slugify = (s: string) =>
+  (s || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
 
 const resolveItemImage = (it: OrderItem) => {
   const direct = it.image || it.img || it.imageUrl || it.photo || it.picture;
   if (typeof direct === "string" && direct.trim()) return direct.trim();
+
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("productImages");
+      if (raw) {
+        const map = JSON.parse(raw);
+        if (map && typeof map === "object" && map[it.name]) {
+          return String(map[it.name]);
+        }
+      }
+    } catch {}
+  }
+
+  const slug = slugify(it.name);
+  if (slug) return `/images/${slug}.webp`;
+
   return PLACEHOLDER;
 };
 
-/** -------- Pills (light shades) -------- */
+/** -------- Pills -------- */
 const HeaderPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
+  const failed = !reference;
   return (
     <span
       style={{
-        background: paid ? "#dcfce7" : "#f1f5f9", // very light green / gray
-        color: paid ? "#166534" : "#334155",
+        background: paid ? "#dcfce7" : "#f1f5f9", // very light green / very light gray
+        color: paid ? "#16a34a" : "#334155", // ✅ green same as Copied!
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
@@ -49,7 +80,7 @@ const HeaderPill = ({ reference }: { reference?: string }) => {
         whiteSpace: "nowrap",
       }}
     >
-      {paid ? "COMPLETED" : "PENDING"}
+      {paid ? "COMPLETED" : "FAILED"}
     </span>
   );
 };
@@ -59,8 +90,8 @@ const StatusPill = ({ reference }: { reference?: string }) => {
   return (
     <span
       style={{
-        background: paid ? "#bbf7d0" : "#fecaca", // lighter green / red
-        color: paid ? "#166534" : "#991b1b",
+        background: paid ? "#bbf7d0" : "#fecaca", // very light green / very light red
+        color: paid ? "#16a34a" : "#b91c1c", // ✅ green same as Copied!
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
@@ -75,36 +106,65 @@ const StatusPill = ({ reference }: { reference?: string }) => {
 
 /** -------- Page -------- */
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<Order[] | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [copiedRef, setCopiedRef] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const raw = localStorage.getItem("orders");
-    let parsed: Order[] = [];
-    try {
-      parsed = raw ? JSON.parse(raw) : [];
-    } catch {
-      parsed = [];
+    const merged: Order[] = [];
+    for (const key of POSSIBLE_KEYS) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) merged.push(...arr);
+      } catch {}
     }
 
-    const normalized: Order[] = (parsed || []).map((o: any) => ({
-      ...o,
-      createdAt: o.createdAt || formatDateTime(new Date()),
-      items: Array.isArray(o.items) ? o.items : [],
-    }));
+    const normalized: Order[] = (merged || [])
+      .filter((o) => o && typeof (o as any).id === "string")
+      .map((o: any) => {
+        const created =
+          o.createdAt || createdFromId(o.id) || formatDateTime(new Date());
+        const items: OrderItem[] = Array.isArray(o.items) ? o.items : [];
+        return { ...o, createdAt: created, items };
+      });
 
-    const initExpanded: Record<string, boolean> = {};
-    normalized.forEach((o) => (initExpanded[o.id] = false));
+    normalized.sort((a, b) => {
+      const na = Number(a.id.replace(/^\D+/, ""));
+      const nb = Number(b.id.replace(/^\D+/, ""));
+      if (Number.isFinite(na) && Number.isFinite(nb)) return nb - na;
+      return 0;
+    });
+
+    try {
+      localStorage.setItem(CANONICAL_KEY, JSON.stringify(normalized));
+      for (const key of POSSIBLE_KEYS) {
+        if (key !== CANONICAL_KEY) localStorage.removeItem(key);
+      }
+    } catch {}
+
+    const initialExpanded: Record<string, boolean> = {};
+    normalized.forEach((o) => (initialExpanded[o.id] = false));
 
     setOrders(normalized);
-    setExpanded(initExpanded);
+    setExpanded(initialExpanded);
   }, []);
 
   const toggle = (id: string) =>
     setExpanded((e) => ({ ...e, [id]: !e[id] }));
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(text);
+    setTimeout(() => setCopied(null), 1200);
+  };
+
+  if (orders === null) {
+    return <div style={{ background: "#f6f6f6", minHeight: "100vh" }} />;
+  }
 
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
@@ -125,6 +185,7 @@ export default function OrdersPage() {
             margin: "0 auto",
             display: "grid",
             gridTemplateColumns: "1fr auto",
+            gap: 8,
             alignItems: "center",
           }}
         >
@@ -201,49 +262,46 @@ export default function OrdersPage() {
                   <button
                     onClick={() => toggle(order.id)}
                     style={{ all: "unset", cursor: "pointer", width: "100%" }}
+                    aria-expanded={isOpen}
                   >
                     <div
                       style={{
                         display: "grid",
                         gridTemplateColumns: "1fr auto",
                         alignItems: "center",
+                        gap: 10,
                         padding: "12px 14px",
                         borderBottom: "1px solid #f0f0f0",
                       }}
                     >
                       <div style={{ display: "flex", flexDirection: "column" }}>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                          }}
-                        >
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ color: "#666" }}>Order</span>
                           <span style={{ fontWeight: 800 }}>#{order.id}</span>
                         </div>
-                        {order.createdAt && (
-                          <span
-                            style={{
-                              color: "#9aa3af",
-                              fontSize: 12,
-                              marginTop: 4,
-                            }}
-                          >
+                        {order.createdAt ? (
+                          <span style={{ color: "#9aa3af", fontSize: 12, marginTop: 4 }}>
                             {order.createdAt}
                           </span>
-                        )}
+                        ) : null}
                       </div>
-                      <div style={{ display: "flex", gap: 10 }}>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          flexWrap: "nowrap",
+                        }}
+                      >
                         <HeaderPill reference={order.reference} />
-                        <span style={{ fontWeight: 800 }}>
+                        <span style={{ fontWeight: 800, whiteSpace: "nowrap" }}>
                           KES {Math.round(order.total).toLocaleString("en-KE")}
                         </span>
                       </div>
                     </div>
                   </button>
 
-                  {/* Body */}
                   {isOpen && (
                     <div style={{ padding: 14, display: "grid", gap: 10 }}>
                       {order.items.map((it, i) => {
@@ -264,10 +322,9 @@ export default function OrdersPage() {
                               src={src}
                               alt={it.name}
                               loading="lazy"
-                              onError={(e) =>
-                                ((e.currentTarget as HTMLImageElement).src =
-                                  PLACEHOLDER)
-                              }
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).src = PLACEHOLDER;
+                              }}
                               style={{
                                 width: 56,
                                 height: 56,
@@ -280,9 +337,9 @@ export default function OrdersPage() {
                             <div>
                               <div style={{ fontWeight: 800 }}>{it.name}</div>
                               <div style={{ color: "#666" }}>
-                                KES {price} × {qty} ={" "}
-                                <span style={{ fontWeight: 700 }}>
-                                  KES {price * qty}
+                                KES {Math.round(price)} × {qty} ={" "}
+                                <span style={{ fontWeight: 700, color: "#111" }}>
+                                  KES {Math.round(price * qty)}
                                 </span>
                               </div>
                             </div>
@@ -307,56 +364,37 @@ export default function OrdersPage() {
                             border: "1px solid #eee",
                             borderRadius: 10,
                             padding: "6px 10px",
-                            fontFamily:
-                              "ui-monospace, SFMono-Regular, Menlo, monospace",
+                            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
                             fontSize: 13,
                           }}
                         >
                           {order.reference || "—"}
                         </span>
-                        {order.reference && (
-                          <div
+                        {order.reference ? (
+                          <button
+                            onClick={() => handleCopy(order.reference!)}
                             style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 2,
+                              background: "#fde68a",
+                              color: "#111",
+                              fontWeight: 800,
+                              border: "none",
+                              padding: "6px 10px",
+                              borderRadius: 10,
+                              cursor: "pointer",
                             }}
                           >
-                            <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(order.reference!);
-                                setCopiedRef(order.id);
-                                setTimeout(() => setCopiedRef(null), 1200);
-                              }}
-                              style={{
-                                background: "#fde68a",
-                                color: "#111",
-                                fontWeight: 800,
-                                border: "none",
-                                padding: "6px 10px",
-                                borderRadius: 10,
-                                cursor: "pointer",
-                              }}
-                            >
-                              Copy
-                            </button>
-                            {copiedRef === order.id && (
-                              <span
-                                style={{
-                                  fontSize: 12,
-                                  color: "#16a34a",
-                                  fontWeight: 600,
-                                }}
-                              >
-                                Copied!
-                              </span>
-                            )}
-                          </div>
+                            Copy
+                          </button>
+                        ) : null}
+                        {copied === order.reference && (
+                          <span style={{ color: "#16a34a", fontWeight: 700, fontSize: 12 }}>
+                            Copied!
+                          </span>
                         )}
                       </div>
 
                       {/* Status */}
-                      <div style={{ display: "flex", gap: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ color: "#777" }}>Status</span>
                         <StatusPill reference={order.reference} />
                       </div>
@@ -367,6 +405,7 @@ export default function OrdersPage() {
                           display: "grid",
                           gridTemplateColumns: "1fr auto",
                           alignItems: "center",
+                          marginTop: 2,
                         }}
                       >
                         <span style={{ color: "#777" }}>Total</span>
@@ -384,4 +423,4 @@ export default function OrdersPage() {
       </div>
     </div>
   );
-                                           }
+}
