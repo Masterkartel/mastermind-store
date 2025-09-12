@@ -19,7 +19,7 @@ export default function Home() {
   const [showCart, setShowCart] = useState(false);
   const [cartMap, setCartMap] = useState<Record<string, number>>({});
 
-  // checkout fields
+  // customer fields
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -93,12 +93,10 @@ export default function Home() {
   const currency = (n: number) =>
     `KES ${Math.round(n).toLocaleString("en-KE")}`;
 
-  // ---- Paystack handler ----
+  // ---- Paystack handler (saves reference + order, adds date/time) ----
   const handlePaystack = () => {
     const PaystackPop =
-      typeof window !== "undefined"
-        ? (window as any)?.PaystackPop
-        : undefined;
+      typeof window !== "undefined" ? (window as any)?.PaystackPop : undefined;
 
     if (!PaystackPop) {
       alert("Couldn't start Paystack. Please refresh and try again.");
@@ -109,56 +107,80 @@ export default function Home() {
       return;
     }
 
-    // Save order draft with images so /orders can show thumbnails
-    try {
-      const prev = JSON.parse(localStorage.getItem("mm_orders") || "[]");
-      const ref = "T" + Date.now().toString().slice(-12);
-      const order = {
-        id: ref,
-        createdAt: new Date().toISOString(),
-        items: cartLines.map((l) => ({
-          id: l.product.id,
-          name: l.product.name,
-          qty: l.qty,
-          price: Number(l.product.price) || 0,
-          img: l.product.img || "", // << keep image with order
-        })),
-        total: Math.round(cartTotal),
-        status: "pending",
-      };
-      localStorage.setItem("mm_orders", JSON.stringify([order, ...prev]));
-      // also expose reference for orders page to highlight
-      localStorage.setItem("mm_last_ref", ref);
-    } catch {}
+    // snapshot items with images for Orders page
+    const items = cartLines.map((l) => ({
+      id: l.product.id,
+      name: l.product.name,
+      qty: l.qty,
+      price: Number(l.product.price) || 0,
+      img: l.product.img || "",
+    }));
+    const totalKES = Math.round(cartTotal);
+    const customer = {
+      name: customerName?.trim() || "",
+      phone: customerPhone?.trim() || "",
+      email: customerEmail.trim(),
+    };
+
+    let completed = false;
 
     const handler = PaystackPop.setup({
       key: "pk_live_10bc141ee6ae2ae48edcd102c06540ffe1cb3ae6",
-      email: customerEmail,
-      amount: Math.round(cartTotal) * 100, // kobo (KES × 100)
+      email: customer.email,
+      amount: totalKES * 100,
       currency: "KES",
+
       callback: function (response: any) {
-        alert("Payment complete! Reference: " + response.reference);
+        completed = true;
+        const ref = String(response?.reference || "");
+        const now = new Date().toISOString();
+
+        try {
+          const raw = localStorage.getItem("mm_orders");
+          const orders = raw ? JSON.parse(raw) : [];
+          const order = {
+            id: ref,
+            reference: ref,
+            createdAt: now,
+            status: "PAID",
+            total: totalKES,
+            items,
+            customer,
+          };
+          localStorage.setItem("mm_orders", JSON.stringify([order, ...orders]));
+        } catch {}
+
         clear();
         setShowCart(false);
+        window.location.href = `/orders?r=${encodeURIComponent(ref)}`;
       },
+
       onClose: function () {
+        if (completed) return;
+        const now = new Date().toISOString();
+        const failId = `F${Date.now()}`;
+
+        try {
+          const raw = localStorage.getItem("mm_orders");
+          const orders = raw ? JSON.parse(raw) : [];
+          const order = {
+            id: failId,
+            reference: "",
+            createdAt: now,
+            status: "FAILED",
+            total: totalKES,
+            items,
+            customer,
+          };
+          localStorage.setItem("mm_orders", JSON.stringify([order, ...orders]));
+        } catch {}
+
         alert("Transaction was not completed, window closed.");
       },
     });
 
     handler.openIframe();
   };
-
-  // ---- Search filter ----
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter((p) => {
-      const hay =
-        `${p.name} ${p.sku ?? ""} ${p.id}`.toLowerCase().replace(/\s+/g, " ");
-      return hay.includes(q);
-    });
-  }, [products, query]);
 
   return (
     <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
@@ -209,9 +231,9 @@ export default function Home() {
           </p>
         </div>
 
-        {/* ===== Two cards side-by-side on desktop ===== */}
+        {/* ===== Two cards ===== */}
         <div className="twoCol">
-          {/* Left: Visit shop (dark, centered) */}
+          {/* Visit Shop */}
           <div className="shopCard">
             <div className="shopCard__bubble" aria-hidden />
             <div className="shopCard__title">Visit Our Shop</div>
@@ -241,42 +263,26 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right: SERVICES with M-Pesa logo image + Gas mini-cards */}
+          {/* Services */}
           <div className="infoCard">
             <div className="infoCard__bubble" aria-hidden />
             <div className="eyebrow">SERVICES</div>
 
             <div className="servicesHeader">
-              <img
-                src="/mpesa.png"
-                alt="M-Pesa"
-                className="mpesaLogo"
-                loading="lazy"
-              />
+              <img src="/mpesa.png" alt="M-Pesa" className="mpesaLogo" />
               <span className="amp">&nbsp;&amp;&nbsp;</span>
               <span className="servicesText">Gas Refill</span>
             </div>
 
-            {/* Gas semi-cards, centered */}
             <div className="cylinders">
               <div className="cylCard">
-                <img
-                  src="/gas-6kg.png"
-                  alt="6KG Gas"
-                  className="cylImg cylImg--tight"
-                  loading="lazy"
-                />
+                <img src="/gas-6kg.png" alt="6KG Gas" className="cylImg cylImg--tight" />
                 <button className="btn btn--ghost" onClick={() => add("gas-6kg")}>
                   6KG — KES 1,110
                 </button>
               </div>
               <div className="cylCard">
-                <img
-                  src="/gas-13kg.png"
-                  alt="13KG Gas"
-                  className="cylImg"
-                  loading="lazy"
-                />
+                <img src="/gas-13kg.png" alt="13KG Gas" className="cylImg" />
                 <button className="btn btn--ghost" onClick={() => add("gas-13kg")}>
                   13KG — KES 2,355
                 </button>
@@ -296,10 +302,22 @@ export default function Home() {
         />
       </div>
 
-      {/* ===== Product Grid ===== */}
+      {/* ===== Products ===== */}
       <section className="container" style={{ paddingBottom: 24 }}>
         <div className="productGrid">
-          {filtered.map((p) => {
+          {useMemo(() => {
+            const q = query.trim().toLowerCase();
+            const list = !q
+              ? products
+              : products.filter((p) => {
+                  const hay =
+                    `${p.name} ${p.sku ?? ""} ${p.id}`
+                      .toLowerCase()
+                      .replace(/\s+/g, " ");
+                  return hay.includes(q);
+                });
+            return list;
+          }, [products, query]).map((p) => {
             const price = Number(p.price) || 0;
             const stock = Number(p.stock) || 0;
             return (
@@ -379,7 +397,6 @@ export default function Home() {
       {/* ===== Cart Drawer ===== */}
       {showCart && (
         <div className="overlay" onClick={() => setShowCart(false)}>
-          {/* push fully to right; stop click bubbling */}
           <aside
             className="drawer"
             onClick={(e) => e.stopPropagation()}
@@ -388,7 +405,7 @@ export default function Home() {
             <div className="drawer__top">
               <div className="h4">Your Cart</div>
               <div style={{ display: "flex", gap: 8 }}>
-                {cartCount > 1 && (
+                {cartCount > 0 && (
                   <button
                     className="btn btn--dangerLight small"
                     onClick={clear}
@@ -415,16 +432,15 @@ export default function Home() {
                   return (
                     <div key={l.product.id} className="line">
                       <div className="line__left">
-                        {/* product thumbnail */}
                         {l.product.img ? (
                           <img
                             src={l.product.img}
                             alt=""
-                            className="thumb"
+                            className="line__thumb"
                             loading="lazy"
                           />
                         ) : (
-                          <div className="thumb thumb--placeholder" />
+                          <div className="line__thumb placeholder" />
                         )}
                         <div>
                           <div className="line__name">{l.product.name}</div>
@@ -466,39 +482,36 @@ export default function Home() {
             <div className="totals">
               <div className="row">
                 <span>Total</span>
-                <span className="strong">{currency(cartTotal)}</span>
+                <span className="strong">{currency(Math.round(cartTotal))}</span>
               </div>
 
-              {/* Fields */}
+              {/* Customer fields */}
               <input
-                type="text"
+                className="input"
                 placeholder="Full name"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                className="input"
-                required
               />
               <input
-                type="tel"
-                placeholder="Phone (Safaricom)"
+                className="input"
+                placeholder="Phone"
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
-                className="input"
-                required
               />
               <input
+                className="input"
                 type="email"
-                placeholder="Email (required by Paystack)"
+                placeholder="Email"
                 value={customerEmail}
                 onChange={(e) => setCustomerEmail(e.target.value)}
-                className="input"
-                required
               />
 
               <button
                 disabled={cartLines.length === 0 || !customerEmail}
                 className={`btn ${
-                  cartLines.length && customerEmail ? "btn--paystack" : "btn--disabled"
+                  cartLines.length && customerEmail
+                    ? "btn--paystackLight"
+                    : "btn--disabled"
                 }`}
                 onClick={handlePaystack}
               >
@@ -528,7 +541,7 @@ export default function Home() {
       <style jsx>{`
         .container { max-width: 1200px; margin: 0 auto; padding: 0 12px; }
 
-        /* Topbar full-width black with pill buttons */
+        /* Topbar full width */
         .topbar { position: sticky; top: 0; z-index: 50; background: #111; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); width: 100%; }
         .topbar__inner { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 16px; }
         .brand { font-weight: 800; letter-spacing: .3px; display:flex; align-items:center; gap:8px; }
@@ -574,8 +587,9 @@ export default function Home() {
         .btn--dark { background:#111; color:#fff; padding:10px 16px; border:none; }
         .btn--ghost { background:#fff; color:#111; border:1px solid #ddd; padding:8px 12px; border-radius:10px; }
         .btn--disabled { background:#eee; color:#888; pointer-events:none; }
-        .btn--paystack { background:#28c177; color:#fff; border:none; padding:12px 16px; border-radius:12px; font-weight:800; }
-        .btn--dangerLight { background:#ffe7ea; border:1px solid #f8b7bf; color:#a6232d; }
+        .btn--paystackLight { background:#1fcf84; color:#fff; border:none; padding:12px 16px; border-radius:12px; font-weight:800; }
+        .btn--paystackLight:hover { background:#18b973; }
+        .btn--dangerLight { background:#ffe9ea; color:#b4232c; border:1px solid #ffd3d6; padding:8px 12px; border-radius:10px; font-weight:800; }
         .small { padding:8px 14px; }
 
         .search { width:100%; height:44px; padding:0 14px; border-radius:12px; border:1px solid #ddd; background:#fff; font-size:15px; outline:none; }
@@ -590,74 +604,63 @@ export default function Home() {
 
         .footer { border-top:1px solid #eaeaea; padding:18px 0 12px; background:#fafafa; }
         .footerGrid { display:grid; grid-template-columns:1fr; gap:16px; padding:14px 12px; }
-        @media (min-width: 900px) {
-          .footerGrid { grid-template-columns:1fr 1fr 1fr; }
-        }
+        @media (min-width: 900px) { .footerGrid { grid-template-columns: 1fr 1fr 1fr; } }
         .footTitle { font-weight:800; margin-bottom:6px; }
         .footText, .footList { color:#666; }
-        .footList { padding-left:16px; }
+        .footList { list-style:none; padding:0; margin:0; display:grid; gap:6px; }
 
-        /* ===== Cart drawer & overlay ===== */
+        /* ===== CART ===== */
         .overlay {
-          position: fixed; inset: 0;
-          background: rgba(0,0,0,.45);
-          display: flex;
-          justify-content: flex-end;   /* push to RIGHT EDGE */
-          align-items: flex-start;     /* start at top */
-          padding: 16px;               /* keeps small margin from edges */
-          z-index: 100;
+          position: fixed; inset: 0; background: rgba(0,0,0,.35);
+          display: flex; justify-content: flex-end; align-items: flex-start;
+          padding: 12px; z-index: 80;
         }
         .drawer {
-          width: min(560px, 92vw);
-          max-height: calc(100vh - 32px);
-          overflow: hidden;
-          background: #fff;
-          border-radius: 16px;
+          width: 520px; max-width: calc(100% - 12px);
+          background: #fff; border-radius: 16px;
+          box-shadow: 0 10px 30px rgba(0,0,0,.2);
           border: 1px solid #eee;
-          box-shadow: 0 10px 30px rgba(0,0,0,.25);
+          overflow: hidden;
         }
         .drawer__top {
           display:flex; align-items:center; justify-content:space-between;
-          padding: 14px 14px 8px 14px; border-bottom: 1px solid #eee;
+          padding: 14px 16px; border-bottom: 1px solid #f0f0f0;
         }
-        .empty { padding: 12px 14px; color:#666; }
+        .empty { padding: 20px 16px; color:#666; }
+
         .lines {
-          padding: 2px 14px 6px 14px;
-          overflow-y: auto;     /* internal scroll for tall carts */
-          max-height: 46vh;
+          max-height: 40vh; overflow:auto;
+          padding: 6px 6px 0 6px;
         }
         .line {
           display:flex; align-items:center; justify-content:space-between;
-          gap:10px; padding:10px 0; border-bottom:1px dashed #eee;
+          gap: 10px; padding: 12px 10px; border-bottom: 1px dashed #eee;
         }
         .line__left { display:flex; align-items:center; gap:10px; min-width:0; }
-        .thumb { width:34px; height:34px; border-radius:8px; object-fit:cover; background:#f3f3f3; border:1px solid #eee; flex:0 0 auto; }
-        .thumb--placeholder { display:block; }
-        .line__name { font-weight:800; }
-        .line__price { color:#657080; font-size:12px; }
-        .qty { display:flex; gap:8px; align-items:center; }
+        .line__thumb { width:36px; height:36px; border-radius:8px; object-fit:cover; background:#f0f0f0; flex:0 0 auto; }
+        .line__name { font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .line__price { color:#7a7a7a; font-size:13px; }
+        .qty { display:flex; gap:8px; }
         .qtyBtn {
-          background:#f6f7f9; border:1px solid #e6e8ec; width:38px; height:36px;
-          border-radius:10px; font-weight:800; cursor:pointer;
+          width:40px; height:40px; border-radius:10px; border:1px solid #ececec;
+          background:#f7f7f8; font-weight:800; cursor:pointer;
         }
-        .qtyBtn--danger { background:#ffe7ea; border-color:#f8b7bf; color:#a6232d; }
-        .totals { padding: 8px 14px 14px 14px; border-top:1px solid #eee; }
-        .row { display:flex; align-items:center; justify-content:space-between; margin:6px 0 12px; }
+        .qtyBtn--danger { background:#ffe9ea; color:#b4232c; border:1px solid #ffd3d6; }
+
+        .totals { padding: 12px 16px 16px; }
+        .row { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
         .strong { font-weight:800; }
 
         .input {
-          width:100%; box-sizing:border-box;
-          height:44px; padding:0 12px; margin-top:8px;
-          border-radius:12px; border:1px solid #e2e5ea; outline:none;
-          background:#f6f8fb; font-size:14px;
+          width:100%; height:46px; border-radius:12px; border:1px solid #e5e7eb;
+          padding:0 12px; margin:6px 0; background:#f7fafe;
+          outline:none; box-sizing:border-box;
         }
 
-        .note { color:#6b7280; font-size:12px; margin-top:10px; }
+        .note { font-size:12px; color:#6b7280; margin-top:8px; }
 
-        /* WhatsApp FAB */
-        .waFab { position: fixed; right: 16px; bottom: 16px; width: 56px; height: 56px; display: inline-flex; align-items: center; justify-content: center; background: #25D366; border-radius: 9999px; box-shadow: 0 8px 20px rgba(0,0,0,.2); z-index: 40; }
-        .waIcon { width: 32px; height: 32px; }
-
+        .waFab { position:fixed; right:16px; bottom:16px; z-index:60; background:#25D366; border-radius:999px; padding:10px; box-shadow:0 8px 18px rgba(0,0,0,.15); }
+        .waIcon { width:32px; height:32px; display:block; }
       `}</style>
     </div>
   );
