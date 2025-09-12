@@ -2,6 +2,9 @@
 import Head from "next/head";
 import { useEffect, useMemo, useState } from "react";
 
+type PaymentStatus = "PENDING" | "PAID" | "FAILED";
+type OrderStatus = "PENDING" | "COMPLETED" | "FAILED";
+
 type OrderItem = {
   id: string;
   name: string;
@@ -11,149 +14,128 @@ type OrderItem = {
 };
 
 type Order = {
-  id: string;                 // "T169..." or similar
-  reference: string;          // same as id or paystack ref
-  createdAt?: string;         // ISO datetime
+  id: string;              // our local order id: e.g. T<timestamp>
+  reference: string;       // Paystack reference
+  createdAt?: string;      // ISO date string
   total: number;
   items: OrderItem[];
-  // paymentStatus is what we verify from Paystack
-  paymentStatus: "PAID" | "FAILED" | "PENDING";
-  // (optional) maintain an old 'status' for backward compatibility
-  status?: "COMPLETED" | "FAILED" | "PENDING";
+  // statuses shown in UI
+  paymentStatus: PaymentStatus; // PAID/FAILED/PENDING (inner “Status” row)
+  status: OrderStatus;          // COMPLETED/FAILED/PENDING (top-right pill)
 };
+
+const LS_KEY = "mm_orders";
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [openIds, setOpenIds] = useState<Record<string, boolean>>({}); // collapsed by default
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({}); // which cards are open
+  const [busy, setBusy] = useState<string | null>(null);
 
-  // load from localStorage
+  // ---- load saved orders ----
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("mm_orders");
+      const raw = localStorage.getItem(LS_KEY);
       if (!raw) return;
-      const parsed: Order[] = JSON.parse(raw);
-
-      // normalize & collapse by default
-      const normalized = parsed.map((o) => {
-        const statusFromPayment =
-          o.paymentStatus === "PAID"
-            ? "COMPLETED"
-            : o.paymentStatus === "FAILED"
-            ? "FAILED"
-            : "PENDING";
-        return {
-          ...o,
-          status: statusFromPayment as Order["status"],
-        };
-      });
-
-      setOrders(normalized);
-    } catch {
-      setOrders([]);
-    }
+      const parsed = JSON.parse(raw) as Order[];
+      if (Array.isArray(parsed)) {
+        setOrders(parsed);
+      }
+    } catch {}
   }, []);
 
-  const persist = (list: Order[]) => {
-    setOrders(list);
+  // convenience
+  const fmt = (n: number) => `KES ${Math.round(n).toLocaleString("en-KE")}`;
+  const fmtDateTime = (iso?: string) => {
+    if (!iso) return "";
     try {
-      localStorage.setItem("mm_orders", JSON.stringify(list));
+      const d = new Date(iso);
+      const date = d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+      const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      return `${date}, ${time}`;
+    } catch {
+      return "";
+    }
+  };
+
+  const persist = (next: Order[]) => {
+    setOrders(next);
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(next));
     } catch {}
   };
 
-  // helper: copy
-  const copy = async (txt: string) => {
+  // ---- verify one order (by reference) with your /api/paystack-verify endpoint ----
+  async function reverify(ord: Order) {
     try {
-      await navigator.clipboard.writeText(txt);
-      alert("Copied!");
-    } catch {
-      alert("Copy failed.");
-    }
-  };
+      setBusy(ord.reference);
+      const res = await fetch(`/api/paystack-verify?reference=${encodeURIComponent(ord.reference)}`, {
+        method: "GET",
+        headers: { "Accept": "application/json" },
+      });
 
-  // Re-verify one order against /api/paystack-verify
-  const reverify = async (ord: Order) => {
-    try {
-      const res = await fetch(
-        `/api/paystack-verify?reference=${encodeURIComponent(ord.reference)}`
-      );
+      if (!res.ok) throw new Error("verify failed");
       const data = await res.json();
-      // data.status: "success" | "failed" | "pending"
-      const newPayment =
-        data.status === "success"
-          ? "PAID"
-          : data.status === "failed"
-          ? "FAILED"
-          : "PENDING";
 
-      const newStatus =
-        newPayment === "PAID"
-          ? "COMPLETED"
-          : newPayment === "FAILED"
-          ? "FAILED"
-          : "PENDING";
+      // Expecting something like: { ok: true, status: 'success'|'failed'|'abandoned', reference: string }
+      // Normalize -> PaymentStatus + OrderStatus
+      const statusRaw = (data?.status || "").toString().toLowerCase();
+      let newPayment: PaymentStatus = "PENDING";
+      if (statusRaw === "success") newPayment = "PAID";
+      else if (statusRaw === "failed") newPayment = "FAILED";
+      else newPayment = "PENDING";
 
-      const next = orders.map((o) =>
-        o.id === ord.id ? { ...o, paymentStatus: newPayment, status: newStatus } : o
+      const newStatus: OrderStatus =
+        newPayment === "PAID" ? "COMPLETED" : newPayment === "FAILED" ? "FAILED" : "PENDING";
+
+      const updated: Order[] = orders.map((o) =>
+        o.id === ord.id
+          ? { ...o, paymentStatus: newPayment as PaymentStatus, status: newStatus as OrderStatus }
+          : o
       );
-      persist(next);
+      persist(updated);
     } catch (e) {
       alert("Could not verify right now. Try again later.");
+    } finally {
+      setBusy(null);
     }
-  };
+  }
 
-  // format
-  const currency = (n: number) => `KES ${Math.round(n).toLocaleString("en-KE")}`;
-  const fmtDate = (iso?: string) => {
-    if (!iso) return "";
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return "";
-    const dd = d.toLocaleDateString("en-GB"); // 12/09/2025
-    const tt = d.toLocaleTimeString("en-GB", { hour12: false }); // 18:13:01
-    return `${dd}, ${tt}`;
-    // If you want "EAT": append " EAT"
-  };
-
-  // pill utils
-  const headPillClass = (o: Order) => {
-    switch (o.paymentStatus) {
-      case "PAID":
-        return "pill pill--green";
-      case "FAILED":
-        return "pill pill--red";
-      default:
-        return "pill pill--grey";
-    }
-  };
-  const headPillText = (o: Order) => {
-    switch (o.paymentStatus) {
-      case "PAID":
-        return "COMPLETED";
-      case "FAILED":
-        return "FAILED";
-      default:
-        return "PENDING";
-    }
-  };
-  const statusPillClass = (o: Order) => {
-    switch (o.paymentStatus) {
-      case "PAID":
-        return "pill pill--green";
-      case "FAILED":
-        return "pill pill--red";
-      default:
-        return "pill pill--grey";
-    }
-  };
-  const statusPillText = (o: Order) => o.paymentStatus; // already PAID/FAILED/PENDING in caps
+  // sort newest first
+  const ordered = useMemo(
+    () =>
+      [...orders].sort((a, b) => {
+        const ta = Number(a.id.replace(/\D/g, "")) || 0;
+        const tb = Number(b.id.replace(/\D/g, "")) || 0;
+        return tb - ta;
+      }),
+    [orders]
+  );
 
   const toggle = (id: string) =>
-    setOpenIds((m) => ({ ...m, [id]: !m[id] })); // collapsed by default
+    setExpanded((m) => ({ ...m, [id]: !m[id] }));
+
+  const copy = (t: string) => {
+    try {
+      navigator.clipboard.writeText(t);
+      alert("Copied!");
+    } catch {}
+  };
+
+  // helpers for classnames
+  const pillClass = (kind: "green" | "red" | "grey") =>
+    `pill ${kind === "green" ? "pill--green" : kind === "red" ? "pill--red" : "pill--grey"}`;
+
+  const statusToPill = (s: OrderStatus) =>
+    s === "COMPLETED" ? pillClass("green") : s === "FAILED" ? pillClass("red") : pillClass("grey");
+
+  const payToPill = (p: PaymentStatus) =>
+    p === "PAID" ? pillClass("green") : p === "FAILED" ? pillClass("red") : pillClass("grey");
 
   return (
-    <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
+    <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#f7f7f7" }}>
       <Head>
         <title>My Orders • Mastermind</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
@@ -168,140 +150,136 @@ export default function OrdersPage() {
         </div>
       </header>
 
-      <main className="container" style={{ padding: "10px 12px 40px" }}>
-        {orders.length === 0 ? (
+      <main className="wrap">
+        {ordered.length === 0 ? (
           <div className="empty">No orders yet.</div>
         ) : (
-          <div className="list">
-            {orders
-              .slice()
-              .reverse()
-              .map((o) => {
-                const open = !!openIds[o.id]; // collapsed by default
-                return (
-                  <article key={o.id} className="orderCard">
-                    {/* Summary row (always visible) */}
-                    <button
-                      className="summary"
-                      onClick={() => toggle(o.id)}
-                      aria-expanded={open}
-                    >
-                      <div className="sumLeft">
-                        <div className="orderId">
-                          Order <span className="mono">#{o.id}</span>
-                        </div>
-                        {/* Date under ID */}
-                        {o.createdAt ? (
-                          <div className="date">{fmtDate(o.createdAt)}</div>
-                        ) : null}
-                      </div>
-                      <div className="sumRight">
-                        <span className={headPillClass(o)}>{headPillText(o)}</span>
-                        <span className="amount">{currency(o.total)}</span>
-                      </div>
-                    </button>
-
-                    {/* Details (only when open) */}
-                    {open && (
-                      <div className="details">
-                        {/* Items (first item shown like before) */}
-                        {o.items[0] && (
-                          <div className="itemRow">
-                            <div className="thumb">
-                              <img
-                                src={o.items[0].img || "/placeholder.png"}
-                                alt=""
-                                loading="lazy"
-                              />
-                            </div>
-                            <div className="itemInfo">
-                              <div className="name">{o.items[0].name}</div>
-                              <div className="muted">
-                                {`KES ${o.items[0].price} × ${o.items[0].qty} = `}
-                                <span className="strong">
-                                  {currency(o.items[0].price * o.items[0].qty)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="grid">
-                          <div>
-                            <div className="label">Reference</div>
-                            <div className="refRow">
-                              <code className="mono">{o.reference}</code>
-                              <button
-                                className="copyBtn"
-                                onClick={() => copy(o.reference)}
-                              >
-                                Copy
-                              </button>
-                            </div>
-                          </div>
-
-                          <div>
-                            <div className="label">Status</div>
-                            <span className={statusPillClass(o)}>
-                              {statusPillText(o)}
-                            </span>
-                          </div>
-
-                          <div>
-                            <div className="label">Total</div>
-                            <div className="strong">{currency(o.total)}</div>
-                          </div>
-                        </div>
-                      </div>
+          ordered.map((o) => {
+            const isOpen = !!expanded[o.id];
+            return (
+              <article key={o.id} className="orderCard">
+                {/* Summary row (clickable) */}
+                <button className="summary" onClick={() => toggle(o.id)} aria-expanded={isOpen}>
+                  <div className="sumLeft">
+                    <div className="orderId">
+                      <span className="muted">Order&nbsp;</span>
+                      <strong>#{o.id}</strong>
+                    </div>
+                    {o.createdAt && (
+                      <div className="date">{fmtDateTime(o.createdAt)}</div>
                     )}
-                  </article>
-                );
-              })}
-          </div>
+                  </div>
+                  <div className="sumRight">
+                    <span className={statusToPill(o.status)}>
+                      {o.status}
+                    </span>
+                    <span className="amount">{fmt(o.total)}</span>
+                  </div>
+                </button>
+
+                {/* Details */}
+                {isOpen && (
+                  <div className="details">
+                    {/* items */}
+                    {o.items.map((it) => (
+                      <div key={it.id} className="line">
+                        <div className="thumb">
+                          {/* image from public path written at checkout time */}
+                          {it.img ? (
+                            <img src={it.img} alt="" />
+                          ) : (
+                            <div className="ph" />
+                          )}
+                        </div>
+                        <div className="info">
+                          <div className="name">{it.name}</div>
+                          <div className="muted">
+                            {fmt(it.price)} × {it.qty} = <strong>{fmt(it.price * it.qty)}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* meta */}
+                    <div className="meta">
+                      <div className="row">
+                        <div className="lab">Reference</div>
+                        <div className="val">
+                          <span className="ref">{o.reference}</span>
+                          <button className="copy" onClick={() => copy(o.reference)}>Copy</button>
+                        </div>
+                      </div>
+
+                      <div className="row">
+                        <div className="lab">Status</div>
+                        <div className="val">
+                          <span className={payToPill(o.paymentStatus)}>{o.paymentStatus}</span>
+                          <button
+                            className="reverify"
+                            onClick={() => reverify(o)}
+                            disabled={busy === o.reference}
+                            title="Verify with Paystack"
+                          >
+                            {busy === o.reference ? "Checking..." : "Re-verify"}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="row">
+                        <div className="lab">Total</div>
+                        <div className="val strong">{fmt(o.total)}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </article>
+            );
+          })
         )}
       </main>
 
       <style jsx>{`
-        .container { max-width: 1100px; margin: 0 auto; }
+        .wrap { max-width: 900px; margin: 16px auto; padding: 0 12px 24px; }
+        .empty { background:#fff; border:1px solid #eee; border-radius:14px; padding:18px; text-align:center; color:#666; }
 
-        .topbar { position: sticky; top: 0; z-index: 50; background:#111; color:#fff; }
-        .topbar__inner { max-width:1100px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:12px 12px; }
-        .brand { display:flex; gap:8px; align-items:center; font-weight:800; }
+        .topbar { position: sticky; top: 0; z-index: 40; background:#111; color:#fff; border-bottom:1px solid rgba(255,255,255,.08); }
+        .topbar__inner { max-width: 1100px; margin: 0 auto; display:flex; align-items:center; justify-content:space-between; padding:10px 16px; }
+        .brand { font-weight:800; letter-spacing:.2px; display:flex; gap:8px; align-items:center; }
         .brandIcon { width:22px; height:22px; border-radius:4px; }
-        .backBtn { background:#fff; color:#111; border:1px solid #eee; border-radius:12px; padding:8px 12px; text-decoration:none; font-weight:700; }
+        .backBtn { background:#fff; color:#111; text-decoration:none; padding:8px 12px; border-radius:12px; border:1px solid #eee; font-weight:800; }
 
-        .list { display: grid; gap: 14px; }
-        .orderCard { background:#fff; border:1px solid #eee; border-radius:16px; overflow:hidden; }
-
-        .summary { width:100%; background:#fff; border:none; cursor:pointer; padding:14px; display:flex; align-items:center; justify-content:space-between; }
-        .summary:hover { background:#fafafa; }
-        .sumLeft .orderId { font-weight:800; }
-        .date { color:#888; font-size:12px; margin-top:2px; }
+        .orderCard { background:#fff; border:1px solid #eee; border-radius:16px; margin-bottom:14px; overflow:hidden; box-shadow:0 1px 0 rgba(0,0,0,.03); }
+        .summary { width:100%; background:#fff; border:none; padding:12px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; }
+        .summary:hover { background:#fcfcfc; }
+        .sumLeft { display:flex; flex-direction:column; gap:4px; text-align:left; }
+        .orderId { font-size:14px; }
+        .date { font-size:12px; color:#888; }
         .sumRight { display:flex; align-items:center; gap:10px; }
-        .amount { font-weight:800; color:#111; }
-        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+        .amount { font-weight:800; }
 
-        .pill { padding:6px 12px; border-radius:9999px; font-weight:800; font-size:12px; letter-spacing:.2px; text-transform:uppercase; }
-        .pill--green { background:#dff6e7; color:#107a42; border:1px solid #c9efd9; }
-        .pill--red   { background:#ffe2e2; color:#b42318; border:1px solid #ffcece; }
-        .pill--grey  { background:#eee; color:#555; border:1px solid #e2e2e2; }
-
-        .details { padding: 0 14px 14px; border-top:1px solid #f0f0f0; }
-        .itemRow { display:flex; gap:12px; align-items:center; padding:12px 0; }
-        .thumb { width:56px; height:56px; border-radius:12px; background:#f2f2f2; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+        .details { border-top:1px dashed #eee; padding:12px; display:grid; gap:12px; }
+        .line { display:grid; grid-template-columns:48px 1fr; gap:10px; align-items:center; }
+        .thumb { width:48px; height:48px; border-radius:10px; overflow:hidden; background:#f3f3f3; display:flex; align-items:center; justify-content:center; }
         .thumb img { width:100%; height:100%; object-fit:cover; }
-        .itemInfo .name { font-weight:800; }
-        .muted { color:#666; }
-        .strong { font-weight:800; }
+        .ph { width:100%; height:100%; background:linear-gradient(90deg,#eee,#f6f6f6,#eee); }
 
-        .grid { display:grid; gap:12px; grid-template-columns: 1fr; }
-        @media (min-width: 680px) { .grid { grid-template-columns: 1fr 1fr 1fr; } }
+        .info .name { font-weight:800; }
+        .muted { color:#777; }
 
-        .label { font-size:12px; color:#666; margin-bottom:4px; }
-        .refRow { display:flex; gap:8px; align-items:center; }
-        .copyBtn { background:#f4d03f; color:#111; border:none; padding:6px 10px; border-radius:10px; font-weight:800; cursor:pointer; }
+        .meta { display:grid; gap:10px; }
+        .row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+        .lab { color:#777; }
+        .val { display:flex; align-items:center; gap:8px; }
+        .val.strong, .strong { font-weight:800; }
+        .ref { background:#f5f5f5; border:1px solid #eee; padding:6px 10px; border-radius:10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
 
-        .empty { color:#666; padding:16px; }
+        .copy { background:#ffd24d; border:1px solid #f2c944; padding:6px 10px; border-radius:12px; font-weight:800; cursor:pointer; }
+        .reverify { background:#fff; border:1px solid #ddd; padding:6px 10px; border-radius:12px; font-weight:800; cursor:pointer; }
+
+        .pill { padding:4px 10px; border-radius:9999px; font-weight:800; font-size:12px; border:1px solid transparent; }
+        .pill--green { background:#e8f7ee; color:#0a7a39; border-color:#bdebd1; }
+        .pill--red { background:#fdeaea; color:#b42525; border-color:#f3c1c1; }
+        .pill--grey { background:#f1f1f1; color:#555; border-color:#e3e3e3; }
       `}</style>
     </div>
   );
