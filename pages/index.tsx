@@ -13,13 +13,15 @@ type Product = {
 
 type CartLine = { product: Product; qty: number };
 
+// ---- LocalStorage keys ----
+const CART_KEY = "mm_cart";
+const ORDERS_KEY = "mm_orders";
+
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
   const [showCart, setShowCart] = useState(false);
   const [cartMap, setCartMap] = useState<Record<string, number>>({});
-
-  // customer fields
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -40,13 +42,13 @@ export default function Home() {
   // ---- Cart persistence ----
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("mm_cart");
+      const saved = localStorage.getItem(CART_KEY);
       if (saved) setCartMap(JSON.parse(saved));
     } catch {}
   }, []);
   useEffect(() => {
     try {
-      localStorage.setItem("mm_cart", JSON.stringify(cartMap));
+      localStorage.setItem(CART_KEY, JSON.stringify(cartMap));
     } catch {}
   }, [cartMap]);
 
@@ -90,91 +92,89 @@ export default function Home() {
     [cartLines]
   );
 
+  // ---- Search filter ----
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) => {
+      const hay =
+        `${p.name} ${p.sku ?? ""} ${p.id}`.toLowerCase().replace(/\s+/g, " ");
+      return hay.includes(q);
+    });
+  }, [products, query]);
+
   const currency = (n: number) =>
     `KES ${Math.round(n).toLocaleString("en-KE")}`;
 
-  // ---- Paystack handler (saves reference + order, adds date/time) ----
+  // ---- Paystack handler ----
   const handlePaystack = () => {
     const PaystackPop =
-      typeof window !== "undefined" ? (window as any)?.PaystackPop : undefined;
+      typeof window !== "undefined"
+        ? (window as any)?.PaystackPop
+        : undefined;
 
     if (!PaystackPop) {
       alert("Couldn't start Paystack. Please refresh and try again.");
       return;
     }
-    if (!customerEmail) {
-      alert("Please enter your email to continue.");
+    if (!customerName || !customerPhone || !customerEmail) {
+      alert("Please enter your name, phone and email to continue.");
+      return;
+    }
+    if (cartLines.length === 0) {
+      alert("Your cart is empty.");
       return;
     }
 
-    // snapshot items with images for Orders page
-    const items = cartLines.map((l) => ({
+    const amountKES = Math.round(cartTotal);
+    const itemsPayload = cartLines.map((l) => ({
       id: l.product.id,
       name: l.product.name,
-      qty: l.qty,
       price: Number(l.product.price) || 0,
+      qty: l.qty,
       img: l.product.img || "",
     }));
-    const totalKES = Math.round(cartTotal);
-    const customer = {
-      name: customerName?.trim() || "",
-      phone: customerPhone?.trim() || "",
-      email: customerEmail.trim(),
-    };
-
-    let completed = false;
 
     const handler = PaystackPop.setup({
-      key: "pk_live_10bc141ee6ae2ae48edcd102c06540ffe1cb3ae6",
-      email: customer.email,
-      amount: totalKES * 100,
+      key: "pk_live_10bc141ee6ae2ae48edcd102c06540ffe1cb3ae6", // LIVE public key
+      email: customerEmail,
+      amount: amountKES * 100, // amount in kobo (KES × 100)
       currency: "KES",
-
+      metadata: {
+        custom_fields: [
+          { display_name: "Customer Name", variable_name: "customer_name", value: customerName },
+          { display_name: "Phone", variable_name: "phone", value: customerPhone },
+          { display_name: "Cart Items", variable_name: "cart_items", value: JSON.stringify(itemsPayload) },
+        ],
+      },
       callback: function (response: any) {
-        completed = true;
-        const ref = String(response?.reference || "");
-        const now = new Date().toISOString();
+        // Save order (PENDING) with reference so /orders page can verify & update it
+        const now = new Date();
+        const newOrder = {
+          id: `T${now.getTime()}`, // simple unique id
+          reference: response.reference as string,
+          createdAt: now.toISOString(),
+          total: amountKES,
+          status: "PENDING",
+          paymentStatus: "PENDING",
+          items: itemsPayload,
+        };
 
         try {
-          const raw = localStorage.getItem("mm_orders");
-          const orders = raw ? JSON.parse(raw) : [];
-          const order = {
-            id: ref,
-            reference: ref,
-            createdAt: now,
-            status: "PAID",
-            total: totalKES,
-            items,
-            customer,
-          };
-          localStorage.setItem("mm_orders", JSON.stringify([order, ...orders]));
+          const raw = localStorage.getItem(ORDERS_KEY);
+          const arr = raw ? JSON.parse(raw) : [];
+          const next = Array.isArray(arr) ? [...arr, newOrder] : [newOrder];
+          localStorage.setItem(ORDERS_KEY, JSON.stringify(next));
         } catch {}
 
         clear();
         setShowCart(false);
-        window.location.href = `/orders?r=${encodeURIComponent(ref)}`;
+        // Send customer to orders page (it will auto-verify)
+        window.location.href = `/orders?ref=${encodeURIComponent(
+          response.reference
+        )}`;
       },
-
       onClose: function () {
-        if (completed) return;
-        const now = new Date().toISOString();
-        const failId = `F${Date.now()}`;
-
-        try {
-          const raw = localStorage.getItem("mm_orders");
-          const orders = raw ? JSON.parse(raw) : [];
-          const order = {
-            id: failId,
-            reference: "",
-            createdAt: now,
-            status: "FAILED",
-            total: totalKES,
-            items,
-            customer,
-          };
-          localStorage.setItem("mm_orders", JSON.stringify([order, ...orders]));
-        } catch {}
-
         alert("Transaction was not completed, window closed.");
       },
     });
@@ -231,9 +231,9 @@ export default function Home() {
           </p>
         </div>
 
-        {/* ===== Two cards ===== */}
+        {/* ===== Two cards side-by-side on desktop ===== */}
         <div className="twoCol">
-          {/* Visit Shop */}
+          {/* Left: Visit shop (dark, centered) */}
           <div className="shopCard">
             <div className="shopCard__bubble" aria-hidden />
             <div className="shopCard__title">Visit Our Shop</div>
@@ -263,26 +263,42 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Services */}
+          {/* Right: SERVICES with M-Pesa logo image + Gas mini-cards */}
           <div className="infoCard">
             <div className="infoCard__bubble" aria-hidden />
             <div className="eyebrow">SERVICES</div>
 
             <div className="servicesHeader">
-              <img src="/mpesa.png" alt="M-Pesa" className="mpesaLogo" />
+              <img
+                src="/mpesa.png"
+                alt="M-Pesa"
+                className="mpesaLogo"
+                loading="lazy"
+              />
               <span className="amp">&nbsp;&amp;&nbsp;</span>
               <span className="servicesText">Gas Refill</span>
             </div>
 
+            {/* Gas semi-cards, centered */}
             <div className="cylinders">
               <div className="cylCard">
-                <img src="/gas-6kg.png" alt="6KG Gas" className="cylImg cylImg--tight" />
+                <img
+                  src="/gas-6kg.png"
+                  alt="6KG Gas"
+                  className="cylImg cylImg--tight"
+                  loading="lazy"
+                />
                 <button className="btn btn--ghost" onClick={() => add("gas-6kg")}>
                   6KG — KES 1,110
                 </button>
               </div>
               <div className="cylCard">
-                <img src="/gas-13kg.png" alt="13KG Gas" className="cylImg" />
+                <img
+                  src="/gas-13kg.png"
+                  alt="13KG Gas"
+                  className="cylImg"
+                  loading="lazy"
+                />
                 <button className="btn btn--ghost" onClick={() => add("gas-13kg")}>
                   13KG — KES 2,355
                 </button>
@@ -302,22 +318,10 @@ export default function Home() {
         />
       </div>
 
-      {/* ===== Products ===== */}
+      {/* ===== Product Grid ===== */}
       <section className="container" style={{ paddingBottom: 24 }}>
         <div className="productGrid">
-          {useMemo(() => {
-            const q = query.trim().toLowerCase();
-            const list = !q
-              ? products
-              : products.filter((p) => {
-                  const hay =
-                    `${p.name} ${p.sku ?? ""} ${p.id}`
-                      .toLowerCase()
-                      .replace(/\s+/g, " ");
-                  return hay.includes(q);
-                });
-            return list;
-          }, [products, query]).map((p) => {
+          {filtered.map((p) => {
             const price = Number(p.price) || 0;
             const stock = Number(p.stock) || 0;
             return (
@@ -394,7 +398,7 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* ===== Cart Drawer ===== */}
+      {/* ===== Cart Drawer (right, self-scroll) ===== */}
       {showCart && (
         <div className="overlay" onClick={() => setShowCart(false)}>
           <aside
@@ -402,12 +406,13 @@ export default function Home() {
             onClick={(e) => e.stopPropagation()}
             aria-label="Cart"
           >
+            {/* Header row */}
             <div className="drawer__top">
               <div className="h4">Your Cart</div>
               <div style={{ display: "flex", gap: 8 }}>
-                {cartCount > 0 && (
+                {cartCount > 1 && (
                   <button
-                    className="btn btn--dangerLight small"
+                    className="btn btn--removeAll small"
                     onClick={clear}
                     aria-label="Remove all items"
                   >
@@ -423,103 +428,120 @@ export default function Home() {
               </div>
             </div>
 
-            {cartLines.length === 0 ? (
-              <div className="empty">Your cart is empty.</div>
-            ) : (
-              <div className="lines">
-                {cartLines.map((l) => {
-                  const price = Number(l.product.price) || 0;
-                  return (
-                    <div key={l.product.id} className="line">
-                      <div className="line__left">
-                        {l.product.img ? (
-                          <img
-                            src={l.product.img}
-                            alt=""
-                            className="line__thumb"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="line__thumb placeholder" />
-                        )}
-                        <div>
-                          <div className="line__name">{l.product.name}</div>
-                          <div className="line__price">
-                            {currency(price)} × {l.qty}
+            <div className="drawer__scroll">
+              {/* Lines */}
+              {cartLines.length === 0 ? (
+                <div className="empty">Your cart is empty.</div>
+              ) : (
+                <div className="lines">
+                  {cartLines.map((l) => {
+                    const price = Number(l.product.price) || 0;
+                    return (
+                      <div key={l.product.id} className="line">
+                        <div className="lineLeft">
+                          <div className="thumbWrap">
+                            {l.product.img ? (
+                              <img
+                                src={l.product.img}
+                                alt={l.product.name}
+                                className="thumb"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="thumb thumb--empty" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="line__name">{l.product.name}</div>
+                            <div className="line__price muted">
+                              {currency(price)} × {l.qty}
+                            </div>
                           </div>
                         </div>
+
+                        <div className="qty">
+                          <button
+                            className="qtyBtn"
+                            onClick={() => sub(l.product.id)}
+                            aria-label="Decrease"
+                          >
+                            −
+                          </button>
+                          <button
+                            className="qtyBtn"
+                            onClick={() => add(l.product.id)}
+                            aria-label="Increase"
+                          >
+                            +
+                          </button>
+                          <button
+                            className="qtyBtn qtyBtn--danger"
+                            onClick={() => remove(l.product.id)}
+                            aria-label="Remove"
+                          >
+                            ✕
+                          </button>
+                        </div>
                       </div>
+                    );
+                  })}
+                </div>
+              )}
 
-                      <div className="qty">
-                        <button
-                          className="qtyBtn"
-                          onClick={() => sub(l.product.id)}
-                          aria-label="Decrease"
-                        >
-                          −
-                        </button>
-                        <button
-                          className="qtyBtn"
-                          onClick={() => add(l.product.id)}
-                          aria-label="Increase"
-                        >
-                          +
-                        </button>
-                        <button
-                          className="qtyBtn qtyBtn--danger"
-                          onClick={() => remove(l.product.id)}
-                          aria-label="Remove"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+              {/* Totals & Pay */}
+              <div className="totals">
+                <div className="row">
+                  <span>Total</span>
+                  <span className="strong">{currency(cartTotal)}</span>
+                </div>
 
-            <div className="totals">
-              <div className="row">
-                <span>Total</span>
-                <span className="strong">{currency(Math.round(cartTotal))}</span>
-              </div>
+                {/* Customer details */}
+                <input
+                  type="text"
+                  placeholder="Your name"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="input"
+                />
+                <input
+                  type="tel"
+                  placeholder="Phone number"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  className="input"
+                />
+                <input
+                  type="email"
+                  placeholder="Email address"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  className="input"
+                />
 
-              {/* Customer fields */}
-              <input
-                className="input"
-                placeholder="Full name"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-              />
-              <input
-                className="input"
-                placeholder="Phone"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-              />
-              <input
-                className="input"
-                type="email"
-                placeholder="Email"
-                value={customerEmail}
-                onChange={(e) => setCustomerEmail(e.target.value)}
-              />
+                <button
+                  disabled={
+                    cartLines.length === 0 ||
+                    !customerName ||
+                    !customerPhone ||
+                    !customerEmail
+                  }
+                  className={`btn ${
+                    cartLines.length &&
+                    customerName &&
+                    customerPhone &&
+                    customerEmail
+                      ? "btn--paystack"
+                      : "btn--disabled"
+                  }`}
+                  onClick={handlePaystack}
+                >
+                  Pay with M-Pesa (Paystack)
+                </button>
 
-              <button
-                disabled={cartLines.length === 0 || !customerEmail}
-                className={`btn ${
-                  cartLines.length && customerEmail
-                    ? "btn--paystackLight"
-                    : "btn--disabled"
-                }`}
-                onClick={handlePaystack}
-              >
-                Pay with M-Pesa (Paystack)
-              </button>
-
-              <div className="note">
-                You’ll be redirected to complete payment securely via Paystack.
+                <div className="note">
+                  You’ll be redirected to complete payment securely via
+                  Paystack.
+                </div>
               </div>
             </div>
           </aside>
@@ -541,7 +563,7 @@ export default function Home() {
       <style jsx>{`
         .container { max-width: 1200px; margin: 0 auto; padding: 0 12px; }
 
-        /* Topbar full width */
+        /* Topbar full-width black with pill buttons */
         .topbar { position: sticky; top: 0; z-index: 50; background: #111; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); width: 100%; }
         .topbar__inner { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 16px; }
         .brand { font-weight: 800; letter-spacing: .3px; display:flex; align-items:center; gap:8px; }
@@ -587,9 +609,8 @@ export default function Home() {
         .btn--dark { background:#111; color:#fff; padding:10px 16px; border:none; }
         .btn--ghost { background:#fff; color:#111; border:1px solid #ddd; padding:8px 12px; border-radius:10px; }
         .btn--disabled { background:#eee; color:#888; pointer-events:none; }
-        .btn--paystackLight { background:#1fcf84; color:#fff; border:none; padding:12px 16px; border-radius:12px; font-weight:800; }
-        .btn--paystackLight:hover { background:#18b973; }
-        .btn--dangerLight { background:#ffe9ea; color:#b4232c; border:1px solid #ffd3d6; padding:8px 12px; border-radius:10px; font-weight:800; }
+        .btn--paystack { background:#34c38f; color:#fff; border:none; padding:12px 16px; border-radius:12px; font-weight:800; } /* lighter green */
+        .btn--removeAll { background:#fde8e8; color:#8a1f1f; border:1px solid #f6caca; }
         .small { padding:8px 14px; }
 
         .search { width:100%; height:44px; padding:0 14px; border-radius:12px; border:1px solid #ddd; background:#fff; font-size:15px; outline:none; }
@@ -604,63 +625,41 @@ export default function Home() {
 
         .footer { border-top:1px solid #eaeaea; padding:18px 0 12px; background:#fafafa; }
         .footerGrid { display:grid; grid-template-columns:1fr; gap:16px; padding:14px 12px; }
-        @media (min-width: 900px) { .footerGrid { grid-template-columns: 1fr 1fr 1fr; } }
+        @media (min-width: 900px) {
+          .footerGrid { grid-template-columns:1fr 1fr 1fr; }
+        }
         .footTitle { font-weight:800; margin-bottom:6px; }
         .footText, .footList { color:#666; }
-        .footList { list-style:none; padding:0; margin:0; display:grid; gap:6px; }
+        .footList { margin:0; padding-left:18px; }
 
-        /* ===== CART ===== */
-        .overlay {
-          position: fixed; inset: 0; background: rgba(0,0,0,.35);
-          display: flex; justify-content: flex-end; align-items: flex-start;
-          padding: 12px; z-index: 80;
-        }
-        .drawer {
-          width: 520px; max-width: calc(100% - 12px);
-          background: #fff; border-radius: 16px;
-          box-shadow: 0 10px 30px rgba(0,0,0,.2);
-          border: 1px solid #eee;
-          overflow: hidden;
-        }
-        .drawer__top {
-          display:flex; align-items:center; justify-content:space-between;
-          padding: 14px 16px; border-bottom: 1px solid #f0f0f0;
-        }
-        .empty { padding: 20px 16px; color:#666; }
+        /* Overlay & Drawer (RIGHT aligned, self-scroll content) */
+        .overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:60; display:flex; justify-content:flex-end; align-items:flex-start; padding:12px; }
+        .drawer { width:min(520px, 96vw); background:#fff; border:1px solid #eee; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,.25); display:flex; flex-direction:column; max-height:calc(100vh - 24px); }
+        .drawer__top { display:flex; align-items:center; justify-content:space-between; padding:12px; gap:8px; border-bottom:1px solid #f0f0f0; position:sticky; top:0; background:#fff; border-top-left-radius:16px; border-top-right-radius:16px; }
+        .drawer__scroll { overflow:auto; padding:0 12px 12px; }
 
-        .lines {
-          max-height: 40vh; overflow:auto;
-          padding: 6px 6px 0 6px;
-        }
-        .line {
-          display:flex; align-items:center; justify-content:space-between;
-          gap: 10px; padding: 12px 10px; border-bottom: 1px dashed #eee;
-        }
-        .line__left { display:flex; align-items:center; gap:10px; min-width:0; }
-        .line__thumb { width:36px; height:36px; border-radius:8px; object-fit:cover; background:#f0f0f0; flex:0 0 auto; }
-        .line__name { font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .line__price { color:#7a7a7a; font-size:13px; }
+        .empty { padding:12px; color:#666; }
+        .lines { display:grid; gap:12px; padding-top:8px; }
+        .line { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0; border-bottom:1px dashed #eee; }
+        .lineLeft { display:flex; gap:10px; align-items:center; min-width:0; }
+        .thumbWrap { width:28px; height:28px; border-radius:8px; background:#f4f4f4; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+        .thumb { width:100%; height:100%; object-fit:cover; display:block; }
+        .thumb--empty { width:28px; height:28px; border-radius:8px; background:#ececec; }
+        .line__name { font-weight:800; }
+        .line__price { font-size:13px; }
+
         .qty { display:flex; gap:8px; }
-        .qtyBtn {
-          width:40px; height:40px; border-radius:10px; border:1px solid #ececec;
-          background:#f7f7f8; font-weight:800; cursor:pointer;
-        }
-        .qtyBtn--danger { background:#ffe9ea; color:#b4232c; border:1px solid #ffd3d6; }
+        .qtyBtn { width:40px; height:36px; border-radius:10px; border:1px solid #eee; background:#f7f7f7; font-weight:900; cursor:pointer; }
+        .qtyBtn--danger { background:#fee; color:#b12424; border-color:#f6caca; }
 
-        .totals { padding: 12px 16px 16px; }
-        .row { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-        .strong { font-weight:800; }
+        .totals { padding:12px 0 6px; display:grid; gap:8px; }
+        .row { display:flex; justify-content:space-between; font-weight:800; }
+        .input { width:100%; height:44px; border-radius:12px; border:1px solid #ddd; background:#f7f9ff; padding:0 12px; outline:none; }
+        .note { color:#7a7a7a; font-size:12px; line-height:1.3; }
 
-        .input {
-          width:100%; height:46px; border-radius:12px; border:1px solid #e5e7eb;
-          padding:0 12px; margin:6px 0; background:#f7fafe;
-          outline:none; box-sizing:border-box;
-        }
-
-        .note { font-size:12px; color:#6b7280; margin-top:8px; }
-
-        .waFab { position:fixed; right:16px; bottom:16px; z-index:60; background:#25D366; border-radius:999px; padding:10px; box-shadow:0 8px 18px rgba(0,0,0,.15); }
-        .waIcon { width:32px; height:32px; display:block; }
+        /* WhatsApp FAB */
+        .waFab { position:fixed; right:16px; bottom:16px; width:56px; height:56px; background:#25d366; border-radius:999px; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 20px rgba(0,0,0,.25); z-index:40; }
+        .waIcon { width:28px; height:28px; display:block; }
       `}</style>
     </div>
   );
