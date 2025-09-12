@@ -18,7 +18,6 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [showCart, setShowCart] = useState(false);
   const [cartMap, setCartMap] = useState<Record<string, number>>({});
-  const [customerEmail, setCustomerEmail] = useState("");
 
   // ---- Load products.json ----
   useEffect(() => {
@@ -77,13 +76,28 @@ export default function Home() {
     () => Object.values(cartMap).reduce((a, b) => a + b, 0),
     [cartMap]
   );
-  const cartTotal = useMemo(
-    () =>
-      cartLines.reduce(
-        (sum, l) => sum + (Number(l.product.price) || 0) * l.qty,
-        0
-      ),
-    [cartLines]
+
+  // Build the exact “extracted” cart array (duplicate items by qty)
+  const extractedCart = useMemo(() => {
+    const arr: { id: string; name: string; price: number; image: string }[] = [];
+    cartLines.forEach((l) => {
+      const price = Number(l.product.price) || 0;
+      const image = typeof l.product.img === "string" ? l.product.img : "";
+      for (let i = 0; i < l.qty; i++) {
+        arr.push({
+          id: l.product.id,
+          name: l.product.name,
+          price,
+          image,
+        });
+      }
+    });
+    return arr;
+  }, [cartLines]);
+
+  const total = useMemo(
+    () => extractedCart.reduce((sum, item) => sum + item.price, 0),
+    [extractedCart]
   );
 
   // ---- Search filter ----
@@ -100,34 +114,27 @@ export default function Home() {
   const currency = (n: number) =>
     `KES ${Math.round(n).toLocaleString("en-KE")}`;
 
-  // ---- Paystack handler (uses customerEmail) ----
-  const handlePaystack = () => {
-    const PaystackPop =
-      typeof window !== "undefined"
-        ? (window as any)?.PaystackPop
-        : undefined;
-
+  // ---- Paystack handler (exact pattern from your extracted code) ----
+  const payWithPaystack = () => {
+    // @ts-ignore Paystack injected by script
+    const PaystackPop = (typeof window !== "undefined"
+      ? (window as any).PaystackPop
+      : undefined);
     if (!PaystackPop) {
       alert("Couldn't start Paystack. Please refresh and try again.");
       return;
     }
-    if (!customerEmail) {
-      alert("Please enter your email to continue.");
-      return;
-    }
 
     const handler = PaystackPop.setup({
-      key: "pk_live_10bc141ee6ae2ae48edcd102c06540ffe1cb3ae6", // LIVE public key
-      email: customerEmail,
-      amount: Math.round(cartTotal) * 100, // amount in kobo (KES x 100)
+      key: process.env.NEXT_PUBLIC_PAYSTACK_KEY,
+      email: "customer@mastermindelectricals.com",
+      amount: total * 100, // kobo/cents
       currency: "KES",
       callback: function (response: any) {
-        alert("Payment complete! Reference: " + response.reference);
-        clear();
-        setShowCart(false);
+        window.location.href = `/payment-status?reference=${response.reference}`;
       },
       onClose: function () {
-        alert("Transaction was not completed, window closed.");
+        alert("Payment window closed.");
       },
     });
 
@@ -143,8 +150,8 @@ export default function Home() {
           content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
         <link rel="icon" href="/favicon.ico" />
-        {/* Paystack script */}
-        <script src="https://js.paystack.co/v1/inline.js" async></script>
+        {/* Paystack inline script (needed for the extracted cart button) */}
+        <script src="https://js.paystack.co/v1/inline.js"></script>
       </Head>
 
       {/* ===== Top Bar ===== */}
@@ -173,8 +180,8 @@ export default function Home() {
             Quality Electronics, Lighting & Gas — Fast Delivery
           </h1>
           <p className="lead">
-            Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay with
-            Paystack. Pickup or same-day delivery.
+            Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay via
+            M-Pesa. Pickup or same-day delivery.
           </p>
         </div>
 
@@ -210,7 +217,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right: SERVICES with M-Pesa logo image + Gas mini-cards */}
+          {/* Right: SERVICES with M-Pesa logo and Gas mini-cards */}
           <div className="infoCard">
             <div className="infoCard__bubble" aria-hidden />
             <div className="eyebrow">SERVICES</div>
@@ -345,7 +352,7 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* ===== Cart Drawer ===== */}
+      {/* ===== Cart Drawer (REPLACED with your extracted cart & button) ===== */}
       {showCart && (
         <div className="overlay" onClick={() => setShowCart(false)}>
           <aside
@@ -374,74 +381,44 @@ export default function Home() {
               </div>
             </div>
 
-            {cartLines.length === 0 ? (
-              <div className="empty">Your cart is empty.</div>
-            ) : (
-              <div className="lines">
-                {cartLines.map((l) => {
-                  const price = Number(l.product.price) || 0;
-                  return (
-                    <div key={l.product.id} className="line">
-                      <div>
-                        <div className="line__name">{l.product.name}</div>
-                        <div className="line__price">{currency(price)}</div>
-                      </div>
-                      <div className="qty">
-                        <button
-                          className="qtyBtn"
-                          onClick={() => sub(l.product.id)}
-                          aria-label="Decrease"
-                        >
-                          −
-                        </button>
-                        <div className="qtyNum">{l.qty}</div>
-                        <button
-                          className="qtyBtn"
-                          onClick={() => add(l.product.id)}
-                          aria-label="Increase"
-                        >
-                          +
-                        </button>
-                        <button
-                          className="qtyBtn"
-                          onClick={() => remove(l.product.id)}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            {/* --- Extracted cart content --- */}
+            <div className="cartExtracted">
+              <h2>Cart</h2>
 
-            <div className="totals">
-              <div className="row">
-                <span>Total</span>
-                <span className="strong">{currency(cartTotal)}</span>
-              </div>
+              {extractedCart.length === 0 ? (
+                <p>No items yet.</p>
+              ) : (
+                <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+                  {extractedCart.map((item, i) => (
+                    <li
+                      key={`${item.id}-${i}`}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "6px 0",
+                        borderBottom: "1px solid #eee",
+                      }}
+                    >
+                      <span>
+                        {item.name} – KES {item.price.toLocaleString()}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
 
-              {/* Customer email for Paystack */}
-              <input
-                type="email"
-                placeholder="Enter your email"
-                value={customerEmail}
-                onChange={(e) => setCustomerEmail(e.target.value)}
-                className="input"
-                style={{ marginTop: 6 }}
-                required
-              />
+              <h3 style={{ marginTop: 12 }}>
+                Total: KES {total.toLocaleString()}
+              </h3>
 
-              <button
-                disabled={cartLines.length === 0 || !customerEmail}
-                className={`btn ${
-                  cartLines.length && customerEmail ? "btn--paystack" : "btn--disabled"
-                }`}
-                onClick={handlePaystack}
-              >
-                Pay with Paystack
-              </button>
+              {total > 0 && (
+                <button className="paystack-btn" onClick={payWithPaystack}>
+                  Pay with M-Pesa (Paystack)
+                </button>
+              )}
             </div>
+            {/* --- /Extracted cart content --- */}
           </aside>
         </div>
       )}
@@ -501,7 +478,7 @@ export default function Home() {
         .cylinders { display:flex; justify-content:center; gap:14px; flex-wrap:wrap; }
         .cylCard { background:#fff; border:1px solid #eee; border-radius:12px; padding:12px; width:min(220px, 46%); display:flex; flex-direction:column; align-items:center; gap:8px; }
         .cylImg { height:74px; width:auto; object-fit:contain; }
-        .cylImg--tight { margin-bottom:-8px; } /* drop 6KG closer to its button */
+        .cylImg--tight { margin-bottom:-8px; } /* drop 6KG a bit closer to button */
 
         .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:12px; font-weight:800; text-decoration:none; cursor:pointer; }
         .btn--accent { background:#f4d03f; color:#111; padding:10px 14px; border:none; }
@@ -509,7 +486,6 @@ export default function Home() {
         .btn--dark { background:#111; color:#fff; padding:10px 16px; border:none; }
         .btn--ghost { background:#fff; color:#111; border:1px solid #ddd; padding:8px 12px; border-radius:10px; }
         .btn--disabled { background:#eee; color:#888; pointer-events:none; }
-        .btn--paystack { background:#3bb75e; color:#fff; border:none; padding:12px 16px; border-radius:12px; font-weight:800; }
         .small { padding:8px 14px; }
 
         .search { width:100%; height:44px; padding:0 14px; border-radius:12px; border:1px solid #ddd; background:#fff; font-size:15px; outline:none; }
@@ -535,19 +511,11 @@ export default function Home() {
         .overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:60; }
         .drawer { position:fixed; right:10px; top:12vh; width:min(440px, 92vw); max-height:76vh; overflow:auto; background:#fff; border-radius:16px; border:1px solid #eee; box-shadow:0 20px 40px rgba(0,0,0,.25); padding:12px; }
         .drawer__top { display:flex; justify-content:space-between; align-items:center; }
-        .empty { padding:22px 0; color:#666; }
-        .lines { display:grid; gap:10px; margin-top:10px; }
-        .line { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; border-bottom:1px solid #eee; padding-bottom:8px; }
-        .line__name { font-weight:700; }
-        .line__price { color:#666; font-size:12px; }
-        .qty { display:flex; align-items:center; gap:8px; }
-        .qtyBtn { border:1px solid #ddd; background:#fff; padding:6px 10px; border-radius:8px; cursor:pointer; }
-        .qtyNum { min-width:20px; text-align:center; }
 
-        .totals { margin-top:12px; display:grid; gap:8px; }
-        .row { display:flex; justify-content:space-between; }
-        .strong { font-weight:800; }
-        .input { width:100%; height:42px; border-radius:10px; border:1px solid #ddd; padding:0 12px; outline:none; background:#fff; }
+        /* Extracted-cart specific bits */
+        .cartExtracted { margin-top: 10px; padding: 15px; border: 1px solid #d1d5db; border-radius: 8px; background: #f9fafb; }
+        .paystack-btn { background: #08a05c; color: #fff; padding: 10px 20px; border-radius: 6px; margin-top: 15px; font-size: 16px; border: none; cursor: pointer; }
+        .paystack-btn:hover { background: #05944f; }
 
         /* Floating WhatsApp */
         .waFab {
