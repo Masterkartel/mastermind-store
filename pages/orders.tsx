@@ -1,82 +1,40 @@
 // pages/orders.tsx
 import { useEffect, useState } from "react";
 
-/** -------- Types -------- */
 type OrderItem = {
   name: string;
   price: number;
-  quantity?: number; // accept quantity or qty (legacy)
-  qty?: number;
+  quantity: number;
   image?: string;
-  // we may also see: img, imageUrl, photo, picture
-  [key: string]: any;
 };
 
 type Order = {
   id: string;
-  reference?: string;     // exists when paid (same as order number in your flow)
-  createdAt?: string;     // human-friendly date/time
+  reference?: string;     // when paid, this exists (same as order number in your flow)
+  createdAt?: string;     // human-friendly date/time string
   total: number;
   items: OrderItem[];
 };
 
-/** -------- Storage keys -------- */
-const CANONICAL_KEY = "orders";
-const POSSIBLE_KEYS = ["orders", "mm_orders", "mastermind_orders", "cart_orders"];
+const EXPANDED_KEY = "orders_expanded";
 
-/** -------- Helpers -------- */
-const pad = (n: number) => String(n).padStart(2, "0");
-const formatDateTime = (d: Date) =>
-  `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-
-const createdFromId = (id: string): string | undefined => {
-  const ts = Number(id?.replace(/^\D+/, ""));
-  if (!Number.isFinite(ts)) return;
-  const d = new Date(ts);
-  return isNaN(d.getTime()) ? undefined : formatDateTime(d);
+const formatDateTime = (d: Date) => {
+  // DD/MM/YYYY, HH:MM
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
-const PLACEHOLDER = "https://via.placeholder.com/56x56.png?text=%20";
-const slugify = (s: string) =>
-  (s || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-
-const resolveItemImage = (it: OrderItem) => {
-  // 1) direct fields
-  const direct = it.image || it.img || it.imageUrl || it.photo || it.picture;
-  if (typeof direct === "string" && direct.trim()) return direct.trim();
-
-  // 2) localStorage map (optional): { "<item name>": "url" }
-  if (typeof window !== "undefined") {
-    try {
-      const raw = localStorage.getItem("productImages");
-      if (raw) {
-        const map = JSON.parse(raw);
-        if (map && typeof map === "object" && map[it.name]) {
-          return String(map[it.name]);
-        }
-      }
-    } catch {}
-  }
-
-  // 3) public images by slug
-  const slug = slugify(it.name);
-  if (slug) return `/images/${slug}.webp`;
-
-  // 4) final fallback
-  return PLACEHOLDER;
-};
-
-/** -------- Pills (lightened colors) -------- */
+// Pills (kept as before, just slightly light colors)
 const HeaderPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
+  const bg = paid ? "#36c06a" : "#dde1e7";
+  const color = paid ? "#0b4d27" : "#3b3f46";
+  const text = paid ? "COMPLETED" : "PENDING";
   return (
     <span
       style={{
-        background: paid ? "#86efac" : "#e2e8f0", // light green / light gray
-        color: paid ? "#065f46" : "#334155",
+        background: bg,
+        color,
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
@@ -84,18 +42,21 @@ const HeaderPill = ({ reference }: { reference?: string }) => {
         whiteSpace: "nowrap",
       }}
     >
-      {paid ? "COMPLETED" : "PENDING"}
+      {text}
     </span>
   );
 };
 
 const StatusPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
+  const bg = paid ? "#dff7e8" : "#fde2e2";
+  const color = paid ? "#117a39" : "#b02a2a";
+  const text = paid ? "PAID" : "FAILED";
   return (
     <span
       style={{
-        background: paid ? "#34d399" : "#fca5a5", // light green / light red
-        color: paid ? "#064e3b" : "#7f1d1d",
+        background: bg,
+        color,
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
@@ -103,67 +64,66 @@ const StatusPill = ({ reference }: { reference?: string }) => {
         whiteSpace: "nowrap",
       }}
     >
-      {paid ? "PAID" : "FAILED"}
+      {text}
     </span>
   );
 };
 
-/** -------- Page -------- */
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[] | null>(null);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({}); // per-order toggle
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({}); // per-order open/closed
 
-  // Load orders, normalize, migrate to canonical key
+  // Load & normalize orders + restore expansion state
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const merged: Order[] = [];
-    for (const key of POSSIBLE_KEYS) {
-      try {
-        const raw = localStorage.getItem(key);
-        if (!raw) continue;
-        const arr = JSON.parse(raw);
-        if (Array.isArray(arr)) merged.push(...arr);
-      } catch {}
+    // Orders
+    let parsed: Order[] = [];
+    try {
+      parsed = JSON.parse(localStorage.getItem("orders") || "[]");
+    } catch {
+      parsed = [];
     }
 
-    const normalized: Order[] = (merged || [])
-      .filter((o) => o && typeof (o as any).id === "string")
-      .map((o: any) => {
-        const created =
-          o.createdAt || createdFromId(o.id) || formatDateTime(new Date());
-        const items: OrderItem[] = Array.isArray(o.items) ? o.items : [];
-        return { ...o, createdAt: created, items };
-      });
-
-    normalized.sort((a, b) => {
-      const na = Number(a.id.replace(/^\D+/, ""));
-      const nb = Number(b.id.replace(/^\D+/, ""));
-      if (Number.isFinite(na) && Number.isFinite(nb)) return nb - na;
-      return 0;
-    });
-
-    try {
-      localStorage.setItem(CANONICAL_KEY, JSON.stringify(normalized));
-      for (const key of POSSIBLE_KEYS) {
-        if (key !== CANONICAL_KEY) localStorage.removeItem(key);
+    // Ensure createdAt exists
+    let changed = false;
+    const normalized = parsed.map((o) => {
+      if (!o.createdAt) {
+        changed = true;
+        return { ...o, createdAt: formatDateTime(new Date()) };
       }
+      return o;
+    });
+    if (changed) {
+      try {
+        localStorage.setItem("orders", JSON.stringify(normalized));
+      } catch {}
+    }
+    setOrders(normalized);
+
+    // Expansion: default collapsed; restore saved state if we have it
+    let saved: Record<string, boolean> | null = null;
+    try {
+      const raw = localStorage.getItem(EXPANDED_KEY);
+      if (raw) saved = JSON.parse(raw);
     } catch {}
 
-    // default: all expanded (tap header to collapse)
-    const initialExpanded: Record<string, boolean> = {};
-    normalized.forEach((o) => (initialExpanded[o.id] = true));
-
-    setOrders(normalized);
-    setExpanded(initialExpanded);
+    const initial: Record<string, boolean> = {};
+    normalized.forEach((o) => {
+      initial[o.id] = saved?.[o.id] ?? false; // false => collapsed by default
+    });
+    setExpanded(initial);
   }, []);
 
+  // Toggle + persist per order
   const toggle = (id: string) =>
-    setExpanded((e) => ({ ...e, [id]: !e[id] }));
-
-  if (orders === null) {
-    return <div style={{ background: "#f6f6f6", minHeight: "100vh" }} />;
-  }
+    setExpanded((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      try {
+        localStorage.setItem(EXPANDED_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
 
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
@@ -257,97 +217,88 @@ export default function OrdersPage() {
                     overflow: "hidden",
                   }}
                 >
-                  {/* Header row (tap to toggle) */}
+                  {/* Header row (tap to open/close) */}
                   <button
                     onClick={() => toggle(order.id)}
-                    style={{ all: "unset", cursor: "pointer", width: "100%" }}
+                    style={{
+                      all: "unset",
+                      width: "100%",
+                      cursor: "pointer",
+                    }}
                     aria-expanded={isOpen}
+                    aria-controls={`order-body-${order.id}`}
                   >
                     <div
                       style={{
                         display: "grid",
                         gridTemplateColumns: "1fr auto",
                         alignItems: "center",
-                        gap: 10,
+                        gap: 8,
                         padding: "12px 14px",
                         borderBottom: "1px solid #f0f0f0",
                       }}
                     >
-                      {/* Left: order id + date BELOW so pill never gets pushed off */}
-                      <div style={{ display: "flex", flexDirection: "column" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <span style={{ color: "#666" }}>Order</span>
                           <span style={{ fontWeight: 800 }}>#{order.id}</span>
                         </div>
+                        {/* date under the order number on mobile so pill doesn't wrap */}
                         {order.createdAt ? (
-                          <span style={{ color: "#9aa3af", fontSize: 12, marginTop: 4 }}>
-                            {order.createdAt}
-                          </span>
+                          <span style={{ color: "#999", fontSize: 12 }}>{order.createdAt}</span>
                         ) : null}
                       </div>
 
-                      {/* Right: pill + total */}
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 10,
-                          flexWrap: "nowrap",
-                        }}
-                      >
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <HeaderPill reference={order.reference} />
-                        <span style={{ fontWeight: 800, whiteSpace: "nowrap" }}>
+                        <span style={{ fontWeight: 800 }}>
                           KES {Math.round(order.total).toLocaleString("en-KE")}
                         </span>
                       </div>
                     </div>
                   </button>
 
-                  {/* Body */}
+                  {/* Body (collapsible) */}
                   {isOpen && (
-                    <div style={{ padding: 14, display: "grid", gap: 10 }}>
-                      {order.items.map((it, i) => {
-                        const qty = Number(it.quantity ?? it.qty ?? 1);
-                        const price = Number(it.price) || 0;
-                        const src = resolveItemImage(it);
-                        return (
-                          <div
-                            key={i}
+                    <div
+                      id={`order-body-${order.id}`}
+                      style={{ padding: 14, display: "grid", gap: 10 }}
+                    >
+                      {/* items */}
+                      {order.items.map((it, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "auto 1fr",
+                            gap: 10,
+                            alignItems: "center",
+                          }}
+                        >
+                          <img
+                            src={it.image || "https://via.placeholder.com/56x56.png?text=%20"}
+                            alt={it.name}
                             style={{
-                              display: "grid",
-                              gridTemplateColumns: "auto 1fr",
-                              gap: 10,
-                              alignItems: "center",
+                              width: 56,
+                              height: 56,
+                              borderRadius: 10,
+                              objectFit: "cover",
+                              background: "#f4f4f4",
+                              border: "1px solid #eee",
                             }}
-                          >
-                            <img
-                              src={src}
-                              alt={it.name}
-                              loading="lazy"
-                              onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).src = PLACEHOLDER;
-                              }}
-                              style={{
-                                width: 56,
-                                height: 56,
-                                borderRadius: 10,
-                                objectFit: "cover",
-                                background: "#f4f4f4",
-                                border: "1px solid #eee",
-                              }}
-                            />
-                            <div>
-                              <div style={{ fontWeight: 800 }}>{it.name}</div>
-                              <div style={{ color: "#666" }}>
-                                KES {Math.round(price)} × {qty} ={" "}
-                                <span style={{ fontWeight: 700, color: "#111" }}>
-                                  KES {Math.round(price * qty)}
-                                </span>
-                              </div>
+                            loading="lazy"
+                          />
+                          <div>
+                            <div style={{ fontWeight: 800 }}>{it.name}</div>
+                            <div style={{ color: "#666" }}>
+                              KES {Math.round(it.price)} × {it.quantity} ={" "}
+                              <span style={{ fontWeight: 700, color: "#111" }}>
+                                KES {Math.round(it.price * it.quantity)}
+                              </span>
                             </div>
                           </div>
-                        );
-                      })}
+                        </div>
+                      ))}
 
                       {/* Reference */}
                       <div
@@ -379,7 +330,7 @@ export default function OrdersPage() {
                               navigator.clipboard.writeText(order.reference!)
                             }
                             style={{
-                              background: "#fde68a",
+                              background: "#f4d03f",
                               color: "#111",
                               fontWeight: 800,
                               border: "none",
@@ -396,6 +347,7 @@ export default function OrdersPage() {
                       {/* Status */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ color: "#777" }}>Status</span>
+                        {/* Rule: if reference exists => PAID (green); otherwise FAILED (red) */}
                         <StatusPill reference={order.reference} />
                       </div>
 
