@@ -10,26 +10,68 @@ type OrderItem = {
 
 type Order = {
   id: string;
-  reference?: string;
-  createdAt?: string;
+  reference?: string;        // same as order number when paid
+  createdAt?: string;        // stored or derived
   total: number;
   items: OrderItem[];
 };
 
-const formatDateTime = (d: Date) => {
+const GREEN = "#4fd18b";     // previous lighter green you liked
+const GREY  = "#bfc4cc";
+const RED   = "#e85d5d";
+const COPY  = "#f4d03f";
+
+const fmtDateTime = (v?: string) => {
+  const d = v ? new Date(v) : new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
-  const day = pad(d.getDate());
-  const month = pad(d.getMonth() + 1);
-  const year = d.getFullYear();
-  const hours = pad(d.getHours());
-  const mins = pad(d.getMinutes());
-  const secs = pad(d.getSeconds());
-  return `${day}/${month}/${year}, ${hours}:${mins}:${secs}`;
+  const dd = pad(d.getDate());
+  const mm = pad(d.getMonth() + 1);
+  const yy = d.getFullYear();
+  const hh = pad(d.getHours());
+  const mi = pad(d.getMinutes());
+  const ss = pad(d.getSeconds());
+  return `${dd}/${mm}/${yy}, ${hh}:${mi}:${ss}`;
+};
+
+const HeaderPill = ({ reference }: { reference?: string }) => {
+  const paid = !!reference;
+  return (
+    <span
+      style={{
+        background: paid ? GREEN : GREY,
+        color: "#fff",
+        fontSize: 12,
+        fontWeight: 800,
+        padding: "4px 10px",
+        borderRadius: 999,
+      }}
+    >
+      {paid ? "COMPLETED" : "PENDING"}
+    </span>
+  );
+};
+
+const StatusPill = ({ reference }: { reference?: string }) => {
+  const paid = !!reference;
+  return (
+    <span
+      style={{
+        background: paid ? GREEN : RED,
+        color: "#fff",
+        fontSize: 12,
+        fontWeight: 800,
+        padding: "4px 10px",
+        borderRadius: 999,
+      }}
+    >
+      {paid ? "PAID" : "FAILED"}
+    </span>
+  );
 };
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null); // start collapsed
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -41,59 +83,18 @@ export default function OrdersPage() {
       parsed = [];
     }
 
-    const normalized = parsed.map((o) => {
-      if (!o.createdAt) {
-        return { ...o, createdAt: formatDateTime(new Date()) };
-      }
-      return { ...o, createdAt: formatDateTime(new Date(o.createdAt)) };
-    });
+    // normalize createdAt into our display format (once for UI only)
+    const normalized = parsed.map((o) => ({
+      ...o,
+      createdAt: fmtDateTime(o.createdAt),
+    }));
 
     setOrders(normalized);
   }, []);
 
-  const HeaderPill = ({ reference }: { reference?: string }) => {
-    const paid = !!reference;
-    const bg = paid ? "#4fd18b" : "#bfc4cc"; // lighter green / grey
-    const text = paid ? "COMPLETED" : "PENDING";
-    return (
-      <span
-        style={{
-          background: bg,
-          color: "#fff",
-          fontSize: 12,
-          fontWeight: 800,
-          padding: "4px 10px",
-          borderRadius: 999,
-        }}
-      >
-        {text}
-      </span>
-    );
-  };
-
-  const StatusPill = ({ reference }: { reference?: string }) => {
-    const paid = !!reference;
-    const bg = paid ? "#4fd18b" : "#e85d5d"; // lighter green / red
-    const text = paid ? "PAID" : "FAILED";
-    return (
-      <span
-        style={{
-          background: bg,
-          color: "#fff",
-          fontSize: 12,
-          fontWeight: 800,
-          padding: "4px 10px",
-          borderRadius: 999,
-        }}
-      >
-        {text}
-      </span>
-    );
-  };
-
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
-      {/* Header */}
+      {/* Top bar */}
       <div
         style={{
           background: "#111",
@@ -116,7 +117,7 @@ export default function OrdersPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span
               style={{
-                background: "#f4d03f",
+                background: COPY,
                 color: "#111",
                 fontWeight: 800,
                 padding: 2,
@@ -150,7 +151,7 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* Orders */}
+      {/* Orders list */}
       <div style={{ maxWidth: 1200, margin: "12px auto", padding: "0 12px" }}>
         {orders.length === 0 ? (
           <div
@@ -168,7 +169,7 @@ export default function OrdersPage() {
         ) : (
           <div style={{ display: "grid", gap: 12 }}>
             {orders.map((order) => {
-              const isOpen = expanded === order.id;
+              const isOpen = openId === order.id;
               return (
                 <div
                   key={order.id}
@@ -179,29 +180,24 @@ export default function OrdersPage() {
                     overflow: "hidden",
                   }}
                 >
-                  {/* Header row */}
+                  {/* Header (tap to toggle) */}
                   <div
+                    onClick={() => setOpenId(isOpen ? null : order.id)}
                     style={{
                       display: "grid",
                       gridTemplateColumns: "1fr auto",
                       alignItems: "center",
                       padding: "12px 14px",
+                      borderBottom: isOpen ? "1px solid #f0f0f0" : "none",
                       cursor: "pointer",
                     }}
-                    onClick={() =>
-                      setExpanded(isOpen ? null : order.id)
-                    }
                   >
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                       <span style={{ color: "#666" }}>Order</span>
                       <span style={{ fontWeight: 800 }}>#{order.id}</span>
-                      {order.createdAt && (
-                        <span style={{ color: "#999", fontSize: 12 }}>
-                          {order.createdAt}
-                        </span>
-                      )}
+                      {/* date is no longer in header */}
                     </div>
-                    <div style={{ display: "flex", gap: 10 }}>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                       <HeaderPill reference={order.reference} />
                       <span style={{ fontWeight: 800 }}>
                         KES {Math.round(order.total).toLocaleString("en-KE")}
@@ -212,42 +208,55 @@ export default function OrdersPage() {
                   {/* Expanded body */}
                   {isOpen && (
                     <div style={{ padding: 14, display: "grid", gap: 10 }}>
-                      {order.items.map((it, i) => (
-                        <div
-                          key={i}
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "auto 1fr",
-                            gap: 10,
-                            alignItems: "center",
-                          }}
-                        >
-                          <img
-                            src={
-                              it.image ||
-                              "https://via.placeholder.com/56x56.png?text=%20"
-                            }
-                            alt={it.name}
+                      {/* Item(s) */}
+                      {order.items.map((it, i) => {
+                        const price = Number(it.price) || 0;
+                        const qty = Number(it.quantity) || 0;
+                        const lineTotal = Math.round(price * qty);
+                        return (
+                          <div
+                            key={i}
                             style={{
-                              width: 56,
-                              height: 56,
-                              borderRadius: 10,
-                              objectFit: "cover",
-                              background: "#f4f4f4",
-                              border: "1px solid #eee",
+                              display: "grid",
+                              gridTemplateColumns: "auto 1fr",
+                              gap: 10,
+                              alignItems: "center",
                             }}
-                          />
-                          <div>
-                            <div style={{ fontWeight: 800 }}>{it.name}</div>
-                            <div style={{ color: "#666" }}>
-                              KES {Math.round(it.price)} × {it.quantity} ={" "}
-                              <span style={{ fontWeight: 700, color: "#111" }}>
-                                KES {Math.round(it.price * it.quantity)}
-                              </span>
+                          >
+                            <img
+                              src={
+                                it.image ||
+                                "https://via.placeholder.com/56x56.png?text=%20"
+                              }
+                              alt={it.name}
+                              style={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: 10,
+                                objectFit: "cover",
+                                background: "#f4f4f4",
+                                border: "1px solid #eee",
+                              }}
+                              loading="lazy"
+                            />
+                            <div>
+                              <div style={{ fontWeight: 800 }}>{it.name}</div>
+                              <div style={{ color: "#666" }}>
+                                KES {Math.round(price)} × {qty} ={" "}
+                                <span style={{ fontWeight: 700, color: "#111" }}>
+                                  KES {lineTotal}
+                                </span>
+                              </div>
+                              {/* date sits under the item */}
+                              {order.createdAt && (
+                                <div style={{ color: "#999", fontSize: 12, marginTop: 2 }}>
+                                  {order.createdAt}
+                                </div>
+                              )}
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
 
                       {/* Reference */}
                       <div
@@ -279,7 +288,7 @@ export default function OrdersPage() {
                               navigator.clipboard.writeText(order.reference!)
                             }
                             style={{
-                              background: "#f4d03f",
+                              background: COPY,
                               color: "#111",
                               fontWeight: 800,
                               border: "none",
@@ -293,25 +302,18 @@ export default function OrdersPage() {
                         )}
                       </div>
 
-                      {/* Status + Total */}
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          marginTop: 2,
-                        }}
-                      >
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <span style={{ color: "#777" }}>Status</span>
-                          <StatusPill reference={order.reference} />
-                        </div>
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <span style={{ color: "#777" }}>Total</span>
-                          <span style={{ fontWeight: 800 }}>
-                            KES {Math.round(order.total).toLocaleString("en-KE")}
-                          </span>
-                        </div>
+                      {/* Status */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ color: "#777" }}>Status</span>
+                        <StatusPill reference={order.reference} />
+                      </div>
+
+                      {/* Total (amount moved next to label, not far right) */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ color: "#777" }}>Total</span>
+                        <span style={{ fontWeight: 800 }}>
+                          KES {Math.round(order.total).toLocaleString("en-KE")}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -323,4 +325,4 @@ export default function OrdersPage() {
       </div>
     </div>
   );
-}
+                            }
