@@ -37,7 +37,6 @@ const createdFromId = (id: string): string | undefined => {
   return isNaN(d.getTime()) ? undefined : formatDateTime(d);
 };
 
-/** -------- Image helpers -------- */
 const PLACEHOLDER = "https://via.placeholder.com/56x56.png?text=%20";
 const slugify = (s: string) =>
   (s || "")
@@ -45,7 +44,7 @@ const slugify = (s: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 
-const resolveItemImage = (it: { [k: string]: any }) => {
+const resolveItemImage = (it: OrderItem) => {
   const direct = it.image || it.img || it.imageUrl || it.photo || it.picture;
   if (typeof direct === "string" && direct.trim()) return direct.trim();
 
@@ -63,20 +62,18 @@ const resolveItemImage = (it: { [k: string]: any }) => {
 
   const slug = slugify(it.name);
   if (slug) return `/images/${slug}.webp`;
+
   return PLACEHOLDER;
 };
 
-/** -------- Pills (lighter shades) -------- */
+/** -------- Pills -------- */
 const HeaderPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
-  const bg = paid ? "#bbf7d0" : "#fde2e2";
-  const fg = paid ? "#065f46" : "#7f1d1d";
-  const text = paid ? "COMPLETED" : "FAILED";
   return (
     <span
       style={{
-        background: bg,
-        color: fg,
+        background: paid ? "#86efac" : "#e2e8f0",
+        color: paid ? "#065f46" : "#334155",
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
@@ -84,21 +81,18 @@ const HeaderPill = ({ reference }: { reference?: string }) => {
         whiteSpace: "nowrap",
       }}
     >
-      {text}
+      {paid ? "COMPLETED" : "PENDING"}
     </span>
   );
 };
 
 const StatusPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
-  const bg = paid ? "#a7f3d0" : "#fecaca";
-  const fg = paid ? "#064e3b" : "#7f1d1d";
-  const text = paid ? "PAID" : "FAILED";
   return (
     <span
       style={{
-        background: bg,
-        color: fg,
+        background: paid ? "#34d399" : "#fca5a5",
+        color: paid ? "#064e3b" : "#7f1d1d",
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
@@ -106,7 +100,7 @@ const StatusPill = ({ reference }: { reference?: string }) => {
         whiteSpace: "nowrap",
       }}
     >
-      {text}
+      {paid ? "PAID" : "FAILED"}
     </span>
   );
 };
@@ -115,7 +109,6 @@ const StatusPill = ({ reference }: { reference?: string }) => {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [copiedForRef, setCopiedForRef] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -169,7 +162,7 @@ export default function OrdersPage() {
 
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
-      {/* Header bar */}
+      {/* Header */}
       <div
         style={{
           background: "#111",
@@ -259,7 +252,6 @@ export default function OrdersPage() {
                     overflow: "hidden",
                   }}
                 >
-                  {/* Header row */}
                   <button
                     onClick={() => toggle(order.id)}
                     style={{ all: "unset", cursor: "pointer", width: "100%" }}
@@ -303,7 +295,6 @@ export default function OrdersPage() {
                     </div>
                   </button>
 
-                  {/* Body */}
                   {isOpen && (
                     <div style={{ padding: 14, display: "grid", gap: 10 }}>
                       {order.items.map((it, i) => {
@@ -349,7 +340,6 @@ export default function OrdersPage() {
                         );
                       })}
 
-                      {/* Reference */}
                       <div
                         style={{
                           display: "flex",
@@ -373,20 +363,37 @@ export default function OrdersPage() {
                         >
                           {order.reference || "—"}
                         </span>
+                        {order.reference ? (
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(order.reference!);
+                              alert("Copied");
+                            }}
+                            style={{
+                              background: "#fde68a",
+                              color: "#111",
+                              fontWeight: 800,
+                              border: "none",
+                              padding: "6px 10px",
+                              borderRadius: 10,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Copy
+                          </button>
+                        ) : null}
                       </div>
 
-                      {/* Status */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ color: "#777" }}>Status</span>
                         <StatusPill reference={order.reference} />
                       </div>
 
-                      {/* Total */}
                       <div
                         style={{
-                          display: "flex",
+                          display: "grid",
+                          gridTemplateColumns: "1fr auto",
                           alignItems: "center",
-                          gap: 8,
                           marginTop: 2,
                         }}
                       >
