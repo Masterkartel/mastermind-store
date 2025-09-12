@@ -1,63 +1,67 @@
 // pages/orders.tsx
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 
 type OrderItem = {
   id: string;
   name: string;
-  qty: number;
   price: number;
+  qty: number;
   img?: string;
 };
+
 type Order = {
-  id: string;               // same as reference
-  reference: string;
-  status: string;           // "PAID" | "FAILED" | "PENDING" | etc.
-  createdAt?: string;       // ISO string
+  id: string;                 // e.g. "T031011257064777"
+  reference: string;          // paystack reference
+  status: "paid" | "completed" | "failed" | "pending";
+  createdAt?: string;         // ISO date
+  total: number;              // KES
   items: OrderItem[];
-  total: number;            // in KES
-  customer?: {
-    name?: string;
-    phone?: string;
-    email?: string;
-  };
 };
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [open, setOpen] = useState<Record<string, boolean>>({});
 
+  // Load orders saved by checkout (stored under "mm_orders")
   useEffect(() => {
     try {
       const raw = localStorage.getItem("mm_orders");
-      const parsed: Order[] = raw ? JSON.parse(raw) : [];
-      // newest first
-      parsed.sort((a, b) => {
-        const ta = a.createdAt ? Date.parse(a.createdAt) : 0;
-        const tb = b.createdAt ? Date.parse(b.createdAt) : 0;
-        return tb - ta;
-      });
-      setOrders(parsed);
-    } catch {
-      setOrders([]);
-    }
+      if (raw) setOrders(JSON.parse(raw));
+    } catch (_) {}
   }, []);
 
-  const currency = (n: number) => `KES ${Math.round(n).toLocaleString("en-KE")}`;
+  // If a fresh reference arrives via ?r=XYZ, bubble that order to the top
+  const highlightedRef = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    const u = new URL(window.location.href);
+    return u.searchParams.get("r") || "";
+  }, []);
 
-  const statusChip = (status: string) => {
-    const s = (status || "").toUpperCase();
-    if (s === "PAID") return <span className="chip chip--paid">COMPLETED</span>;
-    if (s === "FAILED") return <span className="chip chip--failed">FAILED</span>;
-    return <span className="chip chip--pending">PENDING</span>;
-  };
+  const sorted = useMemo(() => {
+    const arr = [...orders];
+    // newest first by createdAt (fallback to original order)
+    arr.sort((a, b) => {
+      const ta = a.createdAt ? Date.parse(a.createdAt) : 0;
+      const tb = b.createdAt ? Date.parse(b.createdAt) : 0;
+      return tb - ta;
+    });
+    // bump highlighted ref to top
+    if (highlightedRef) {
+      const i = arr.findIndex((o) => o.reference === highlightedRef);
+      if (i > 0) {
+        const [x] = arr.splice(i, 1);
+        arr.unshift(x);
+      }
+    }
+    return arr;
+  }, [orders, highlightedRef]);
 
+  const fmtKES = (n: number) => `KES ${Math.round(n).toLocaleString("en-KE")}`;
   const fmtDate = (iso?: string) => {
-    if (!iso) return "";
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return "";
-    return d.toLocaleString("en-KE", {
+    if (!iso) return "—";
+    const t = Date.parse(iso);
+    if (Number.isNaN(t)) return "—";
+    return new Date(t).toLocaleString("en-KE", {
       year: "numeric",
       month: "short",
       day: "2-digit",
@@ -66,160 +70,143 @@ export default function OrdersPage() {
     });
   };
 
+  const pillClass = (s: Order["status"]) => {
+    if (s === "failed") return "pill pill--red";
+    if (s === "pending") return "pill pill--amber";
+    // paid / completed → green
+    return "pill pill--green";
+  };
+
   return (
     <div className="wrap">
       <Head>
-        <title>My Orders • Mastermind</title>
+        <title>My Orders — Mastermind</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
-          rel="stylesheet"
-        />
       </Head>
 
+      {/* Topbar */}
       <header className="topbar">
-        <div className="title">
-          <img src="/favicon.ico" className="logo" alt="" />
-          My Orders
+        <div className="topbar__inner">
+          <div className="brand">
+            <img src="/favicon.ico" className="icon" alt="" aria-hidden />
+            <span>My Orders</span>
+          </div>
+          <a href="/" className="backBtn">← Back to Shop</a>
         </div>
-        <Link href="/" className="backBtn">← Back to Shop</Link>
       </header>
 
       <main className="container">
-        {orders.length === 0 ? (
-          <div className="empty">
-            No orders yet. <Link href="/">Start shopping</Link>
-          </div>
+        {sorted.length === 0 ? (
+          <div className="empty">No orders yet.</div>
         ) : (
           <div className="list">
-            {orders.map((o) => {
-              const isOpen = !!open[o.id];
-              return (
-                <article key={o.id} className={`card ${isOpen ? "open" : ""}`}>
-                  <button
-                    className="cardHead"
-                    onClick={() => setOpen((m) => ({ ...m, [o.id]: !m[o.id] }))}
-                    aria-expanded={isOpen}
-                  >
-                    <div className="left">
-                      <div className="ordId">Order #{o.id}</div>
-                      <div className="date">{fmtDate(o.createdAt) || "\u2014"}</div>
-                    </div>
-                    <div className="right">
-                      {statusChip(o.status)}
-                      <div className="total">{currency(o.total)}</div>
-                      <div className="chev">{isOpen ? "▴" : "▾"}</div>
-                    </div>
-                  </button>
-
-                  <div className="body">
-                    <ul className="items">
-                      {o.items.map((it, i) => {
-                        const lineTotal = it.price * it.qty;
-                        return (
-                          <li key={`${it.id}-${i}`} className="row">
-                            <div className="thumb">
-                              {it.img ? (
-                                <img src={it.img} alt={it.name} />
-                              ) : (
-                                <div className="ph" />
-                              )}
-                            </div>
-                            <div className="info">
-                              <div className="name">{it.name}</div>
-                              <div className="meta">
-                                {currency(it.price)} × {it.qty} ={" "}
-                                <b>{currency(lineTotal)}</b>
-                              </div>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-
-                    <dl className="summary">
-                      <div>
-                        <dt>Reference</dt>
-                        <dd>{o.reference}</dd>
-                      </div>
-                      <div>
-                        <dt>Status</dt>
-                        <dd>
-                          {statusChip(o.status)}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>Total</dt>
-                        <dd className="bold">{currency(o.total)}</dd>
-                      </div>
-                    </dl>
+            {sorted.map((o) => (
+              <details
+                key={o.reference}
+                className="card"
+                open={highlightedRef && highlightedRef === o.reference}
+              >
+                <summary className="summary">
+                  <div className="id">
+                    <div className="muted">Order</div>
+                    <div className="mono">#{o.id || o.reference}</div>
+                    <div className="date">{fmtDate(o.createdAt)}</div>
                   </div>
-                </article>
-              );
-            })}
+                  <div className="right">
+                    <span className={pillClass(o.status)}>
+                      {o.status === "failed"
+                        ? "FAILED"
+                        : o.status === "pending"
+                        ? "PENDING"
+                        : "COMPLETED"}
+                    </span>
+                    <div className="total">{fmtKES(o.total)}</div>
+                  </div>
+                </summary>
+
+                <div className="items">
+                  {o.items.map((it) => (
+                    <div key={it.id} className="row">
+                      <div className="thumb">
+                        <img
+                          src={it.img || "/placeholder.png"}
+                          alt={it.name}
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="meta">
+                        <div className="name">{it.name}</div>
+                        <div className="sub">
+                          {fmtKES(it.price)} × {it.qty} ={" "}
+                          <strong>{fmtKES(it.price * it.qty)}</strong>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="kv">
+                    <div className="k">Reference</div>
+                    <div className="v mono">{o.reference}</div>
+                  </div>
+                  <div className="kv">
+                    <div className="k">Status</div>
+                    <div className="v">
+                      <span className={pillClass(o.status)}>
+                        {o.status === "failed"
+                          ? "FAILED"
+                          : o.status === "pending"
+                          ? "PENDING"
+                          : "PAID"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="kv">
+                    <div className="k">Total</div>
+                    <div className="v strong">{fmtKES(o.total)}</div>
+                  </div>
+                </div>
+              </details>
+            ))}
           </div>
         )}
       </main>
 
       <style jsx>{`
-        :global(html, body) { font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
-        .wrap { background:#fafafa; min-height:100vh; }
-        .container { max-width:900px; margin:0 auto; padding:12px; }
-        .topbar {
-          position:sticky; top:0; z-index:5;
-          display:flex; justify-content:space-between; align-items:center;
-          background:#111; color:#fff; padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.08);
-        }
-        .title { display:flex; align-items:center; gap:8px; font-weight:700; }
-        .logo { width:22px; height:22px; border-radius:4px; }
-        .backBtn {
-          background:#fff; color:#111; text-decoration:none; font-weight:600;
-          padding:8px 12px; border-radius:10px; border:1px solid #eee;
-        }
+        .wrap { font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto; background:#fafafa; min-height:100vh; }
+        .container { max-width: 900px; margin: 0 auto; padding: 12px; }
+        .topbar { background:#111; color:#fff; position:sticky; top:0; z-index:40; }
+        .topbar__inner { max-width:900px; margin:0 auto; padding:12px; display:flex; align-items:center; justify-content:space-between; }
+        .brand { display:flex; align-items:center; gap:8px; font-weight:800; }
+        .icon { width:22px; height:22px; border-radius:4px; }
+        .backBtn { background:#fff; color:#111; text-decoration:none; border:1px solid #eee; padding:8px 12px; border-radius:12px; font-weight:800; }
+        .empty { background:#fff; border:1px solid #eee; border-radius:14px; padding:16px; color:#666; }
 
-        .empty { margin:24px 0; color:#555; }
-        .list { display:grid; gap:14px; }
-
-        .card {
-          background:#fff; border:1px solid #eee; border-radius:14px; overflow:hidden;
-          box-shadow:0 1px 0 rgba(0,0,0,.03);
-        }
-        .cardHead {
-          width:100%; display:flex; align-items:center; justify-content:space-between;
-          padding:12px; background:#fff; border:none; text-align:left; cursor:pointer;
-        }
-        .left { display:flex; flex-direction:column; gap:4px; }
-        .ordId { font-weight:700; }
-        .date { color:#888; font-size:12px; }
+        .list { display:grid; gap:12px; }
+        .card { background:#fff; border:1px solid #eee; border-radius:14px; overflow:hidden; }
+        .summary { list-style:none; cursor:pointer; padding:12px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+        .summary::-webkit-details-marker { display:none; }
+        .id { display:grid; gap:2px; }
+        .muted { color:#9ca3af; font-size:12px; }
+        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+        .date { color:#6b7280; font-size:12px; }
         .right { display:flex; align-items:center; gap:10px; }
-        .total { font-weight:800; color:#0b1; }
-        .chev { color:#888; }
-
-        .chip {
-          padding:4px 8px; border-radius:999px; font-size:12px; font-weight:700;
-          border:1px solid transparent; line-height:1;
-        }
-        .chip--paid { background:#e9f8ef; color:#0a7a3c; border-color:#c9efd8; }
-        .chip--failed { background:#ffecec; color:#c22727; border-color:#ffd5d5; }
-        .chip--pending { background:#f2f2f2; color:#555; border-color:#e7e7e7; }
-
-        .body { padding:10px 12px 14px; border-top:1px solid #f2f2f2; }
-        .items { list-style:none; margin:0; padding:0; display:grid; gap:10px; }
-        .row { display:flex; gap:10px; align-items:center; border:1px solid #f1f1f1; border-radius:12px; padding:10px; }
-        .thumb { width:54px; height:54px; border-radius:10px; overflow:hidden; background:#f7f7f7; display:flex; align-items:center; justify-content:center; }
+        .total { font-weight:800; }
+        .items { padding:12px; display:grid; gap:10px; border-top:1px dashed #eee; }
+        .row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px dashed #f0f0f0; }
+        .row:last-child { border-bottom:none; }
+        .thumb { width:56px; height:56px; border-radius:12px; background:#f5f5f5; display:grid; place-items:center; overflow:hidden; }
         .thumb img { width:100%; height:100%; object-fit:cover; }
-        .ph { width:100%; height:100%; background:#f0f0f0; }
-        .info { display:flex; flex-direction:column; gap:4px; }
-        .name { font-weight:700; }
-        .meta { color:#666; font-size:13px; }
+        .meta .name { font-weight:800; }
+        .sub { color:#6b7280; }
+        .kv { display:grid; grid-template-columns: 120px 1fr; gap:6px; align-items:center; }
+        .k { color:#6b7280; }
+        .v { }
+        .strong { font-weight:800; }
 
-        .summary {
-          display:grid; gap:10px; margin-top:12px;
-          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        }
-        dt { color:#777; font-size:13px; }
-        dd { margin:2px 0 0; }
-        .bold { font-weight:800; }
+        .pill { padding:6px 10px; border-radius:9999px; font-size:12px; font-weight:800; display:inline-block; }
+        .pill--green { background:#dcfce7; color:#166534; border:1px solid #bbf7d0; }
+        .pill--red { background:#fee2e2; color:#7f1d1d; border:1px solid #fecaca; }
+        .pill--amber { background:#fef3c7; color:#78350f; border:1px solid #fde68a; }
       `}</style>
     </div>
   );
