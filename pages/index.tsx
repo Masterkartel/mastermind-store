@@ -1,6 +1,7 @@
 // pages/index.tsx
 import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
+import Link from "next/link";
 
 type Product = {
   id: string;
@@ -10,7 +11,6 @@ type Product = {
   stock?: number | string;
   img?: string;
 };
-
 type CartLine = { product: Product; qty: number };
 
 export default function Home() {
@@ -19,10 +19,10 @@ export default function Home() {
   const [showCart, setShowCart] = useState(false);
   const [cartMap, setCartMap] = useState<Record<string, number>>({});
 
-  // NEW: customer fields
-  const [custName, setCustName] = useState("");
-  const [custPhone, setCustPhone] = useState("");
-  const [custEmail, setCustEmail] = useState("");
+  // Customer fields (for Paystack + order record)
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
 
   // ---- Load products.json ----
   useEffect(() => {
@@ -104,58 +104,66 @@ export default function Home() {
   const currency = (n: number) =>
     `KES ${Math.round(n).toLocaleString("en-KE")}`;
 
-  // --- Helpers for validation/format ---
-  const emailOk = /\S+@\S+\.\S+/.test(custEmail);
-  const phoneOk = custPhone.replace(/\D/g, "").length >= 9; // light check
-  const nameOk = custName.trim().length >= 2;
-
-  const formatPhoneKE = (raw: string) => {
-    const digits = raw.replace(/\D/g, "");
-    if (digits.startsWith("254")) return `+${digits}`;
-    if (digits.startsWith("0") && digits.length >= 10)
-      return `+254${digits.slice(1)}`;
-    if (digits.startsWith("7") || digits.startsWith("1"))
-      return `+254${digits}`;
-    return raw; // fallback untouched
-  };
-
   // ---- Paystack handler ----
   const handlePaystack = () => {
     const PaystackPop =
-      typeof window !== "undefined" ? (window as any)?.PaystackPop : undefined;
+      typeof window !== "undefined"
+        ? (window as any)?.PaystackPop
+        : undefined;
 
     if (!PaystackPop) {
       alert("Couldn't start Paystack. Please refresh and try again.");
       return;
     }
-    if (!emailOk || !phoneOk || !nameOk) {
-      alert("Please fill Name, Phone and a valid Email to continue.");
+    if (!customerEmail || !customerName || !customerPhone) {
+      alert("Please fill Name, Phone and Email to continue.");
       return;
     }
 
     const handler = PaystackPop.setup({
       key: "pk_live_10bc141ee6ae2ae48edcd102c06540ffe1cb3ae6",
-      email: custEmail,
-      amount: Math.round(cartTotal) * 100,
+      email: customerEmail,
+      amount: Math.round(cartTotal) * 100, // kobo (KES × 100)
       currency: "KES",
       metadata: {
-        customer_name: custName,
-        customer_phone: formatPhoneKE(custPhone),
-        // Optional: include cart snapshot
-        cart: cartLines.map((l) => ({
-          id: l.product.id,
-          name: l.product.name,
-          qty: l.qty,
-          unit_price: Number(l.product.price) || 0,
-        })),
+        custom_fields: [
+          { display_name: "Customer Name", variable_name: "customer_name", value: customerName },
+          { display_name: "Phone", variable_name: "phone", value: customerPhone },
+          {
+            display_name: "Items",
+            variable_name: "items",
+            value: cartLines.map(l => `${l.product.name} x${l.qty}`).join(", "),
+          },
+        ],
       },
       callback: function (response: any) {
-        alert("Payment complete! Reference: " + response.reference);
+        // Save order locally
+        try {
+          const prev = JSON.parse(localStorage.getItem("mm_orders") || "[]");
+          const order = {
+            id: response.reference,
+            reference: response.reference,
+            date: new Date().toISOString(),
+            total: Math.round(cartTotal),
+            name: customerName,
+            phone: customerPhone,
+            email: customerEmail,
+            items: cartLines.map((l) => ({
+              id: l.product.id,
+              name: l.product.name,
+              price: Number(l.product.price) || 0,
+              qty: l.qty,
+            })),
+            status: "paid",
+          };
+          localStorage.setItem("mm_orders", JSON.stringify([order, ...prev]));
+        } catch {}
         clear();
         setShowCart(false);
+        window.location.href = `/orders?ref=${encodeURIComponent(response.reference)}`;
       },
       onClose: function () {
-        // silent close
+        alert("Transaction was not completed, window closed.");
       },
     });
 
@@ -168,19 +176,33 @@ export default function Home() {
         <title>Mastermind Electricals & Electronics</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <link rel="icon" href="/favicon.ico" />
+
+        {/* Inter font */}
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap"
+          rel="stylesheet"
+        />
+        {/* Paystack script */}
         <script src="https://js.paystack.co/v1/inline.js" async></script>
       </Head>
 
       {/* ===== Top Bar ===== */}
       <header className="topbar">
-        <div className="topbar__inner">
+        <div className="topbar__inner container">
           <div className="brand">
             <img src="/favicon.ico" alt="" className="brandIcon" aria-hidden />
             Mastermind Electricals & Electronics
           </div>
-          <button onClick={() => setShowCart(true)} className="cartBtn" aria-label="Open cart">
-            🛒 Cart: {cartCount}
-          </button>
+          <div className="topActions">
+            <Link href="/orders" className="btn btn--light small">My Orders</Link>
+            <button
+              onClick={() => setShowCart(true)}
+              className="cartBtn"
+              aria-label="Open cart"
+            >
+              🛒 Cart: {cartCount}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -191,29 +213,25 @@ export default function Home() {
           <div className="eyebrow">TRUSTED IN SOTIK</div>
           <h1 className="h1">Quality Electronics, Lighting & Gas — Fast Delivery</h1>
           <p className="lead">
-            Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay with Paystack. Pickup or same-day delivery.
+            Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay with Paystack.
+            Pickup or same-day delivery.
           </p>
         </div>
 
-        {/* ===== Two cards side-by-side on desktop ===== */}
+        {/* Two cards */}
         <div className="twoCol">
-          {/* Left: Visit shop */}
           <div className="shopCard">
             <div className="shopCard__bubble" aria-hidden />
             <div className="shopCard__title">Visit Our Shop</div>
             <div className="muted center">Mastermind Electricals & Electronics, Sotik Town</div>
             <div className="muted center">Open Mon–Sun • 8:00am – 9:00pm</div>
-
             <div className="actions actions--center">
-              <a href="https://maps.app.goo.gl/7P2okRB5ssLFMkUT8" target="_blank" rel="noreferrer" className="btn btn--accent">
-                View on Maps
-              </a>
+              <a href="https://maps.app.goo.gl/7P2okRB5ssLFMkUT8" target="_blank" rel="noreferrer" className="btn btn--accent">View on Maps</a>
               <a href="tel:+254715151010" className="btn btn--light">📞 0715151010</a>
               <a href="mailto:sales@mastermindelectricals.com" className="btn btn--light">✉️ sales@mastermindelectricals.com</a>
             </div>
           </div>
 
-          {/* Right: SERVICES */}
           <div className="infoCard">
             <div className="infoCard__bubble" aria-hidden />
             <div className="eyebrow">SERVICES</div>
@@ -328,13 +346,11 @@ export default function Home() {
               <div className="h4">Your Cart</div>
               <div style={{ display: "flex", gap: 8 }}>
                 {cartCount > 1 && (
-                  <button className="chip chip--light" onClick={clear} aria-label="Remove all items">
+                  <button className="btn btn--light small" onClick={clear} aria-label="Remove all items">
                     Remove all
                   </button>
                 )}
-                <button className="chip chip--dark" onClick={() => setShowCart(false)}>
-                  Close
-                </button>
+                <button className="btn btn--dark small" onClick={() => setShowCart(false)}>Close</button>
               </div>
             </div>
 
@@ -344,20 +360,18 @@ export default function Home() {
               <div className="lines">
                 {cartLines.map((l) => {
                   const price = Number(l.product.price) || 0;
-                  const id = l.product.id;
                   return (
-                    <div key={id} className="line">
-                      <div className="line__info">
+                    <div key={l.product.id} className="line">
+                      <div>
                         <div className="line__name">{l.product.name}</div>
-                        <div className="line__sub">
-                          KES {Math.round(price).toLocaleString("en-KE")} × {l.qty}
+                        <div className="line__price">
+                          {`KES ${Math.round(price).toLocaleString("en-KE")} × ${l.qty}`}
                         </div>
                       </div>
-
-                      <div className="line__actions">
-                        <button className="pill" onClick={() => sub(id)} aria-label="Decrease">−</button>
-                        <button className="pill" onClick={() => add(id)} aria-label="Increase">+</button>
-                        <button className="pill pill--danger" onClick={() => remove(id)} aria-label="Remove">✕</button>
+                      <div className="qty">
+                        <button className="qtyBtn" onClick={() => sub(l.product.id)} aria-label="Decrease">−</button>
+                        <button className="qtyBtn" onClick={() => add(l.product.id)} aria-label="Increase">+</button>
+                        <button className="qtyBtn danger" onClick={() => remove(l.product.id)} aria-label="Remove">✕</button>
                       </div>
                     </div>
                   );
@@ -365,55 +379,49 @@ export default function Home() {
               </div>
             )}
 
-            {/* Customer fields */}
-            {cartLines.length > 0 && (
-              <div className="cust">
-                <div className="field">
-                  <label className="label">Name</label>
-                  <input
-                    className="input"
-                    placeholder="e.g. Jane Doe"
-                    value={custName}
-                    onChange={(e) => setCustName(e.target.value)}
-                  />
-                </div>
-                <div className="field">
-                  <label className="label">Phone</label>
-                  <input
-                    className="input"
-                    placeholder="e.g. 0712 345 678"
-                    value={custPhone}
-                    onChange={(e) => setCustPhone(e.target.value)}
-                  />
-                </div>
-                <div className="field">
-                  <label className="label">Email</label>
-                  <input
-                    className="input"
-                    type="email"
-                    placeholder="e.g. jane@example.com"
-                    value={custEmail}
-                    onChange={(e) => setCustEmail(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
-
             <div className="totals">
               <div className="row">
-                <span className="totalLabel">Total</span>
-                <span className="totalValue">{currency(cartTotal)}</span>
+                <span>Total</span>
+                <span className="strong">{currency(cartTotal)}</span>
               </div>
 
+              {/* Customer details */}
+              <input
+                type="text"
+                placeholder="Your full name"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                className="input"
+                required
+              />
+              <input
+                type="tel"
+                placeholder="Phone (e.g. 07XXXXXXXX)"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                className="input"
+                required
+              />
+              <input
+                type="email"
+                placeholder="Email address"
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+                className="input"
+                required
+              />
+
               <button
-                disabled={cartLines.length === 0 || !emailOk || !phoneOk || !nameOk}
-                className={`payBtn ${cartLines.length && emailOk && phoneOk && nameOk ? "" : "payBtn--disabled"}`}
+                disabled={cartLines.length === 0 || !customerEmail || !customerName || !customerPhone}
+                className={`btn ${cartLines.length && customerEmail && customerName && customerPhone ? "btn--paystack" : "btn--disabled"}`}
                 onClick={handlePaystack}
               >
                 Pay with M-Pesa (Paystack)
               </button>
 
-              <p className="note">You’ll be redirected to complete payment securely via Paystack.</p>
+              <div className="note">
+                You’ll be redirected to complete payment securely via Paystack.
+              </div>
             </div>
           </aside>
         </div>
@@ -435,7 +443,8 @@ export default function Home() {
         .container { max-width: 1200px; margin: 0 auto; padding: 0 12px; }
 
         .topbar { position: sticky; top: 0; z-index: 50; background: #111; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); }
-        .topbar__inner { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 12px; }
+        .topbar__inner { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 0; }
+        .topActions { display:flex; gap:10px; align-items:center; }
         .brand { font-weight: 800; letter-spacing: .3px; display:flex; align-items:center; gap:8px; }
         .brandIcon { width: 22px; height: 22px; border-radius: 4px; }
         .cartBtn { background:#f4d03f; color:#111; border:none; padding:8px 12px; border-radius:12px; font-weight:800; cursor:pointer; white-space:nowrap; }
@@ -476,6 +485,7 @@ export default function Home() {
         .btn--dark { background:#111; color:#fff; padding:10px 16px; border:none; }
         .btn--ghost { background:#fff; color:#111; border:1px solid #ddd; padding:8px 12px; border-radius:10px; }
         .btn--disabled { background:#eee; color:#888; pointer-events:none; }
+        .btn--paystack { background:#34c07a; color:#fff; border:none; padding:14px 16px; border-radius:14px; font-weight:800; } /* lighter green */
         .small { padding:8px 14px; }
 
         .search { width:100%; height:44px; padding:0 14px; border-radius:12px; border:1px solid #ddd; background:#fff; font-size:15px; outline:none; }
@@ -489,71 +499,35 @@ export default function Home() {
         .stock { color:#666; font-size:12px; }
 
         .footer { border-top:1px solid #eaeaea; padding:18px 0 12px; background:#fafafa; }
-        .footerGrid { display:grid; grid-template-columns:1fr; gap:16px; padding:14px 12px; }
-        @media (min-width: 900px) { .footerGrid { grid-template-columns: 2fr 1fr 1fr; } }
-        .footTitle { font-weight:800; margin-bottom:6px; }
-        .footText, .footList { color:#555; }
-        .footList { list-style:none; padding:0; margin:0; display:grid; gap:4px; }
+        .footerGrid { display:grid; grid-template-columns:1fr; gap:16px; padding:14px 0; }
+        @media (min-width: 900px) { .footerGrid { grid-template-columns: 1.4fr 1fr 1fr; } }
+        .footTitle { font-weight:800; margin-bottom:8px; }
+        .footText, .footList { color:#666; }
+        .footList { margin:0; padding-left: 18px; }
 
-        /* === Cart Drawer === */
-        .overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; justify-content:flex-end; z-index:60; }
-        .drawer {
-          background:#fff; width:min(92vw, 420px);
-          height: min(88vh, 760px);
-          margin: 20px;
-          border-radius:18px;
-          box-shadow:0 20px 60px rgba(0,0,0,.25);
-          display:flex; flex-direction:column; overflow:hidden;
-        }
-        @media (min-width: 900px) { .drawer { width: 380px; } }
+        /* Drawer */
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); display:flex; justify-content:flex-end; z-index:100; }
+        .drawer { width: min(440px, 92vw); height: 100%; background:#fff; display:flex; flex-direction:column; box-shadow: -2px 0 16px rgba(0,0,0,.2); }
+        .drawer__top { display:flex; align-items:center; justify-content:space-between; padding:16px; border-bottom:1px solid #eee; }
+        .empty { padding: 18px; color:#666; }
 
-        .drawer__top { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid #eee; }
-        .chip { border-radius:12px; padding:8px 12px; font-weight:800; cursor:pointer; border:1px solid #ddd; }
-        .chip--light { background:#fff; color:#111; }
-        .chip--dark { background:#111; color:#fff; border:none; }
+        .lines { display:flex; flex-direction:column; gap:14px; padding: 14px 16px; }
+        .line { display:flex; align-items:center; justify-content:space-between; padding-bottom:12px; border-bottom:1px dashed #e9e9e9; }
+        .line__name { font-weight:800; font-size:18px; }
+        .line__price { color:#7c8792; margin-top:4px; font-size:14px; }
+        .qty { display:flex; align-items:center; gap:10px; }
+        .qtyBtn { width:44px; height:40px; border-radius:10px; border:1px solid #e6e6e6; background:#f8f9fb; font-size:18px; font-weight:700; cursor:pointer; }
+        .qtyBtn.danger { background:#ffe8e8; color:#b91c1c; border-color:#ffd1d1; }
+        .qtyNum { width:28px; text-align:center; font-weight:700; }
 
-        .empty { padding:18px; color:#666; }
-
-        .lines { padding:10px 18px 0; overflow:auto; flex:1; }
-        .line { display:grid; grid-template-columns: 1fr auto; align-items:center; padding:14px 0; border-bottom:1px dashed #e5e7eb; gap:10px; }
-        .line:last-child { border-bottom:none; }
-        .line__name { font-weight:800; color:#0b1220; }
-        .line__sub { color:#718096; font-size:14px; margin-top:2px; }
-        .line__actions { display:flex; gap:10px; }
-        .pill { width:44px; height:38px; border-radius:10px; border:1px solid #e5e7eb; background:#f8fafc; font-weight:800; cursor:pointer; }
-        .pill:hover { background:#eef2f7; }
-        .pill--danger { background:#ffe8e8; border-color:#ffd5d5; color:#b42323; width:48px; }
-        .pill--danger:hover { background:#ffdede; }
-
-        /* Customer fields */
-        .cust { padding: 6px 18px 0; }
-        .field { display:flex; flex-direction:column; gap:6px; margin-top:10px; }
-        .label { font-weight:700; font-size:12px; color:#374151; }
-        .input {
-          height: 42px; border-radius: 10px; border:1px solid #e5e7eb;
-          padding: 0 12px; outline: none; font-size:14px; background:#fff;
-        }
-        .input:focus { border-color:#c7d2fe; box-shadow:0 0 0 3px rgba(59,130,246,.15); }
-
-        .totals { padding:14px 18px 18px; border-top:1px solid #f0f0f0; }
-        .row { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-        .totalLabel { font-weight:800; font-size:20px; }
-        .totalValue { font-weight:800; font-size:22px; }
-
-        /* Lighter Paystack green */
-        .payBtn {
-          width:100%; border:none; border-radius:12px; padding:14px 16px;
-          font-weight:800; font-size:16px; color:#fff; background:#21C97A;
-          cursor:pointer; transition:transform .02s ease-in-out;
-        }
-        .payBtn:active { transform: translateY(1px); }
-        .payBtn--disabled { background:#b9e9d0; cursor:not-allowed; }
-
-        .note { margin:10px 2px 0; color:#8a97a8; font-size:14px; line-height:1.3; }
-
-        /* WhatsApp FAB */
-        .waFab { position:fixed; right:16px; bottom:20px; z-index:55; background:#25D366; border-radius:9999px; padding:10px; box-shadow:0 6px 18px rgba(0,0,0,.25); }
-        .waIcon { width:32px; height:32px; display:block; }
+        .totals { margin-top: auto; padding:16px; border-top:1px solid #eee; display:flex; flex-direction:column; gap:10px; }
+        .row { display:flex; align-items:center; justify-content:space-between; font-weight:800; font-size:20px; margin-bottom:8px; }
+        .strong { font-weight:800; }
+        .input { width:100%; height:44px; border:1px solid #ddd; border-radius:12px; padding:0 12px; outline:none; }
+        .note { color:#6b7280; font-size:14px; margin-top:8px; }
+        
+        .waFab { position: fixed; right: 16px; bottom: 16px; background:#25D366; border-radius:9999px; width:56px; height:56px; display:grid; place-items:center; box-shadow:0 8px 20px rgba(37,211,102,.35); z-index:90; }
+        .waIcon { width:30px; height:30px; filter: drop-shadow(0 1px 0 rgba(0,0,0,.25)); }
       `}</style>
     </div>
   );
