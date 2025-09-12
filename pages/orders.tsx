@@ -1,72 +1,84 @@
 // pages/orders.tsx
 import { useEffect, useState } from "react";
 
+/** -------- Types -------- */
 type OrderItem = {
   name: string;
   price: number;
-  quantity: number;
+  quantity?: number; // accept quantity or qty (legacy)
+  qty?: number;
   image?: string;
+  // allow extra fields without breaking
+  [key: string]: any;
 };
 
 type Order = {
   id: string;
-  reference?: string;
-  createdAt?: string;
+  reference?: string; // exists when paid (same as order number in your flow)
+  createdAt?: string; // human-friendly date/time
   total: number;
   items: OrderItem[];
 };
 
-const COPY = "#f4d03f";
+/** -------- Storage keys -------- */
+const CANONICAL_KEY = "orders";
+const POSSIBLE_KEYS = ["orders", "mm_orders", "mastermind_orders", "cart_orders"];
 
-// soft shades (match Status row)
-const STATUS_BG_GREEN = "#e9fbf2";
-const STATUS_TXT_GREEN = "#0b7a43";
-const STATUS_BG_RED = "#fdeaea";
-const STATUS_TXT_RED = "#a33a3a";
-const STATUS_BG_GREY = "#f1f3f5";
-const STATUS_TXT_GREY = "#495057";
+/** -------- Helpers -------- */
+const pad = (n: number) => String(n).padStart(2, "0");
+const formatDateTime = (d: Date) =>
+  `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
-const fmtDateTime = (v?: string) => {
-  const d = v ? new Date(v) : new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(
-    d.getHours()
-  )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+/** Try to derive a createdAt from a timestamp-ish id */
+const createdFromId = (id: string): string | undefined => {
+  const ts = Number(id?.replace(/^\D+/, ""));
+  if (!Number.isFinite(ts)) return;
+  const d = new Date(ts);
+  return isNaN(d.getTime()) ? undefined : formatDateTime(d);
 };
 
-// Guess image by name (files stored under /public)
-const guessImageFromName = (name?: string): string | undefined => {
-  if (!name) return undefined;
-  const n = name.toLowerCase();
-  if (n.includes("torch")) return "/torch.png";
-  if (n.includes("6kg") || n.includes("6 kg")) return "/6kg.png";
-  if (n.includes("13kg") || n.includes("13 kg")) return "/13kg.png";
-  if (n.includes("bulb")) return "/bulb.png";
-  if (n.includes("tv")) return "/tv.png";
-  if (n.includes("woofer") || n.includes("speaker")) return "/woofer.png";
-  return undefined;
+/** -------- Image helpers (added) -------- */
+const PLACEHOLDER = "https://via.placeholder.com/56x56.png?text=%20";
+
+const slugify = (s: string) =>
+  (s || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+
+/** Choose the best image source for an order item */
+const resolveItemImage = (it: { [k: string]: any }) => {
+  // 1) direct fields
+  const direct = it.image || it.img || it.imageUrl || it.photo || it.picture;
+  if (typeof direct === "string" && direct.trim()) return direct.trim();
+
+  // 2) optional mapping saved in localStorage: { "<item name>": "url" }
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("productImages");
+      if (raw) {
+        const map = JSON.parse(raw);
+        if (map && typeof map === "object" && map[it.name]) {
+          return String(map[it.name]);
+        }
+      }
+    } catch {}
+  }
+
+  // 3) public image by slug from /public/images/<name>.webp
+  const slug = slugify(it.name);
+  if (slug) return `/images/${slug}.webp`;
+
+  // 4) final fallback
+  return PLACEHOLDER;
 };
 
-// Ensure absolute URL for local files (prevents edge routing issues)
-const resolveImg = (src?: string) => {
-  if (!src) return undefined;
-  if (/^(https?:|data:|blob:)/i.test(src)) return src;
-  if (src.startsWith("//")) return window.location.protocol + src;
-  const base = (typeof window !== "undefined" && window.location.origin) || "";
-  if (src.startsWith("/")) return base + src;
-  return `${base}/${src.replace(/^\.?\//, "")}`;
-};
-
+/** -------- Pills (light, current scheme) -------- */
 const HeaderPill = ({ reference }: { reference?: string }) => {
-  // New rule: if status row = FAILED, header also shows FAILED (red).
-  // We treat “no reference” as FAILED for header now.
   const paid = !!reference;
-  const failed = !reference;
-
-  const bg = paid ? STATUS_BG_GREEN : failed ? STATUS_BG_RED : STATUS_BG_GREY;
-  const fg = paid ? STATUS_TXT_GREEN : failed ? STATUS_TXT_RED : STATUS_TXT_GREY;
-  const text = paid ? "COMPLETED" : failed ? "FAILED" : "PENDING";
-
+  const bg = paid ? "#86efac" : "#fca5a5"; // green / light red if failed
+  const fg = paid ? "#065f46" : "#7f1d1d";
+  const text = paid ? "COMPLETED" : "FAILED";
   return (
     <span
       style={{
@@ -76,6 +88,7 @@ const HeaderPill = ({ reference }: { reference?: string }) => {
         fontWeight: 800,
         padding: "4px 10px",
         borderRadius: 999,
+        whiteSpace: "nowrap",
       }}
     >
       {text}
@@ -85,8 +98,8 @@ const HeaderPill = ({ reference }: { reference?: string }) => {
 
 const StatusPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
-  const bg = paid ? STATUS_BG_GREEN : STATUS_BG_RED;
-  const fg = paid ? STATUS_TXT_GREEN : STATUS_TXT_RED;
+  const bg = paid ? "#34d399" : "#fca5a5";
+  const fg = paid ? "#064e3b" : "#7f1d1d";
   const text = paid ? "PAID" : "FAILED";
   return (
     <span
@@ -97,6 +110,7 @@ const StatusPill = ({ reference }: { reference?: string }) => {
         fontWeight: 800,
         padding: "4px 10px",
         borderRadius: 999,
+        whiteSpace: "nowrap",
       }}
     >
       {text}
@@ -104,30 +118,68 @@ const StatusPill = ({ reference }: { reference?: string }) => {
   );
 };
 
+/** -------- Page -------- */
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [openId, setOpenId] = useState<string | null>(null); // collapsed by default
-  const [copiedFor, setCopiedFor] = useState<string | null>(null);
+  const [orders, setOrders] = useState<Order[] | null>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({}); // per-order toggle
 
+  // Load orders, normalize, migrate to canonical key
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const raw = localStorage.getItem("orders");
-    let parsed: Order[] = [];
-    try {
-      parsed = raw ? JSON.parse(raw) : [];
-    } catch {
-      parsed = [];
+
+    const merged: Order[] = [];
+    for (const key of POSSIBLE_KEYS) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) merged.push(...arr);
+      } catch {}
     }
-    const normalized = parsed.map((o) => ({
-      ...o,
-      createdAt: fmtDateTime(o.createdAt),
-    }));
+
+    const normalized: Order[] = (merged || [])
+      .filter((o) => o && typeof (o as any).id === "string")
+      .map((o: any) => {
+        const created =
+          o.createdAt || createdFromId(o.id) || formatDateTime(new Date());
+        const items: OrderItem[] = Array.isArray(o.items) ? o.items : [];
+        return { ...o, createdAt: created, items };
+      });
+
+    // newest first if ids are timestamp-like
+    normalized.sort((a, b) => {
+      const na = Number(a.id.replace(/^\D+/, ""));
+      const nb = Number(b.id.replace(/^\D+/, ""));
+      if (Number.isFinite(na) && Number.isFinite(nb)) return nb - na;
+      return 0;
+    });
+
+    // write back to single key and remove legacy keys
+    try {
+      localStorage.setItem(CANONICAL_KEY, JSON.stringify(normalized));
+      for (const key of POSSIBLE_KEYS) {
+        if (key !== CANONICAL_KEY) localStorage.removeItem(key);
+      }
+    } catch {}
+
+    // collapsed-by-default on load
+    const initialExpanded: Record<string, boolean> = {};
+    normalized.forEach((o) => (initialExpanded[o.id] = false));
+
     setOrders(normalized);
+    setExpanded(initialExpanded);
   }, []);
+
+  const toggle = (id: string) =>
+    setExpanded((e) => ({ ...e, [id]: !e[id] }));
+
+  if (orders === null) {
+    return <div style={{ background: "#f6f6f6", minHeight: "100vh" }} />;
+  }
 
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
-      {/* Header */}
+      {/* Header bar */}
       <div
         style={{
           background: "#111",
@@ -144,13 +196,14 @@ export default function OrdersPage() {
             margin: "0 auto",
             display: "grid",
             gridTemplateColumns: "1fr auto",
+            gap: 8,
             alignItems: "center",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span
               style={{
-                background: COPY,
+                background: "#f4d03f",
                 color: "#111",
                 fontWeight: 800,
                 padding: 2,
@@ -177,6 +230,9 @@ export default function OrdersPage() {
               fontWeight: 800,
               padding: "8px 14px",
               borderRadius: 12,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
             }}
           >
             ← Back to Shop
@@ -184,7 +240,7 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* Orders */}
+      {/* Orders list */}
       <div style={{ maxWidth: 1200, margin: "12px auto", padding: "0 12px" }}>
         {orders.length === 0 ? (
           <div
@@ -202,7 +258,7 @@ export default function OrdersPage() {
         ) : (
           <div style={{ display: "grid", gap: 12 }}>
             {orders.map((order) => {
-              const isOpen = openId === order.id;
+              const isOpen = !!expanded[order.id];
               return (
                 <div
                   key={order.id}
@@ -214,67 +270,62 @@ export default function OrdersPage() {
                   }}
                 >
                   {/* Header row (tap to toggle) */}
-                  <div
-                    onClick={() => setOpenId(isOpen ? null : order.id)}
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr auto",
-                      alignItems: "center",
-                      padding: "12px 14px",
-                      borderBottom: isOpen ? "1px solid #f0f0f0" : "none",
-                      cursor: "pointer",
-                    }}
+                  <button
+                    onClick={() => toggle(order.id)}
+                    style={{ all: "unset", cursor: "pointer", width: "100%" }}
+                    aria-expanded={isOpen}
                   >
-                    <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr auto",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "12px 14px",
+                        borderBottom: "1px solid #f0f0f0",
+                      }}
+                    >
+                      {/* Left: order id + date under it */}
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ color: "#666" }}>Order</span>
+                          <span style={{ fontWeight: 800 }}>#{order.id}</span>
+                        </div>
+                        {order.createdAt ? (
+                          <span style={{ color: "#9aa3af", fontSize: 12, marginTop: 4 }}>
+                            {order.createdAt}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {/* Right: pill + total */}
                       <div
                         style={{
                           display: "flex",
-                          gap: 8,
-                          alignItems: "baseline",
-                          flexWrap: "wrap",
+                          alignItems: "center",
+                          gap: 10,
+                          flexWrap: "nowrap",
                         }}
                       >
-                        <span style={{ color: "#666" }}>Order</span>
-                        <span style={{ fontWeight: 800 }}>#{order.id}</span>
-                      </div>
-                      <div style={{ width: "100%" }}>
-                        <span style={{ color: "#999", fontSize: 12 }}>
-                          {order.createdAt}
+                        <HeaderPill reference={order.reference} />
+                        <span style={{ fontWeight: 800, whiteSpace: "nowrap" }}>
+                          KES {Math.round(order.total).toLocaleString("en-KE")}
                         </span>
                       </div>
                     </div>
-                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                      <HeaderPill reference={order.reference} />
-                      <span style={{ fontWeight: 800 }}>
-                        KES {Math.round(order.total).toLocaleString("en-KE")}
-                      </span>
-                    </div>
-                  </div>
+                  </button>
 
-                  {/* Body */}
+                  {/* Body (collapsible) */}
                   {isOpen && (
                     <div style={{ padding: 14, display: "grid", gap: 10 }}>
+                      {/* Items */}
                       {order.items.map((it, i) => {
+                        const qty = Number(it.quantity ?? it.qty ?? 1);
                         const price = Number(it.price) || 0;
-                        const qty =
-                          Number((it.quantity ?? 1) === 0 ? 1 : it.quantity ?? 1) ||
-                          1;
-                        const chosen =
-                          it.image ||
-                          guessImageFromName(it.name) ||
-                          "/torch.png";
-                        const initial = resolveImg(chosen);
-                        const namedFallback = resolveImg(
-                          guessImageFromName(it.name) || "/torch.png"
-                        );
-                        const remoteFallback =
-                          "https://via.placeholder.com/56x56.png?text=%20";
-
-                        const lineTotal = Math.round(price * qty);
-
+                        const src = resolveItemImage(it);
                         return (
                           <div
-                            key={`${i}-${chosen}`}
+                            key={i}
                             style={{
                               display: "grid",
                               gridTemplateColumns: "auto 1fr",
@@ -283,9 +334,12 @@ export default function OrdersPage() {
                             }}
                           >
                             <img
-                              key={initial} // force refresh when source changes
-                              src={initial || remoteFallback}
+                              src={src}
                               alt={it.name}
+                              loading="lazy"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).src = PLACEHOLDER;
+                              }}
                               style={{
                                 width: 56,
                                 height: 56,
@@ -294,25 +348,13 @@ export default function OrdersPage() {
                                 background: "#f4f4f4",
                                 border: "1px solid #eee",
                               }}
-                              loading="lazy"
-                              decoding="async"
-                              crossOrigin="anonymous"
-                              referrerPolicy="no-referrer"
-                              onError={(e) => {
-                                const el = e.currentTarget as HTMLImageElement;
-                                if (el.src !== namedFallback && namedFallback) {
-                                  el.src = namedFallback;
-                                } else if (!el.src.includes("placeholder.com")) {
-                                  el.src = `${remoteFallback}?v=${Date.now()}`;
-                                }
-                              }}
                             />
                             <div>
                               <div style={{ fontWeight: 800 }}>{it.name}</div>
                               <div style={{ color: "#666" }}>
                                 KES {Math.round(price)} × {qty} ={" "}
                                 <span style={{ fontWeight: 700, color: "#111" }}>
-                                  KES {lineTotal}
+                                  KES {Math.round(price * qty)}
                                 </span>
                               </div>
                             </div>
@@ -344,49 +386,25 @@ export default function OrdersPage() {
                         >
                           {order.reference || "—"}
                         </span>
-                        {order.reference && (
-                          <>
-                            <button
-                              onClick={async (ev) => {
-                                ev.stopPropagation();
-                                try {
-                                  await navigator.clipboard.writeText(
-                                    order.reference!
-                                  );
-                                  setCopiedFor(order.id);
-                                  window.setTimeout(() => setCopiedFor(null), 1500);
-                                } catch {
-                                  /* no-op */
-                                }
-                              }}
-                              style={{
-                                background: COPY,
-                                color: "#111",
-                                fontWeight: 800,
-                                border: "none",
-                                padding: "6px 10px",
-                                borderRadius: 10,
-                                cursor: "pointer",
-                              }}
-                            >
-                              Copy
-                            </button>
-                            {copiedFor === order.id && (
-                              <span
-                                style={{
-                                  fontSize: 12,
-                                  fontWeight: 700,
-                                  color: STATUS_TXT_GREEN,
-                                  background: STATUS_BG_GREEN,
-                                  padding: "4px 8px",
-                                  borderRadius: 999,
-                                }}
-                              >
-                                Copied
-                              </span>
-                            )}
-                          </>
-                        )}
+                        {order.reference ? (
+                          <button
+                            onClick={() =>
+                              navigator.clipboard.writeText(order.reference!)
+                            }
+                            style={{
+                              background: "#fde68a",
+                              color: "#111",
+                              fontWeight: 800,
+                              border: "none",
+                              padding: "6px 10px",
+                              borderRadius: 10,
+                              cursor: "pointer",
+                            }}
+                            aria-label="Copy reference"
+                          >
+                            Copy
+                          </button>
+                        ) : null}
                       </div>
 
                       {/* Status */}
@@ -396,7 +414,14 @@ export default function OrdersPage() {
                       </div>
 
                       {/* Total */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr auto",
+                          alignItems: "center",
+                          marginTop: 2,
+                        }}
+                      >
                         <span style={{ color: "#777" }}>Total</span>
                         <span style={{ fontWeight: 800 }}>
                           KES {Math.round(order.total).toLocaleString("en-KE")}
