@@ -1,289 +1,334 @@
 // pages/orders.tsx
-import Head from "next/head";
-import { useEffect, useMemo, useState } from "react";
-
-type PaymentStatus = "PENDING" | "PAID" | "FAILED";
-type OrderStatus = "PENDING" | "COMPLETED" | "FAILED";
+import { useEffect, useState } from "react";
 
 type OrderItem = {
   name: string;
-  qty: number;
   price: number;
-  img?: string;
+  quantity: number;
+  image?: string;
 };
 
 type Order = {
-  id: string;                 // "Txxxxxxxxxxxxxxx"
-  reference: string;          // usually same as id after payment
-  createdAt?: string;
+  id: string;
+  reference?: string;   // when paid, this exists (same as order number in your flow)
+  createdAt?: string;   // human-friendly date/time string; we will auto-fill if missing
   total: number;
   items: OrderItem[];
-  paymentStatus: PaymentStatus;
-  status: OrderStatus;
+  // status?: never  // we derive status from `reference`, so no compile-time mismatch
 };
 
-const LS_KEY = "mm_orders";
+const formatDateTime = (d: Date) => {
+  // DD/MM/YYYY, HH:MM (24h)
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const day = pad(d.getDate());
+  const month = pad(d.getMonth() + 1);
+  const year = d.getFullYear();
+  const hours = pad(d.getHours());
+  const mins = pad(d.getMinutes());
+  return `${day}/${month}/${year}, ${hours}:${mins}`;
+};
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  // currency helper
-  const currency = (n: number) => `KES ${Math.round(n).toLocaleString("en-KE")}`;
-
-  // load orders from localStorage
+  // Load and normalize orders (add createdAt if missing)
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = localStorage.getItem("orders");
+    let parsed: Order[] = [];
     try {
-      const raw = localStorage.getItem(LS_KEY);
-      if (raw) {
-        const parsed: Order[] = JSON.parse(raw);
-        if (Array.isArray(parsed)) setOrders(parsed);
+      parsed = raw ? JSON.parse(raw) : [];
+    } catch {
+      parsed = [];
+    }
+
+    // add createdAt if missing and persist back if we made changes
+    let changed = false;
+    const normalized = parsed.map((o) => {
+      if (!o.createdAt) {
+        changed = true;
+        return { ...o, createdAt: formatDateTime(new Date()) };
       }
-    } catch {}
+      return o;
+    });
+
+    if (changed) {
+      try {
+        localStorage.setItem("orders", JSON.stringify(normalized));
+      } catch {}
+    }
+    setOrders(normalized);
   }, []);
 
-  // save orders to localStorage when they change
-  const saveOrders = (list: Order[]) => {
-    try {
-      localStorage.setItem(LS_KEY, JSON.stringify(list));
-    } catch {}
+  // Pills
+  const HeaderPill = ({ reference }: { reference?: string }) => {
+    const paid = !!reference;
+    const bg = paid ? "#3bb75e" : "#bfc4cc"; // green / grey
+    const text = paid ? "COMPLETED" : "PENDING";
+    return (
+      <span
+        style={{
+          background: bg,
+          color: paid ? "#fff" : "#111",
+          fontSize: 12,
+          fontWeight: 800,
+          padding: "4px 10px",
+          borderRadius: 999,
+        }}
+      >
+        {text}
+      </span>
+    );
   };
 
-  // Attempt background verify (optional).
-  // If Paystack verification succeeds for an order, we mark it PAID/COMPLETED and persist.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      // Only verify those still pending
-      const pendings = orders.filter((o) => o.paymentStatus === "PENDING");
-      if (pendings.length === 0) return;
-
-      const next = [...orders];
-      for (let i = 0; i < next.length; i++) {
-        const o = next[i];
-        if (o.paymentStatus !== "PENDING") continue;
-        try {
-          const res = await fetch(`/api/paystack-verify?reference=${encodeURIComponent(o.reference)}`);
-          if (!res.ok) continue;
-          const data = await res.json();
-          // You can adapt these keys to your verify function response
-          const isPaid =
-            data?.status === true &&
-            (data?.data?.status === "success" || data?.data?.gateway_response === "Successful");
-
-          if (isPaid) {
-            next[i] = {
-              ...o,
-              paymentStatus: "PAID",
-              status: "COMPLETED",
-            } as Order;
-          } else if (data?.status === true && data?.data?.status === "failed") {
-            next[i] = {
-              ...o,
-              paymentStatus: "FAILED",
-              status: "FAILED",
-            } as Order;
-          }
-        } catch {
-          // ignore network errors; user can refresh later
-        }
-      }
-      if (!cancelled) {
-        setOrders(next);
-        saveOrders(next);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // run once on mount and whenever the list changes length
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orders.length]);
-
-  const toggle = (id: string) => {
-    setExpanded((prev) => {
-      const n = new Set(prev);
-      if (n.has(id)) n.delete(id);
-      else n.add(id);
-      return n;
-    });
+  const StatusPill = ({ reference }: { reference?: string }) => {
+    const paid = !!reference;
+    const bg = paid ? "#3bb75e" : "#e85d5d"; // green / red
+    const text = paid ? "PAID" : "FAILED";
+    return (
+      <span
+        style={{
+          background: bg,
+          color: "#fff",
+          fontSize: 12,
+          fontWeight: 800,
+          padding: "4px 10px",
+          borderRadius: 999,
+        }}
+      >
+        {text}
+      </span>
+    );
   };
-
-  const headerPill = (st: OrderStatus) => {
-    const cls =
-      st === "COMPLETED" ? "pill pill--green" : st === "FAILED" ? "pill pill--red" : "pill pill--gray";
-    const text = st === "COMPLETED" ? "COMPLETED" : st;
-    return <span className={cls}>{text}</span>;
-  };
-
-  const paymentPill = (ps: PaymentStatus) => {
-    const cls =
-      ps === "PAID" ? "pill pill--green" : ps === "FAILED" ? "pill pill--red" : "pill pill--gray";
-    return <span className={cls}>{ps}</span>;
-  };
-
-  const list = useMemo(
-    () =>
-      [...orders].sort((a, b) => {
-        const da = a.createdAt ? Date.parse(a.createdAt) : 0;
-        const db = b.createdAt ? Date.parse(b.createdAt) : 0;
-        return db - da;
-      }),
-    [orders]
-  );
 
   return (
-    <div>
-      <Head>
-        <title>My Orders • Mastermind</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
-      <header className="topbar">
-        <div className="topbar__inner">
-          <div className="brand">
-            <img src="/favicon.ico" alt="" className="brandIcon" aria-hidden />
-            My Orders
+    <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
+      {/* Header bar (edge-to-edge black) */}
+      <div
+        style={{
+          background: "#111",
+          color: "#fff",
+          padding: "14px 16px",
+          position: "sticky",
+          top: 0,
+          zIndex: 5,
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1200,
+            margin: "0 auto",
+            display: "grid",
+            gridTemplateColumns: "1fr auto",
+            gap: 8,
+            alignItems: "center",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span
+              style={{
+                background: "#f4d03f",
+                color: "#111",
+                fontWeight: 800,
+                padding: 2,
+                borderRadius: 6,
+                width: 22,
+                height: 22,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              aria-hidden
+            >
+              🧾
+            </span>
+            <div style={{ fontWeight: 800 }}>My Orders</div>
           </div>
-          <a href="/" className="backBtn">← Back to Shop</a>
+
+          <a
+            href="/"
+            style={{
+              textDecoration: "none",
+              background: "#fff",
+              color: "#111",
+              fontWeight: 800,
+              padding: "8px 14px",
+              borderRadius: 12,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            ← Back to Shop
+          </a>
         </div>
-      </header>
+      </div>
 
-      <main className="container">
-        {list.length === 0 ? (
-          <div className="empty">No orders yet.</div>
+      {/* Orders list */}
+      <div style={{ maxWidth: 1200, margin: "12px auto", padding: "0 12px" }}>
+        {orders.length === 0 ? (
+          <div
+            style={{
+              background: "#fff",
+              border: "1px solid #eee",
+              borderRadius: 14,
+              padding: 16,
+              textAlign: "center",
+              color: "#666",
+            }}
+          >
+            No orders yet.
+          </div>
         ) : (
-          <div className="stack">
-            {list.map((o) => {
-              // VISUAL header override: if payment is PAID but status hasn't flipped yet, show COMPLETED at top
-              const headerStatus: OrderStatus =
-                o.paymentStatus === "PAID" && o.status === "PENDING" ? "COMPLETED" : o.status;
+          <div style={{ display: "grid", gap: 12 }}>
+            {orders.map((order) => (
+              <div
+                key={order.id}
+                style={{
+                  background: "#fff",
+                  border: "1px solid #eee",
+                  borderRadius: 16,
+                  overflow: "hidden",
+                }}
+              >
+                {/* Header row */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr auto",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "12px 14px",
+                    borderBottom: "1px solid #f0f0f0",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ color: "#666" }}>Order</span>
+                    <span style={{ fontWeight: 800 }}>#{order.id}</span>
+                    {order.createdAt ? (
+                      <span style={{ color: "#999", fontSize: 12 }}>
+                        {order.createdAt}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <HeaderPill reference={order.reference} />
+                    <span style={{ fontWeight: 800 }}>
+                      KES {Math.round(order.total).toLocaleString("en-KE")}
+                    </span>
+                  </div>
+                </div>
 
-              const isOpen = expanded.has(o.id);
-              const first = o.items[0];
-              const lineTotal = Math.round((first?.price || 0) * (first?.qty || 0));
-
-              return (
-                <article key={o.id} className="card">
-                  <button className="card__head" onClick={() => toggle(o.id)}>
-                    <div className="left">
-                      <div className="orderId">
-                        <span className="muted">Order </span>
-                        <strong>#{o.id}</strong>
+                {/* Body */}
+                <div style={{ padding: 14, display: "grid", gap: 10 }}>
+                  {/* items */}
+                  {order.items.map((it, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "auto 1fr",
+                        gap: 10,
+                        alignItems: "center",
+                      }}
+                    >
+                      <img
+                        src={
+                          it.image ||
+                          "https://via.placeholder.com/56x56.png?text=%20"
+                        }
+                        alt={it.name}
+                        style={{
+                          width: 56,
+                          height: 56,
+                          borderRadius: 10,
+                          objectFit: "cover",
+                          background: "#f4f4f4",
+                          border: "1px solid #eee",
+                        }}
+                        loading="lazy"
+                      />
+                      <div>
+                        <div style={{ fontWeight: 800 }}>{it.name}</div>
+                        <div style={{ color: "#666" }}>
+                          KES {Math.round(it.price)} × {it.quantity} ={" "}
+                          <span style={{ fontWeight: 700, color: "#111" }}>
+                            KES {Math.round(it.price * it.quantity)}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="right">
-                      {headerPill(headerStatus)}
-                      <div className="amount">{currency(o.total)}</div>
-                    </div>
-                  </button>
+                  ))}
 
-                  {isOpen && (
-                    <div className="details">
-                      {!!o.createdAt && (
-                        <div className="date">{new Date(o.createdAt).toLocaleString()}</div>
-                      )}
+                  {/* Reference */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      flexWrap: "wrap",
+                      marginTop: 4,
+                    }}
+                  >
+                    <span style={{ color: "#777" }}>Reference</span>
+                    <span
+                      style={{
+                        background: "#f5f6f8",
+                        border: "1px solid #eee",
+                        borderRadius: 10,
+                        padding: "6px 10px",
+                        fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                        fontSize: 13,
+                      }}
+                    >
+                      {order.reference || "—"}
+                    </span>
+                    {order.reference ? (
+                      <button
+                        onClick={() =>
+                          navigator.clipboard.writeText(order.reference!)
+                        }
+                        style={{
+                          background: "#f4d03f",
+                          color: "#111",
+                          fontWeight: 800,
+                          border: "none",
+                          padding: "6px 10px",
+                          borderRadius: 10,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Copy
+                      </button>
+                    ) : null}
+                  </div>
 
-                      <div className="itemRow">
-                        <div className="thumb">
-                          {first?.img ? (
-                            <img src={first.img} alt="" />
-                          ) : (
-                            <div className="thumbPh" />
-                          )}
-                        </div>
-                        <div className="itemBody">
-                          <div className="name">{first?.name || "—"}</div>
-                          <div className="line">
-                            {`KES ${Math.round(first?.price || 0).toLocaleString("en-KE")} × ${
-                              first?.qty || 0
-                            } = `}
-                            <strong>{`KES ${lineTotal.toLocaleString("en-KE")}`}</strong>
-                          </div>
-                        </div>
-                      </div>
+                  {/* Status */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ color: "#777" }}>Status</span>
+                    <StatusPill reference={order.reference} />
+                  </div>
 
-                      <div className="row">
-                        <div className="label">Reference</div>
-                        <div className="refWrap">
-                          <div className="ref">{o.reference}</div>
-                          <button
-                            className="chip"
-                            onClick={() => {
-                              navigator.clipboard?.writeText(o.reference);
-                              // optional toast could go here
-                            }}
-                          >
-                            Copy
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="row">
-                        <div className="label">Status</div>
-                        <div className="statusWrap">{paymentPill(o.paymentStatus)}</div>
-                      </div>
-
-                      <div className="row totalRow">
-                        <div className="label">Total</div>
-                        <div className="total">{currency(o.total)}</div>
-                      </div>
-                    </div>
-                  )}
-                </article>
-              );
-            })}
+                  {/* Total */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr auto",
+                      alignItems: "center",
+                      marginTop: 2,
+                    }}
+                  >
+                    <span style={{ color: "#777" }}>Total</span>
+                    <span style={{ fontWeight: 800 }}>
+                      KES {Math.round(order.total).toLocaleString("en-KE")}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
-      </main>
-
-      <style jsx>{`
-        :root { color-scheme: light; }
-        .container { max-width: 900px; margin: 0 auto; padding: 12px; }
-        .empty { margin: 36px 0; text-align: center; color:#666; }
-
-        /* Top bar */
-        .topbar { position: sticky; top: 0; z-index: 30; background:#111; color:#fff; border-bottom:1px solid rgba(255,255,255,.08); }
-        .topbar__inner { max-width: 900px; margin: 0 auto; display:flex; align-items:center; justify-content:space-between; padding: 10px 14px; }
-        .brand { display:flex; align-items:center; gap:8px; font-weight:800; letter-spacing:.3px; }
-        .brandIcon { width:20px; height:20px; border-radius:4px; }
-        .backBtn { background:#fff; color:#111; text-decoration:none; border:1px solid #eee; padding:8px 12px; border-radius:12px; font-weight:800; }
-
-        /* Cards */
-        .stack { display:grid; gap:12px; }
-        .card { background:#fff; border:1px solid #eee; border-radius:16px; overflow:hidden; }
-        .card__head { width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px; background:#fff; border:none; cursor:pointer; }
-        .orderId { font-size:14px; }
-        .muted { color:#777; }
-        .right { display:flex; align-items:center; gap:8px; }
-        .amount { font-weight:800; }
-
-        .details { padding: 0 12px 12px; }
-        .date { color:#888; font-size:12px; padding: 0 0 10px; border-bottom:1px dashed #eee; margin-bottom:10px; }
-
-        .itemRow { display:flex; gap:10px; align-items:center; padding:4px 0 10px; }
-        .thumb { width:56px; height:56px; border-radius:12px; overflow:hidden; background:#f6f6f6; display:flex; align-items:center; justify-content:center; }
-        .thumb img { width:100%; height:100%; object-fit:cover; display:block; }
-        .thumbPh { width:100%; height:100%; background:#f0f0f0; border-radius:12px; }
-        .itemBody .name { font-weight:800; }
-        .itemBody .line { color:#666; }
-
-        .row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; }
-        .label { color:#666; min-width:88px; }
-        .refWrap { display:flex; align-items:center; gap:8px; }
-        .ref { background:#f6f6f6; border:1px solid #eee; border-radius:12px; padding:6px 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-        .chip { background:#f7e69a; color:#111; border:none; border-radius:10px; padding:6px 10px; font-weight:800; cursor:pointer; }
-        .statusWrap { display:inline-flex; align-items:center; }
-
-        .totalRow .total { font-weight:800; }
-
-        /* Pills */
-        .pill { display:inline-flex; align-items:center; justify-content:center; padding:4px 10px; border-radius:9999px; font-size:12px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; }
-        .pill--green { background:#e7f6ec; color:#167e3d; }
-        .pill--red { background:#fdecec; color:#b42318; }
-        .pill--gray { background:#eee; color:#555; }
-      `}</style>
+      </div>
     </div>
   );
-}
+                }
