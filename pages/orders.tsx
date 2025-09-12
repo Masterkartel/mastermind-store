@@ -6,23 +6,37 @@ type OrderItem = {
   name: string;
   price: number;
   qty: number;
-  img?: string; // public path like "/torch.png"
+  img?: string;
 };
 
 type Order = {
-  id: string;                 // e.g. reference
-  status: "pending" | "completed" | "failed" | "paid";
+  id: string;                 // internal id
+  reference: string;          // Paystack reference (T0…)
+  status: "paid" | "failed" | "pending" | "completed";
   total: number;
-  createdAt: string;          // ISO string
+  createdAt?: string;         // ISO
   items: OrderItem[];
-  reference?: string;
-  paymentStatus?: "paid" | "failed" | "pending" | "completed";
 };
+
+function currency(n: number) {
+  return `KES ${Math.round(n).toLocaleString("en-KE")}`;
+}
+
+// Fallback name→image mapper for items missing an image
+function imageForName(name: string) {
+  const n = name.toLowerCase();
+  if (n.includes("6kg")) return "/6kg.png";
+  if (n.includes("13kg")) return "/13kg.png";
+  if (n.includes("torch")) return "/torch.png";
+  return "/placeholder.png";
+}
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [copiedRef, setCopiedRef] = useState<string | null>(null);
 
-  // Load orders saved by checkout (from localStorage)
+  // Load orders from localStorage (created at checkout callback)
   useEffect(() => {
     try {
       const raw = localStorage.getItem("mm_orders");
@@ -35,132 +49,148 @@ export default function OrdersPage() {
     }
   }, []);
 
-  // Sort newest first
+  // If URL has ?r=<reference>, highlight / open that order
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const r = url.searchParams.get("r");
+    if (!r) return;
+    const found = orders.find((o) => o.reference === r);
+    if (found) setOpenId(found.id);
+  }, [orders]);
+
+  const labelFor = (s: Order["status"]) => {
+    switch (s) {
+      case "paid":
+      case "completed":
+        return { text: s.toUpperCase(), className: "pill pill--ok" };
+      case "failed":
+        return { text: "FAILED", className: "pill pill--bad" };
+      default:
+        return { text: "PENDING", className: "pill pill--pending" };
+    }
+  };
+
   const list = useMemo(
     () =>
-      [...orders].sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ),
+      [...orders].sort((a, b) => {
+        const at = a.createdAt ? Date.parse(a.createdAt) : 0;
+        const bt = b.createdAt ? Date.parse(b.createdAt) : 0;
+        return bt - at;
+      }),
     [orders]
   );
 
-  const fmtKES = (n: number) => `KES ${Math.round(n).toLocaleString("en-KE")}`;
-  const fmtDateTime = (iso?: string) => {
-    if (!iso) return "";
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return "";
-    return d.toLocaleString("en-KE", {
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const pillFor = (s?: string) => {
-    const v = (s || "").toLowerCase();
-    if (v === "completed" || v === "paid") return "pill pill--ok";
-    if (v === "failed") return "pill pill--bad";
-    return "pill pill--pending";
+  const copyRef = async (ref: string) => {
+    try {
+      await navigator.clipboard.writeText(ref);
+      setCopiedRef(ref);
+      setTimeout(() => setCopiedRef(null), 900);
+    } catch {
+      // no-op
+    }
   };
 
   return (
     <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
       <Head>
         <title>My Orders • Mastermind</title>
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1, viewport-fit=cover"
-        />
-        <link rel="icon" href="/favicon.ico" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      {/* Top bar */}
+      {/* Header bar */}
       <header className="topbar">
         <div className="topbar__inner">
           <div className="brand">
-            <img src="/favicon.ico" className="brandIcon" alt="" />
+            <img src="/favicon.ico" alt="" className="brandIcon" aria-hidden />
             My Orders
           </div>
+
           <a href="/" className="backBtn">← Back to Shop</a>
         </div>
       </header>
 
-      <main className="container" style={{ padding: "14px 12px 24px" }}>
+      <main className="container" style={{ padding: "12px 12px 36px" }}>
         {list.length === 0 ? (
           <div className="empty">No orders yet.</div>
         ) : (
           <div className="stack">
             {list.map((o) => {
-              const topStatus = o.status || o.paymentStatus || "pending";
+              const lab = labelFor(o.status);
+              const created =
+                o.createdAt && !isNaN(Date.parse(o.createdAt))
+                  ? new Date(o.createdAt).toLocaleString()
+                  : undefined;
+
+              const opened = openId === o.id;
+
               return (
                 <article key={o.id} className="orderCard">
-                  <div className="orderCard__top">
-                    <div className="orderTitle">
-                      <div className="muted">Order</div>
-                      <div className="orderId">#{o.id}</div>
-                      <div className="orderDate">{fmtDateTime(o.createdAt)}</div>
+                  {/* Card header: clickable */}
+                  <button
+                    className="orderHead"
+                    onClick={() => setOpenId(opened ? null : o.id)}
+                    aria-expanded={opened}
+                  >
+                    <div className="orderHead__left">
+                      <div className="orderTitle">
+                        <span className="muted">Order</span>
+                        <span className="mono">#{o.reference}</span>
+                      </div>
+                      {created ? (
+                        <div className="muted small">{created}</div>
+                      ) : null}
                     </div>
-                    <div className="orderTopRight">
-                      <span className={pillFor(topStatus)}>
-                        {topStatus.toUpperCase()}
-                      </span>
-                      <span className="orderTotal">{fmtKES(o.total)}</span>
+                    <div className="orderHead__right">
+                      <span className={lab.className}>{lab.text}</span>
+                      <span className="totalBadge">{currency(o.total)}</span>
                     </div>
-                  </div>
+                  </button>
 
-                  <div className="divider" />
-
-                  {/* Items */}
-                  <div className="items">
-                    {o.items.map((it, idx) => (
-                      <div key={idx} className="itemRow">
-                        {it.img ? (
-                          <img
-                            src={it.img}
-                            alt={it.name}
-                            className="thumb"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="thumb thumb--blank" aria-hidden />
-                        )}
-
-                        <div className="itemMain">
-                          <div className="itemName">{it.name}</div>
-                          <div className="itemMeta">
-                            {fmtKES(it.price)} × {it.qty} ={" "}
-                            <strong>{fmtKES(it.price * it.qty)}</strong>
+                  {/* Details */}
+                  {opened && (
+                    <div className="orderBody">
+                      {o.items.map((it, idx) => {
+                        const img = it.img || imageForName(it.name);
+                        return (
+                          <div key={idx} className="line">
+                            <img src={img} alt="" className="thumb" />
+                            <div className="grow">
+                              <div className="lineName">{it.name}</div>
+                              <div className="linePrice">
+                                {currency(it.price)} × {it.qty} ={" "}
+                                <b>{currency(it.price * it.qty)}</b>
+                              </div>
+                            </div>
                           </div>
+                        );
+                      })}
+
+                      <div className="kv">
+                        <div className="k">Reference</div>
+                        <div className="v">
+                          <span className="mono">{o.reference}</span>
+                          <button
+                            className="copyBtn"
+                            onClick={() => copyRef(o.reference)}
+                            title="Copy reference"
+                          >
+                            {copiedRef === o.reference ? "Copied!" : "Copy"}
+                          </button>
                         </div>
                       </div>
-                    ))}
-                  </div>
 
-                  {/* Summary */}
-                  <div className="summary">
-                    <div className="row">
-                      <div className="label">Reference</div>
-                      <div className="value mono">
-                        {o.reference || o.id}
+                      <div className="kv">
+                        <div className="k">Status</div>
+                        <div className="v"><span className={lab.className}>{lab.text}</span></div>
+                      </div>
+
+                      <div className="kv">
+                        <div className="k">Total</div>
+                        <div className="v strong">{currency(o.total)}</div>
                       </div>
                     </div>
-                    <div className="row">
-                      <div className="label">Status</div>
-                      <div className="value">
-                        <span className={pillFor(o.paymentStatus || o.status)}>
-                          {(o.paymentStatus || o.status || "pending")
-                            .toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="row">
-                      <div className="label">Total</div>
-                      <div className="value strong">{fmtKES(o.total)}</div>
-                    </div>
-                  </div>
+                  )}
                 </article>
               );
             })}
@@ -169,47 +199,51 @@ export default function OrdersPage() {
       </main>
 
       <style jsx>{`
-        .container { max-width: 1000px; margin: 0 auto; }
-        .topbar { position: sticky; top: 0; z-index: 50; background: #111; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); }
-        .topbar__inner { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 16px; }
-        .brand { font-weight: 800; display: flex; align-items: center; gap: 8px; letter-spacing: .2px; }
-        .brandIcon { width: 22px; height: 22px; border-radius: 4px; }
-        .backBtn { background: #fff; color: #111; text-decoration: none; border-radius: 12px; padding: 8px 12px; border: 1px solid #e7e7e7; font-weight: 700; }
+        .container { max-width: 980px; margin: 0 auto; }
 
-        .empty { background: #fff; border: 1px solid #eee; border-radius: 14px; padding: 18px; text-align: center; color: #666; }
-        .stack { display: grid; gap: 14px; }
+        .topbar { position: sticky; top: 0; z-index: 20; background: #111; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); }
+        .topbar__inner { max-width: 980px; margin: 0 auto; padding: 10px 12px; display: grid; grid-template-columns: 1fr auto; align-items: center; }
+        .brand { display:flex; gap:8px; align-items:center; font-weight:800; }
+        .brandIcon { width:22px; height:22px; border-radius:4px; }
+        .backBtn { background:#fff; color:#111; text-decoration:none; padding:10px 14px; border-radius:12px; font-weight:800; }
 
-        .orderCard { background: #fff; border: 1px solid #eee; border-radius: 16px; padding: 12px; }
-        .orderCard__top { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
-        .orderTitle { display: grid; gap: 2px; }
-        .orderId { font-weight: 800; }
-        .orderDate { color: #888; font-size: 12px; }
-        .orderTopRight { display: flex; align-items: center; gap: 8px; }
-        .orderTotal { font-weight: 800; color: #0a0a0a; }
+        .empty { color:#666; background:#fff; border:1px solid #eee; border-radius:14px; padding:18px; text-align:center; }
 
-        .divider { height: 1px; background: #f0f0f0; margin: 10px 0; }
+        .stack { display:grid; gap:12px; }
 
-        .items { display: grid; gap: 10px; }
-        .itemRow { display: grid; grid-template-columns: 46px 1fr; gap: 10px; align-items: center; }
-        .thumb { width: 42px; height: 42px; border-radius: 8px; background: #f5f5f5; object-fit: contain; }
-        .thumb--blank { background: #f2f2f2; }
-        .itemMain { display: grid; gap: 2px; }
-        .itemName { font-weight: 800; }
-        .itemMeta { color: #6b7280; font-size: 13px; }
+        .orderCard { background:#fff; border:1px solid #eee; border-radius:16px; overflow:hidden; }
+        .orderHead { width:100%; display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 14px; background:#fff; border:none; cursor:pointer; }
+        .orderHead:hover { background:#fafafa; }
+        .orderHead__left { display:grid; gap:4px; }
+        .orderTitle { display:flex; gap:8px; align-items:center; font-weight:800; }
+        .muted { color:#6b7280; }
+        .small { font-size:12px; }
+        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+        .orderHead__right { display:flex; gap:10px; align-items:center; }
+        .totalBadge { font-weight:800; color:#111; }
 
-        .summary { margin-top: 8px; display: grid; gap: 6px; }
-        .row { display: grid; grid-template-columns: 120px 1fr; gap: 8px; align-items: center; }
-        .label { color: #6b7280; }
-        .value { }
-        .value.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-        .value.strong { font-weight: 800; }
+        .orderBody { padding: 0 14px 14px; border-top:1px solid #f0f0f0; display:grid; gap:10px; }
+        .line { display:flex; gap:10px; padding-top:10px; }
+        .thumb { width:56px; height:56px; border-radius:12px; object-fit:cover; background:#f3f3f3; border:1px solid #eee; }
+        .grow { flex:1; }
+        .lineName { font-weight:700; }
+        .linePrice { color:#6b7280; font-size:13px; }
 
-        .muted { color: #9ca3af; }
+        .kv { display:grid; grid-template-columns: 120px 1fr; gap:10px; align-items:center; }
+        .k { color:#6b7280; }
+        .v { display:flex; align-items:center; gap:8px; }
+        .strong { font-weight:800; }
 
-        .pill { padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 800; }
-        .pill--ok { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
-        .pill--bad { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
-        .pill--pending { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+        .pill { padding:6px 12px; border-radius:999px; font-weight:800; font-size:12px; display:inline-flex; align-items:center; }
+        .pill--ok { background: #d1fae5; color: #065f46; }
+        .pill--bad { background: #fee2e2; color: #991b1b; }
+        .pill--pending { background: #e5e7eb; color: #111; }
+
+        .copyBtn {
+          border:1px solid #e5e7eb; background:#fff; border-radius:999px;
+          padding:4px 10px; font-weight:700; font-size:12px; cursor:pointer;
+        }
+        .copyBtn:hover { background:#f9fafb; }
       `}</style>
     </div>
   );
