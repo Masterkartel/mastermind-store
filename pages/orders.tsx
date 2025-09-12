@@ -5,20 +5,20 @@ import { useEffect, useState } from "react";
 type OrderItem = {
   name: string;
   price: number;
-  quantity?: number; // we accept quantity or qty (legacy)
+  quantity?: number; // accept quantity or qty (legacy)
   qty?: number;
   image?: string;
 };
 
 type Order = {
   id: string;
-  reference?: string;     // exists when paid (in your flow same as order number)
-  createdAt?: string;     // human friendly date/time
+  reference?: string;     // exists when paid (same as order number in your flow)
+  createdAt?: string;     // human-friendly date/time
   total: number;
   items: OrderItem[];
 };
 
-/** -------- Storage keys (we read all, then migrate to "orders") -------- */
+/** -------- Storage keys -------- */
 const CANONICAL_KEY = "orders";
 const POSSIBLE_KEYS = ["orders", "mm_orders", "mastermind_orders", "cart_orders"];
 
@@ -27,26 +27,26 @@ const pad = (n: number) => String(n).padStart(2, "0");
 const formatDateTime = (d: Date) =>
   `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
-// Try derive time from ids like "T1698660489556561"
 const createdFromId = (id: string): string | undefined => {
-  const ts = Number(id?.replace(/^\D+/, "")); // strip non-digits at start
+  const ts = Number(id?.replace(/^\D+/, ""));
   if (!Number.isFinite(ts)) return;
   const d = new Date(ts);
   return isNaN(d.getTime()) ? undefined : formatDateTime(d);
 };
 
-/** -------- Pills -------- */
+/** -------- Pills (lightened colors) -------- */
 const HeaderPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
   return (
     <span
       style={{
-        background: paid ? "#22c55e" : "#cbd5e1", // green / gray
-        color: paid ? "#fff" : "#111",
+        background: paid ? "#86efac" : "#e2e8f0", // light green / light gray
+        color: paid ? "#065f46" : "#334155",
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
         borderRadius: 999,
+        whiteSpace: "nowrap",
       }}
     >
       {paid ? "COMPLETED" : "PENDING"}
@@ -59,12 +59,13 @@ const StatusPill = ({ reference }: { reference?: string }) => {
   return (
     <span
       style={{
-        background: paid ? "#22c55e" : "#ef4444", // green / red
-        color: "#fff",
+        background: paid ? "#34d399" : "#fca5a5", // light green / light red
+        color: paid ? "#064e3b" : "#7f1d1d",
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
         borderRadius: 999,
+        whiteSpace: "nowrap",
       }}
     >
       {paid ? "PAID" : "FAILED"}
@@ -74,13 +75,13 @@ const StatusPill = ({ reference }: { reference?: string }) => {
 
 /** -------- Page -------- */
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[] | null>(null); // null until hydrated
+  const [orders, setOrders] = useState<Order[] | null>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({}); // per-order toggle
 
-  // Load orders from any known key, normalize, then migrate to CANONICAL_KEY
+  // Load orders, normalize, migrate to canonical key
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // read & merge
     const merged: Order[] = [];
     for (const key of POSSIBLE_KEYS) {
       try {
@@ -88,12 +89,9 @@ export default function OrdersPage() {
         if (!raw) continue;
         const arr = JSON.parse(raw);
         if (Array.isArray(arr)) merged.push(...arr);
-      } catch {
-        /* ignore */
-      }
+      } catch {}
     }
 
-    // normalize
     const normalized: Order[] = (merged || [])
       .filter((o) => o && typeof (o as any).id === "string")
       .map((o: any) => {
@@ -103,7 +101,6 @@ export default function OrdersPage() {
         return { ...o, createdAt: created, items };
       });
 
-    // sort newest first (by id numeric if possible, else leave)
     normalized.sort((a, b) => {
       const na = Number(a.id.replace(/^\D+/, ""));
       const nb = Number(b.id.replace(/^\D+/, ""));
@@ -111,28 +108,31 @@ export default function OrdersPage() {
       return 0;
     });
 
-    // migrate to the single canonical key
     try {
       localStorage.setItem(CANONICAL_KEY, JSON.stringify(normalized));
-      // clean other keys (optional—but helps keep it tidy)
       for (const key of POSSIBLE_KEYS) {
         if (key !== CANONICAL_KEY) localStorage.removeItem(key);
       }
-    } catch {
-      /* ignore */
-    }
+    } catch {}
+
+    // default: all expanded (you can tap to collapse)
+    const initialExpanded: Record<string, boolean> = {};
+    normalized.forEach((o) => (initialExpanded[o.id] = true));
 
     setOrders(normalized);
+    setExpanded(initialExpanded);
   }, []);
 
-  // Not hydrated yet
+  const toggle = (id: string) =>
+    setExpanded((e) => ({ ...e, [id]: !e[id] }));
+
   if (orders === null) {
     return <div style={{ background: "#f6f6f6", minHeight: "100vh" }} />;
   }
 
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
-      {/* Top bar (same look as before) */}
+      {/* Header bar (unchanged) */}
       <div
         style={{
           background: "#111",
@@ -210,156 +210,182 @@ export default function OrdersPage() {
           </div>
         ) : (
           <div style={{ display: "grid", gap: 12 }}>
-            {orders.map((order) => (
-              <div
-                key={order.id}
-                style={{
-                  background: "#fff",
-                  border: "1px solid #eee",
-                  borderRadius: 16,
-                  overflow: "hidden",
-                }}
-              >
-                {/* Header row */}
+            {orders.map((order) => {
+              const isOpen = !!expanded[order.id];
+              return (
                 <div
+                  key={order.id}
                   style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr auto",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "12px 14px",
-                    borderBottom: "1px solid #f0f0f0",
+                    background: "#fff",
+                    border: "1px solid #eee",
+                    borderRadius: 16,
+                    overflow: "hidden",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ color: "#666" }}>Order</span>
-                    <span style={{ fontWeight: 800 }}>#{order.id}</span>
-                    {order.createdAt ? (
-                      <span style={{ color: "#999", fontSize: 12 }}>
-                        {order.createdAt}
-                      </span>
-                    ) : null}
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <HeaderPill reference={order.reference} />
-                    <span style={{ fontWeight: 800 }}>
-                      KES {Math.round(order.total).toLocaleString("en-KE")}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Body */}
-                <div style={{ padding: 14, display: "grid", gap: 10 }}>
-                  {/* items */}
-                  {order.items.map((it, i) => {
-                    const qty = Number(it.quantity ?? it.qty ?? 1);
-                    const price = Number(it.price) || 0;
-                    return (
-                      <div
-                        key={i}
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "auto 1fr",
-                          gap: 10,
-                          alignItems: "center",
-                        }}
-                      >
-                        <img
-                          src={
-                            it.image ||
-                            "https://via.placeholder.com/56x56.png?text=%20"
-                          }
-                          alt={it.name}
-                          style={{
-                            width: 56,
-                            height: 56,
-                            borderRadius: 10,
-                            objectFit: "cover",
-                            background: "#f4f4f4",
-                            border: "1px solid #eee",
-                          }}
-                          loading="lazy"
-                        />
-                        <div>
-                          <div style={{ fontWeight: 800 }}>{it.name}</div>
-                          <div style={{ color: "#666" }}>
-                            KES {Math.round(price)} × {qty} ={" "}
-                            <span style={{ fontWeight: 700, color: "#111" }}>
-                              KES {Math.round(price * qty)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {/* Reference */}
-                  <div
+                  {/* Header row (tap to toggle) */}
+                  <button
+                    onClick={() => toggle(order.id)}
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      flexWrap: "wrap",
-                      marginTop: 4,
+                      all: "unset",
+                      cursor: "pointer",
+                      width: "100%",
                     }}
+                    aria-expanded={isOpen}
                   >
-                    <span style={{ color: "#777" }}>Reference</span>
-                    <span
+                    <div
                       style={{
-                        background: "#f5f6f8",
-                        border: "1px solid #eee",
-                        borderRadius: 10,
-                        padding: "6px 10px",
-                        fontFamily:
-                          "ui-monospace, SFMono-Regular, Menlo, monospace",
-                        fontSize: 13,
+                        display: "grid",
+                        gridTemplateColumns: "1fr auto",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "12px 14px",
+                        borderBottom: "1px solid #f0f0f0",
                       }}
                     >
-                      {order.reference || "—"}
-                    </span>
-                    {order.reference ? (
-                      <button
-                        onClick={() =>
-                          navigator.clipboard.writeText(order.reference!)
-                        }
+                      {/* Left: order id + date BELOW (so pill never gets pushed) */}
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ color: "#666" }}>Order</span>
+                          <span style={{ fontWeight: 800 }}>#{order.id}</span>
+                        </div>
+                        {order.createdAt ? (
+                          <span style={{ color: "#9aa3af", fontSize: 12, marginTop: 4 }}>
+                            {order.createdAt}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {/* Right: pill + total */}
+                      <div
                         style={{
-                          background: "#f4d03f",
-                          color: "#111",
-                          fontWeight: 800,
-                          border: "none",
-                          padding: "6px 10px",
-                          borderRadius: 10,
-                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          flexWrap: "nowrap",
                         }}
                       >
-                        Copy
-                      </button>
-                    ) : null}
-                  </div>
+                        <HeaderPill reference={order.reference} />
+                        <span style={{ fontWeight: 800, whiteSpace: "nowrap" }}>
+                          KES {Math.round(order.total).toLocaleString("en-KE")}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
 
-                  {/* Status */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ color: "#777" }}>Status</span>
-                    <StatusPill reference={order.reference} />
-                  </div>
+                  {/* Body */}
+                  {isOpen && (
+                    <div style={{ padding: 14, display: "grid", gap: 10 }}>
+                      {order.items.map((it, i) => {
+                        const qty = Number(it.quantity ?? it.qty ?? 1);
+                        const price = Number(it.price) || 0;
+                        return (
+                          <div
+                            key={i}
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "auto 1fr",
+                              gap: 10,
+                              alignItems: "center",
+                            }}
+                          >
+                            <img
+                              src={
+                                it.image ||
+                                "https://via.placeholder.com/56x56.png?text=%20"
+                              }
+                              alt={it.name}
+                              style={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: 10,
+                                objectFit: "cover",
+                                background: "#f4f4f4",
+                                border: "1px solid #eee",
+                              }}
+                              loading="lazy"
+                            />
+                            <div>
+                              <div style={{ fontWeight: 800 }}>{it.name}</div>
+                              <div style={{ color: "#666" }}>
+                                KES {Math.round(price)} × {qty} ={" "}
+                                <span style={{ fontWeight: 700, color: "#111" }}>
+                                  KES {Math.round(price * qty)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
 
-                  {/* Total */}
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr auto",
-                      alignItems: "center",
-                      marginTop: 2,
-                    }}
-                  >
-                    <span style={{ color: "#777" }}>Total</span>
-                    <span style={{ fontWeight: 800 }}>
-                      KES {Math.round(order.total).toLocaleString("en-KE")}
-                    </span>
-                  </div>
+                      {/* Reference */}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          flexWrap: "wrap",
+                          marginTop: 4,
+                        }}
+                      >
+                        <span style={{ color: "#777" }}>Reference</span>
+                        <span
+                          style={{
+                            background: "#f5f6f8",
+                            border: "1px solid #eee",
+                            borderRadius: 10,
+                            padding: "6px 10px",
+                            fontFamily:
+                              "ui-monospace, SFMono-Regular, Menlo, monospace",
+                            fontSize: 13,
+                          }}
+                        >
+                          {order.reference || "—"}
+                        </span>
+                        {order.reference ? (
+                          <button
+                            onClick={() =>
+                              navigator.clipboard.writeText(order.reference!)
+                            }
+                            style={{
+                              background: "#fde68a",
+                              color: "#111",
+                              fontWeight: 800,
+                              border: "none",
+                              padding: "6px 10px",
+                              borderRadius: 10,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Copy
+                          </button>
+                        ) : null}
+                      </div>
+
+                      {/* Status */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ color: "#777" }}>Status</span>
+                        <StatusPill reference={order.reference} />
+                      </div>
+
+                      {/* Total */}
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr auto",
+                          alignItems: "center",
+                          marginTop: 2,
+                        }}
+                      >
+                        <span style={{ color: "#777" }}>Total</span>
+                        <span style={{ fontWeight: 800 }}>
+                          KES {Math.round(order.total).toLocaleString("en-KE")}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
