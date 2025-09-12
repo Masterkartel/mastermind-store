@@ -19,23 +19,12 @@ type Order = {
   items: OrderItem[];
 };
 
-/** -------- Storage keys -------- */
-const CANONICAL_KEY = "orders";
-const POSSIBLE_KEYS = ["orders", "mm_orders", "mastermind_orders", "cart_orders"];
-
 /** -------- Helpers -------- */
 const pad = (n: number) => String(n).padStart(2, "0");
 const formatDateTime = (d: Date) =>
   `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(
     d.getHours()
   )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-
-const createdFromId = (id: string): string | undefined => {
-  const ts = Number(id?.replace(/^\D+/, ""));
-  if (!Number.isFinite(ts)) return;
-  const d = new Date(ts);
-  return isNaN(d.getTime()) ? undefined : formatDateTime(d);
-};
 
 const PLACEHOLDER = "https://via.placeholder.com/56x56.png?text=%20";
 const slugify = (s: string) =>
@@ -69,11 +58,12 @@ const resolveItemImage = (it: OrderItem) => {
 /** -------- Pills -------- */
 const HeaderPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
+  const failed = !reference;
   return (
     <span
       style={{
-        background: paid ? "#dcfce7" : "#f1f5f9", // pastel green / grey
-        color: paid ? "#16a34a" : "#64748b",
+        background: paid ? "#dcfce7" : "#fee2e2",
+        color: paid ? "#16a34a" : "#dc2626",
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
@@ -81,7 +71,7 @@ const HeaderPill = ({ reference }: { reference?: string }) => {
         whiteSpace: "nowrap",
       }}
     >
-      {paid ? "Completed" : "Failed"}
+      {paid ? "Successful" : "Failed"}
     </span>
   );
 };
@@ -91,8 +81,8 @@ const StatusPill = ({ reference }: { reference?: string }) => {
   return (
     <span
       style={{
-        background: paid ? "#bbf7d0" : "#fee2e2", // pastel green / red
-        color: paid ? "#16a34a" : "#dc2626",
+        background: paid ? "#bbf7d0" : "#fecaca",
+        color: paid ? "#15803d" : "#b91c1c",
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
@@ -109,26 +99,24 @@ const StatusPill = ({ reference }: { reference?: string }) => {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [copied, setCopied] = useState<string | null>(null);
+  const [copiedRef, setCopiedRef] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const merged: Order[] = [];
-    for (const key of POSSIBLE_KEYS) {
-      try {
-        const raw = localStorage.getItem(key);
-        if (!raw) continue;
-        const arr = JSON.parse(raw);
-        if (Array.isArray(arr)) merged.push(...arr);
-      } catch {}
+    let parsed: Order[] = [];
+    try {
+      const raw = localStorage.getItem("orders");
+      parsed = raw ? JSON.parse(raw) : [];
+    } catch {
+      parsed = [];
     }
 
-    const normalized: Order[] = (merged || [])
+    const normalized: Order[] = (parsed || [])
       .filter((o) => o && typeof (o as any).id === "string")
       .map((o: any) => {
         const created =
-          o.createdAt || createdFromId(o.id) || formatDateTime(new Date());
+          o.createdAt || formatDateTime(new Date());
         const items: OrderItem[] = Array.isArray(o.items) ? o.items : [];
         return { ...o, createdAt: created, items };
       });
@@ -140,27 +128,17 @@ export default function OrdersPage() {
       return 0;
     });
 
-    try {
-      localStorage.setItem(CANONICAL_KEY, JSON.stringify(normalized));
-      for (const key of POSSIBLE_KEYS) {
-        if (key !== CANONICAL_KEY) localStorage.removeItem(key);
-      }
-    } catch {}
-
-    const initialExpanded: Record<string, boolean> = {};
-    normalized.forEach((o) => (initialExpanded[o.id] = false));
-
     setOrders(normalized);
-    setExpanded(initialExpanded);
+    setExpanded({});
   }, []);
 
   const toggle = (id: string) =>
     setExpanded((e) => ({ ...e, [id]: !e[id] }));
 
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(text);
-    setTimeout(() => setCopied(null), 1200);
+  const handleCopy = (ref: string) => {
+    navigator.clipboard.writeText(ref);
+    setCopiedRef(ref);
+    setTimeout(() => setCopiedRef(null), 1200);
   };
 
   if (orders === null) {
@@ -169,7 +147,7 @@ export default function OrdersPage() {
 
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
-      {/* Header bar */}
+      {/* Header */}
       <div
         style={{
           background: "#111",
@@ -230,7 +208,7 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* Orders list */}
+      {/* Orders */}
       <div style={{ maxWidth: 1200, margin: "12px auto", padding: "0 12px" }}>
         {orders.length === 0 ? (
           <div
@@ -281,7 +259,9 @@ export default function OrdersPage() {
                           <span style={{ fontWeight: 800 }}>#{order.id}</span>
                         </div>
                         {order.createdAt ? (
-                          <span style={{ color: "#9aa3af", fontSize: 12, marginTop: 4 }}>
+                          <span
+                            style={{ color: "#9aa3af", fontSize: 12, marginTop: 4 }}
+                          >
                             {order.createdAt}
                           </span>
                         ) : null}
@@ -324,7 +304,8 @@ export default function OrdersPage() {
                               alt={it.name}
                               loading="lazy"
                               onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).src = PLACEHOLDER;
+                                (e.currentTarget as HTMLImageElement).src =
+                                  PLACEHOLDER;
                               }}
                               style={{
                                 width: 56,
@@ -383,25 +364,12 @@ export default function OrdersPage() {
                               padding: "6px 10px",
                               borderRadius: 10,
                               cursor: "pointer",
+                              position: "relative",
                             }}
                           >
-                            Copy
+                            {copiedRef === order.reference ? "Copied!" : "Copy"}
                           </button>
                         ) : null}
-                        {copied === order.reference && (
-                          <span
-                            style={{
-                              background: "#dcfce7",
-                              color: "#16a34a",
-                              fontSize: 12,
-                              fontWeight: 800,
-                              padding: "4px 10px",
-                              borderRadius: 999,
-                            }}
-                          >
-                            Copied!
-                          </span>
-                        )}
                       </div>
 
                       {/* Status */}
