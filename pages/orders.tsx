@@ -1,341 +1,305 @@
 // pages/orders.tsx
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import Head from "next/head";
 
 type OrderItem = {
   id: string;
   name: string;
-  price: number;
   qty: number;
+  price: number;
   img?: string;
 };
 
 type Order = {
-  id: string;                 // e.g. "T698660489556561"
-  reference?: string;         // Paystack reference
-  createdAt?: string;         // ISO string
-  total: number;
+  id: string;                 // our local id (e.g. T<timestamp>)
+  reference: string;          // paystack reference
+  createdAt?: string;         // ISO date string
+  total: number;              // KES
   status?: "PENDING" | "COMPLETED" | "FAILED";
-  paymentStatus?: "PENDING" | "PAID" | "FAILED"; // UI line
+  paymentStatus?: "PENDING" | "PAID" | "FAILED";
   items: OrderItem[];
 };
 
 const ORDERS_KEY = "mm_orders";
 
-export default function OrdersPage() {
+export default function Orders() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [verifyingRefs, setVerifyingRefs] = useState<Record<string, boolean>>(
-    {}
-  );
+  const [verifying, setVerifying] = useState<Record<string, boolean>>({});
 
-  // Load orders from localStorage
+  // Load saved orders
   useEffect(() => {
     try {
       const raw = localStorage.getItem(ORDERS_KEY);
-      const arr: Order[] = raw ? JSON.parse(raw) : [];
-      setOrders(Array.isArray(arr) ? arr : []);
+      const arr = raw ? JSON.parse(raw) : [];
+      setOrders(Array.isArray(arr) ? arr.reverse() : []);
     } catch {
       setOrders([]);
     }
   }, []);
 
-  // Save orders when they change
+  // If query has ?ref=..., nudge verify for that one
   useEffect(() => {
-    try {
-      localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
-    } catch {}
+    const url = new URL(window.location.href);
+    const ref = url.searchParams.get("ref");
+    if (!ref) return;
+    // kick verification for the matching order
+    const match = orders.find((o) => o.reference === ref);
+    if (match && match.paymentStatus !== "PAID") {
+      verifyOne(match);
+    }
   }, [orders]);
 
-  // Auto-verify any PENDING order that has a reference
-  useEffect(() => {
-    const pending = orders.filter(
-      (o) => (o.status ?? "PENDING") === "PENDING" && o.reference
-    );
-    if (!pending.length) return;
-
-    const controller = new AbortController();
-
-    (async () => {
-      for (const o of pending) {
-        const ref = o.reference!;
-        if (verifyingRefs[ref]) continue;
-
-        setVerifyingRefs((m) => ({ ...m, [ref]: true }));
-        try {
-          const res = await fetch(`/api/paystack-verify?reference=${encodeURIComponent(ref)}`, {
-            method: "GET",
-            signal: controller.signal,
-          });
-
-          // If API is reachable and returns result
-          if (res.ok) {
-            const json = await res.json().catch(() => ({} as any));
-
-            // Heuristic: accept multiple possible shapes from the worker
-            const ok =
-              json?.status === "success" ||
-              json?.data?.status === "success" ||
-              json?.data?.data?.status === "success";
-
-            const failed =
-              json?.status === "failed" ||
-              json?.data?.status === "failed" ||
-              json?.data?.data?.status === "failed";
-
-            setOrders((prev) =>
-              prev.map((ord) => {
-                if (ord.reference !== ref) return ord;
-                if (ok) {
-                  return {
-                    ...ord,
-                    status: "COMPLETED",
-                    paymentStatus: "PAID",
-                  };
-                }
-                if (failed) {
-                  return {
-                    ...ord,
-                    status: "FAILED",
-                    paymentStatus: "FAILED",
-                  };
-                }
-                // No conclusive answer; keep pending
-                return ord;
-              })
-            );
-          }
-        } catch {
-          // Network fail: keep it pending; user can refresh later
-        } finally {
-          setVerifyingRefs((m) => {
-            const n = { ...m };
-            delete n[ref];
-            return n;
-          });
-        }
-      }
-    })();
-
-    return () => controller.abort();
-  }, [orders, verifyingRefs]);
-
-  const niceDate = (iso?: string) => {
-    if (!iso) return "";
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return "";
-    return d.toLocaleString(undefined, {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
+  const fmtDate = (iso?: string) => {
+    try {
+      if (!iso) return "";
+      const d = new Date(iso);
+      return d.toLocaleString();
+    } catch {
+      return "";
+    }
   };
 
-  const hasOrders = useMemo(() => orders.length > 0, [orders]);
+  const currency = (n: number) => `KES ${Math.round(n).toLocaleString("en-KE")}`;
+
+  const badge = (text: string, kind: "pending" | "paid" | "failed" | "completed") => {
+    const base = "inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold";
+    const map: Record<typeof kind, React.CSSProperties> = {
+      pending:   { background: "#eee",    color: "#333" },
+      paid:      { background: "#d9f7e7", color: "#1e7a4a" },
+      failed:    { background: "#ffe2e2", color: "#a11f1f" },
+      completed: { background: "#d9f7e7", color: "#1e7a4a" },
+    };
+    return (
+      <span style={{ ...map[kind], border: "1px solid rgba(0,0,0,0.06)" }} className={base}>
+        {text}
+      </span>
+    );
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      alert("Reference copied");
+    } catch {
+      alert("Could not copy");
+    }
+  };
+
+  const persist = (next: Order[]) => {
+    try {
+      localStorage.setItem(ORDERS_KEY, JSON.stringify([...next].reverse()));
+    } catch {}
+    setOrders(next);
+  };
+
+  // Verify one order by calling our API
+  const verifyOne = async (order: Order) => {
+    setVerifying((v) => ({ ...v, [order.reference]: true }));
+    try {
+      const res = await fetch(`/api/paystack-verify?reference=${encodeURIComponent(order.reference)}`);
+      const data = await res.json(); // { status: 'PAID'|'FAILED'|'PENDING', paidAt?: string }
+      const next = orders.map((o) =>
+        o.reference === order.reference
+          ? {
+              ...o,
+              paymentStatus: (data.status as Order["paymentStatus"]) ?? "PENDING",
+              status:
+                data.status === "PAID"
+                  ? "COMPLETED"
+                  : data.status === "FAILED"
+                  ? "FAILED"
+                  : "PENDING",
+            }
+          : o
+      );
+      persist(next);
+    } catch {
+      // leave as is
+    } finally {
+      setVerifying((v) => ({ ...v, [order.reference]: false }));
+    }
+  };
+
+  // Auto-verify all with PENDING (on first load)
+  useEffect(() => {
+    orders.forEach((o) => {
+      if (o.paymentStatus === "PENDING") verifyOne(o);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const headerTitle = "My Orders";
 
   return (
     <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
       <Head>
-        <title>My Orders • Mastermind</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{headerTitle} • Mastermind</title>
+        <link rel="icon" href="/favicon.ico" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       </Head>
 
-      {/* Header */}
-      <header className="topbar">
-        <div className="topbar__inner">
-          <div className="brand">
-            <span className="brandDot" aria-hidden />
-            My Orders
+      {/* Top black header with favicon + visible back button */}
+      <header style={{ background: "#111", color: "#fff", position: "sticky", top: 0, zIndex: 50 }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "12px 16px", display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 800 }}>
+            <img src="/favicon.ico" alt="" width={22} height={22} style={{ borderRadius: 4 }} />
+            {headerTitle}
           </div>
-          <Link href="/" className="backBtn" aria-label="Back to Shop">
+          <a
+            href="/"
+            style={{
+              background: "#fff",
+              color: "#111",
+              borderRadius: 12,
+              padding: "8px 12px",
+              textDecoration: "none",
+              fontWeight: 800,
+              border: "1px solid rgba(0,0,0,.08)",
+            }}
+          >
             ← Back to Shop
-          </Link>
+          </a>
         </div>
       </header>
 
-      <main className="container" style={{ padding: "12px" }}>
-        {!hasOrders ? (
-          <div className="empty">
-            No orders yet.{" "}
-            <Link href="/" className="link">
-              Go back to shop
-            </Link>
-            .
+      <main style={{ maxWidth: 1200, margin: "12px auto", padding: "0 12px", display: "grid", gap: 12 }}>
+        {orders.length === 0 ? (
+          <div style={{ color: "#666", padding: 16, background: "#fff", border: "1px solid #eee", borderRadius: 14 }}>
+            No orders yet.
           </div>
         ) : (
-          <div className="col">
-            {orders
-              .slice()
-              .reverse()
-              .map((o, idx) => {
-                const topBadge =
-                  o.status === "COMPLETED"
-                    ? "COMPLETED"
-                    : o.status === "FAILED"
-                    ? "FAILED"
-                    : "PENDING";
-                const payLine =
-                  o.paymentStatus ??
-                  (o.status === "COMPLETED"
-                    ? "PAID"
-                    : o.status === "FAILED"
-                    ? "FAILED"
-                    : "PENDING");
-                return (
-                  <article key={(o.reference || o.id) + idx} className="orderCard">
-                    <div className="orderCard__head">
-                      <div className="idRow">
-                        <div className="muted">Order</div>
-                        <div className="mono strong">
-                          #{o.id || o.reference || "—"}
-                        </div>
-                        <div className={`pill pill--${topBadge.toLowerCase()}`}>
-                          {topBadge}
-                        </div>
+          orders.map((o) => {
+            const sum = o.items.reduce((s, it) => s + it.price * it.qty, 0);
+            const headStatus =
+              o.paymentStatus === "PAID"
+                ? badge("PAID", "paid")
+                : o.paymentStatus === "FAILED"
+                ? badge("FAILED", "failed")
+                : badge("PENDING", "pending");
+
+            return (
+              <details key={o.id} style={{ background: "#fff", border: "1px solid #eee", borderRadius: 14 }}>
+                <summary
+                  style={{
+                    listStyle: "none",
+                    cursor: "pointer",
+                    padding: 12,
+                    borderBottom: "1px solid #f1f1f1",
+                    display: "grid",
+                    gridTemplateColumns: "auto 1fr auto",
+                    gap: 10,
+                    alignItems: "center",
+                  }}
+                >
+                  <div style={{ color: "#666", fontWeight: 800 }}>Order</div>
+                  <div style={{ fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis" }}>
+                    #{o.id}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {headStatus}
+                    <div style={{ fontWeight: 800 }}>{currency(o.total || sum)}</div>
+                  </div>
+                </summary>
+
+                <div style={{ padding: 12, display: "grid", gap: 10 }}>
+                  {/* Date */}
+                  <div style={{ color: "#666" }}>{fmtDate(o.createdAt)}</div>
+
+                  {/* First line preview */}
+                  {o.items[0] && (
+                    <div style={{ display: "grid", gridTemplateColumns: "56px 1fr", gap: 10, alignItems: "center" }}>
+                      <div
+                        style={{
+                          width: 56,
+                          height: 56,
+                          borderRadius: 12,
+                          background: "#f4f4f4",
+                          overflow: "hidden",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {o.items[0].img ? (
+                          <img
+                            src={o.items[0].img}
+                            alt={o.items[0].name}
+                            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                          />
+                        ) : null}
                       </div>
-                      <div className="right">
-                        <div className="amount">
-                          KES {Math.round(o.total).toLocaleString("en-KE")}
-                        </div>
-                      </div>
-                    </div>
-
-                    {o.createdAt ? (
-                      <div className="orderDate">{niceDate(o.createdAt)}</div>
-                    ) : null}
-
-                    {/* Items (first item expanded) */}
-                    <div className="items">
-                      {o.items.map((it, i) => (
-                        <div className="item" key={it.id + i}>
-                          <div className="thumbWrap">
-                            {it.img ? (
-                              <img
-                                src={it.img}
-                                alt={it.name}
-                                className="thumb"
-                                loading="lazy"
-                              />
-                            ) : (
-                              <div className="thumb thumb--empty" />
-                            )}
-                          </div>
-                          <div className="itemBody">
-                            <div className="itemName">{it.name}</div>
-                            <div className="muted">
-                              KES {Math.round(it.price).toLocaleString("en-KE")} ×{" "}
-                              {it.qty} ={" "}
-                              <span className="strong">
-                                KES{" "}
-                                {Math.round(it.price * it.qty).toLocaleString("en-KE")}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Meta */}
-                    <div className="meta">
-                      <div className="metaRow">
-                        <div className="muted">Reference</div>
-                        <div className="mono">
-                          {o.reference || "—"}{" "}
-                          {o.reference ? (
-                            <button
-                              className="copyBtn"
-                              onClick={() => {
-                                navigator.clipboard
-                                  .writeText(o.reference!)
-                                  .catch(() => {});
-                              }}
-                            >
-                              Copy
-                            </button>
-                          ) : null}
-                        </div>
-                      </div>
-
-                      <div className="metaRow">
-                        <div className="muted">Status</div>
-                        <div>
-                          <span
-                            className={`pill pill--${
-                              payLine === "PAID"
-                                ? "completed"
-                                : payLine === "FAILED"
-                                ? "failed"
-                                : "pending"
-                            }`}
-                          >
-                            {payLine}
+                      <div>
+                        <div style={{ fontWeight: 800 }}>{o.items[0].name}</div>
+                        <div style={{ color: "#666" }}>
+                          KES {o.items[0].price} × {o.items[0].qty} ={" "}
+                          <span style={{ fontWeight: 800 }}>
+                            KES {o.items[0].price * o.items[0].qty}
                           </span>
-                          {o.reference && (o.status ?? "PENDING") === "PENDING" ? (
-                            <span className="checking">
-                              {verifyingRefs[o.reference]
-                                ? " • checking…"
-                                : " • awaiting confirmation"}
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-
-                      <div className="metaRow">
-                        <div className="muted">Total</div>
-                        <div className="strong">
-                          KES {Math.round(o.total).toLocaleString("en-KE")}
                         </div>
                       </div>
                     </div>
-                  </article>
-                );
-              })}
-          </div>
+                  )}
+
+                  {/* Reference + copy */}
+                  <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 10, alignItems: "center" }}>
+                    <div style={{ color: "#666" }}>Reference</div>
+                    <div style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
+                      {o.reference}
+                    </div>
+                    <button
+                      onClick={() => copyToClipboard(o.reference)}
+                      style={{
+                        background: "#f4d03f",
+                        color: "#111",
+                        border: "none",
+                        borderRadius: 10,
+                        padding: "6px 10px",
+                        fontWeight: 800,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Copy
+                    </button>
+                  </div>
+
+                  {/* Status line */}
+                  <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 10, alignItems: "center" }}>
+                    <div style={{ color: "#666" }}>Status</div>
+                    <div>
+                      {o.paymentStatus === "PAID"
+                        ? badge("PAID", "paid")
+                        : o.paymentStatus === "FAILED"
+                        ? badge("FAILED", "failed")
+                        : badge("PENDING", "pending")}
+                      <button
+                        onClick={() => verifyOne(o)}
+                        disabled={!!verifying[o.reference]}
+                        style={{
+                          marginLeft: 10,
+                          background: "#fff",
+                          border: "1px solid #ddd",
+                          borderRadius: 10,
+                          padding: "6px 10px",
+                          fontWeight: 800,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {verifying[o.reference] ? "Checking…" : "Re-verify"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Total */}
+                  <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 10 }}>
+                    <div style={{ color: "#666" }}>Total</div>
+                    <div style={{ fontWeight: 800 }}>{currency(o.total || sum)}</div>
+                  </div>
+                </div>
+              </details>
+            );
+          })
         )}
       </main>
-
-      <style jsx>{`
-        .container { max-width: 980px; margin: 0 auto; }
-        .topbar { background:#111; color:#fff; position:sticky; top:0; z-index:20; }
-        .topbar__inner { max-width:980px; margin:0 auto; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; }
-        .brand { font-weight:800; display:flex; align-items:center; gap:10px; }
-        .brandDot { width:18px; height:18px; border-radius:6px; background:#f4d03f; display:inline-block; }
-        .backBtn { background:#fff; color:#111; padding:8px 14px; border-radius:12px; text-decoration:none; border:1px solid #eee; font-weight:700; }
-
-        .empty { margin:18px; background:#fff; border:1px solid #eee; border-radius:12px; padding:16px; }
-        .link { color:#5b34eb; font-weight:700; }
-
-        .col { display:grid; gap:12px; }
-        .orderCard { background:#fff; border:1px solid #eee; border-radius:16px; padding:12px; }
-        .orderCard__head { display:flex; justify-content:space-between; align-items:center; gap:10px; }
-        .idRow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-        .muted { color:#777; }
-        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-        .strong { font-weight:800; }
-        .amount { font-weight:800; }
-        .orderDate { color:#666; margin:4px 0 8px; }
-
-        .items { display:grid; gap:8px; margin-top:6px; }
-        .item { display:flex; gap:12px; align-items:center; }
-        .thumbWrap { width:56px; height:56px; border-radius:12px; background:#f4f4f4; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-        .thumb { width:100%; height:100%; object-fit:cover; display:block; }
-        .thumb--empty { width:56px; height:56px; border-radius:12px; background:#eee; }
-        .itemBody { flex:1; }
-        .itemName { font-weight:800; }
-
-        .meta { margin-top:10px; display:grid; gap:8px; }
-        .metaRow { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; }
-        .copyBtn { margin-left:8px; border:1px solid #e5e5e5; background:#fff; padding:2px 8px; border-radius:10px; font-weight:700; cursor:pointer; }
-        .checking { color:#888; font-size:12px; margin-left:6px; }
-
-        .pill { padding:4px 10px; border-radius:999px; font-weight:800; font-size:12px; text-transform:uppercase; }
-        .pill--completed { background:#dff5e6; color:#116b2d; }
-        .pill--pending { background:#f4f4f4; color:#444; }
-        .pill--failed { background:#fde2e2; color:#8a1f1f; }
-      `}</style>
     </div>
   );
 }
