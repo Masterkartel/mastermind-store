@@ -16,11 +16,10 @@ type Order = {
   items: OrderItem[];
 };
 
-const GREEN = "#4fd18b";      // header pill (completed)
-const GREY  = "#bfc4cc";      // header pill (pending)
-const COPY  = "#f4d03f";
+const GREEN = "#4fd18b";
+const GREY = "#bfc4cc";
+const COPY = "#f4d03f";
 
-// Lighter colors for STATUS row
 const STATUS_BG_GREEN = "#e9fbf2";
 const STATUS_TXT_GREEN = "#0b7a43";
 const STATUS_BG_RED = "#fdeaea";
@@ -29,16 +28,12 @@ const STATUS_TXT_RED = "#a33a3a";
 const fmtDateTime = (v?: string) => {
   const d = v ? new Date(v) : new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
-  const dd = pad(d.getDate());
-  const mm = pad(d.getMonth() + 1);
-  const yy = d.getFullYear();
-  const hh = pad(d.getHours());
-  const mi = pad(d.getMinutes());
-  const ss = pad(d.getSeconds());
-  return `${dd}/${mm}/${yy}, ${hh}:${mi}:${ss}`;
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 };
 
-// Guess public image from product name (used as fallback)
+// Guess image by name (local /public assets)
 const guessImageFromName = (name?: string): string | undefined => {
   if (!name) return undefined;
   const n = name.toLowerCase();
@@ -46,22 +41,22 @@ const guessImageFromName = (name?: string): string | undefined => {
   if (n.includes("6kg") || n.includes("6 kg")) return "/6kg.png";
   if (n.includes("13kg") || n.includes("13 kg")) return "/13kg.png";
   if (n.includes("bulb")) return "/bulb.png";
-  if (n.includes("tv") || n.includes("television")) return "/tv.png";
+  if (n.includes("tv")) return "/tv.png";
   if (n.includes("woofer") || n.includes("speaker")) return "/woofer.png";
   return undefined;
 };
 
-// Ensure relative /public paths render anywhere
+// Turn relative path into absolute (so Cloudflare/Next edge paths still work)
 const resolveImg = (src?: string) => {
-  const fallback = "https://via.placeholder.com/56x56.png?text=%20";
-  if (!src) return fallback;
+  const ph = "https://via.placeholder.com/56x56.png?text=%20";
+  if (!src) return ph;
   if (/^https?:\/\//i.test(src)) return src;
   if (typeof window !== "undefined") {
-    const base = window.location.origin;
+    const base = window.location.origin.replace(/\/$/, "");
     if (src.startsWith("/")) return base + src;
-    return base + "/" + src.replace(/^\.?\//, "");
+    return `${base}/${src.replace(/^\.?\//, "")}`;
   }
-  return src || fallback;
+  return src;
 };
 
 const HeaderPill = ({ reference }: { reference?: string }) => {
@@ -84,13 +79,11 @@ const HeaderPill = ({ reference }: { reference?: string }) => {
 
 const StatusPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
-  const bg = paid ? STATUS_BG_GREEN : STATUS_BG_RED;
-  const color = paid ? STATUS_TXT_GREEN : STATUS_TXT_RED;
   return (
     <span
       style={{
-        background: bg,
-        color,
+        background: paid ? STATUS_BG_GREEN : STATUS_BG_RED,
+        color: paid ? STATUS_TXT_GREEN : STATUS_TXT_RED,
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
@@ -105,12 +98,17 @@ const StatusPill = ({ reference }: { reference?: string }) => {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [openId, setOpenId] = useState<string | null>(null); // start collapsed
+  const [copiedFor, setCopiedFor] = useState<string | null>(null); // shows "Copied" chip
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const raw = localStorage.getItem("orders");
     let parsed: Order[] = [];
-    try { parsed = raw ? JSON.parse(raw) : []; } catch { parsed = []; }
+    try {
+      parsed = raw ? JSON.parse(raw) : [];
+    } catch {
+      parsed = [];
+    }
     const normalized = parsed.map((o) => ({
       ...o,
       createdAt: fmtDateTime(o.createdAt),
@@ -120,7 +118,7 @@ export default function OrdersPage() {
 
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
-      {/* Top bar */}
+      {/* Header */}
       <div
         style={{
           background: "#111",
@@ -177,7 +175,7 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* Orders list */}
+      {/* Orders */}
       <div style={{ maxWidth: 1200, margin: "12px auto", padding: "0 12px" }}>
         {orders.length === 0 ? (
           <div
@@ -206,7 +204,7 @@ export default function OrdersPage() {
                     overflow: "hidden",
                   }}
                 >
-                  {/* Header (tap to toggle) */}
+                  {/* Header row (tap to toggle) */}
                   <div
                     onClick={() => setOpenId(isOpen ? null : order.id)}
                     style={{
@@ -230,7 +228,6 @@ export default function OrdersPage() {
                         <span style={{ color: "#666" }}>Order</span>
                         <span style={{ fontWeight: 800 }}>#{order.id}</span>
                       </div>
-                      {/* DATE sits under order number on small screens */}
                       <div style={{ width: "100%" }}>
                         <span style={{ color: "#999", fontSize: 12 }}>
                           {order.createdAt}
@@ -245,10 +242,9 @@ export default function OrdersPage() {
                     </div>
                   </div>
 
-                  {/* Expanded body */}
+                  {/* Body */}
                   {isOpen && (
                     <div style={{ padding: 14, display: "grid", gap: 10 }}>
-                      {/* Items */}
                       {order.items.map((it, i) => {
                         const price = Number(it.price) || 0;
                         const qty =
@@ -256,8 +252,11 @@ export default function OrdersPage() {
                           1;
                         const picked = it.image || guessImageFromName(it.name);
                         const imgSrc = resolveImg(picked);
-                        const fallbackSrc =
-                          resolveImg(guessImageFromName(it.name) || "/torch.png");
+                        const localFallback = resolveImg(
+                          guessImageFromName(it.name) || "/torch.png"
+                        );
+                        const remoteFallback =
+                          "https://via.placeholder.com/56x56.png?text=%20";
 
                         const lineTotal = Math.round(price * qty);
                         return (
@@ -282,9 +281,17 @@ export default function OrdersPage() {
                                 border: "1px solid #eee",
                               }}
                               loading="lazy"
+                              decoding="async"
+                              crossOrigin="anonymous"
+                              referrerPolicy="no-referrer"
                               onError={(e) => {
                                 const el = e.currentTarget as HTMLImageElement;
-                                if (el.src !== fallbackSrc) el.src = fallbackSrc;
+                                // Try named local fallback, then a remote placeholder with cache-buster
+                                if (el.src !== localFallback) {
+                                  el.src = localFallback;
+                                } else if (!el.src.includes("placeholder.com")) {
+                                  el.src = `${remoteFallback}?v=${Date.now()}`;
+                                }
                               }}
                             />
                             <div>
@@ -325,31 +332,51 @@ export default function OrdersPage() {
                           {order.reference || "—"}
                         </span>
                         {order.reference && (
-                          <button
-                            onClick={async () => {
-                              try {
-                                await navigator.clipboard.writeText(order.reference!);
-                                alert("Copied!");
-                              } catch {
-                                alert("Unable to copy.");
-                              }
-                            }}
-                            style={{
-                              background: COPY,
-                              color: "#111",
-                              fontWeight: 800,
-                              border: "none",
-                              padding: "6px 10px",
-                              borderRadius: 10,
-                              cursor: "pointer",
-                            }}
-                          >
-                            Copy
-                          </button>
+                          <>
+                            <button
+                              onClick={async (ev) => {
+                                ev.stopPropagation();
+                                try {
+                                  await navigator.clipboard.writeText(
+                                    order.reference!
+                                  );
+                                  setCopiedFor(order.id);
+                                  window.setTimeout(() => setCopiedFor(null), 1500);
+                                } catch {
+                                  // silent; nothing else to change on UI
+                                }
+                              }}
+                              style={{
+                                background: COPY,
+                                color: "#111",
+                                fontWeight: 800,
+                                border: "none",
+                                padding: "6px 10px",
+                                borderRadius: 10,
+                                cursor: "pointer",
+                              }}
+                            >
+                              Copy
+                            </button>
+                            {copiedFor === order.id && (
+                              <span
+                                style={{
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  color: "#0b7a43",
+                                  background: "#e9fbf2",
+                                  padding: "4px 8px",
+                                  borderRadius: 999,
+                                }}
+                              >
+                                Copied
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
 
-                      {/* Status (lighter colors) */}
+                      {/* Status */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ color: "#777" }}>Status</span>
                         <StatusPill reference={order.reference} />
@@ -372,4 +399,4 @@ export default function OrdersPage() {
       </div>
     </div>
   );
-                        }
+}
