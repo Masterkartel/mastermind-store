@@ -19,6 +19,11 @@ export default function Home() {
   const [showCart, setShowCart] = useState(false);
   const [cartMap, setCartMap] = useState<Record<string, number>>({});
 
+  // NEW: customer fields
+  const [custName, setCustName] = useState("");
+  const [custPhone, setCustPhone] = useState("");
+  const [custEmail, setCustEmail] = useState("");
+
   // ---- Load products.json ----
   useEffect(() => {
     (async () => {
@@ -99,7 +104,22 @@ export default function Home() {
   const currency = (n: number) =>
     `KES ${Math.round(n).toLocaleString("en-KE")}`;
 
-  // ---- Paystack handler (no email field; simple flow like screenshot) ----
+  // --- Helpers for validation/format ---
+  const emailOk = /\S+@\S+\.\S+/.test(custEmail);
+  const phoneOk = custPhone.replace(/\D/g, "").length >= 9; // light check
+  const nameOk = custName.trim().length >= 2;
+
+  const formatPhoneKE = (raw: string) => {
+    const digits = raw.replace(/\D/g, "");
+    if (digits.startsWith("254")) return `+${digits}`;
+    if (digits.startsWith("0") && digits.length >= 10)
+      return `+254${digits.slice(1)}`;
+    if (digits.startsWith("7") || digits.startsWith("1"))
+      return `+254${digits}`;
+    return raw; // fallback untouched
+  };
+
+  // ---- Paystack handler ----
   const handlePaystack = () => {
     const PaystackPop =
       typeof window !== "undefined" ? (window as any)?.PaystackPop : undefined;
@@ -108,19 +128,34 @@ export default function Home() {
       alert("Couldn't start Paystack. Please refresh and try again.");
       return;
     }
+    if (!emailOk || !phoneOk || !nameOk) {
+      alert("Please fill Name, Phone and a valid Email to continue.");
+      return;
+    }
 
     const handler = PaystackPop.setup({
       key: "pk_live_10bc141ee6ae2ae48edcd102c06540ffe1cb3ae6",
-      email: "customer@mastermindelectricals.com", // Paystack requires an email; popup also prompts phone for M-Pesa
+      email: custEmail,
       amount: Math.round(cartTotal) * 100,
       currency: "KES",
+      metadata: {
+        customer_name: custName,
+        customer_phone: formatPhoneKE(custPhone),
+        // Optional: include cart snapshot
+        cart: cartLines.map((l) => ({
+          id: l.product.id,
+          name: l.product.name,
+          qty: l.qty,
+          unit_price: Number(l.product.price) || 0,
+        })),
+      },
       callback: function (response: any) {
         alert("Payment complete! Reference: " + response.reference);
         clear();
         setShowCart(false);
       },
       onClose: function () {
-        // Silent close (matches screenshot flow)
+        // silent close
       },
     });
 
@@ -143,11 +178,7 @@ export default function Home() {
             <img src="/favicon.ico" alt="" className="brandIcon" aria-hidden />
             Mastermind Electricals & Electronics
           </div>
-          <button
-            onClick={() => setShowCart(true)}
-            className="cartBtn"
-            aria-label="Open cart"
-          >
+          <button onClick={() => setShowCart(true)} className="cartBtn" aria-label="Open cart">
             🛒 Cart: {cartCount}
           </button>
         </div>
@@ -172,6 +203,7 @@ export default function Home() {
             <div className="shopCard__title">Visit Our Shop</div>
             <div className="muted center">Mastermind Electricals & Electronics, Sotik Town</div>
             <div className="muted center">Open Mon–Sun • 8:00am – 9:00pm</div>
+
             <div className="actions actions--center">
               <a href="https://maps.app.goo.gl/7P2okRB5ssLFMkUT8" target="_blank" rel="noreferrer" className="btn btn--accent">
                 View on Maps
@@ -288,7 +320,7 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* ===== Cart Drawer (styled like your screenshot) ===== */}
+      {/* ===== Cart Drawer ===== */}
       {showCart && (
         <div className="overlay" onClick={() => setShowCart(false)}>
           <aside className="drawer" onClick={(e) => e.stopPropagation()} aria-label="Cart">
@@ -317,7 +349,9 @@ export default function Home() {
                     <div key={id} className="line">
                       <div className="line__info">
                         <div className="line__name">{l.product.name}</div>
-                        <div className="line__sub">KES {Math.round(price).toLocaleString("en-KE")} × {l.qty}</div>
+                        <div className="line__sub">
+                          KES {Math.round(price).toLocaleString("en-KE")} × {l.qty}
+                        </div>
                       </div>
 
                       <div className="line__actions">
@@ -331,6 +365,40 @@ export default function Home() {
               </div>
             )}
 
+            {/* Customer fields */}
+            {cartLines.length > 0 && (
+              <div className="cust">
+                <div className="field">
+                  <label className="label">Name</label>
+                  <input
+                    className="input"
+                    placeholder="e.g. Jane Doe"
+                    value={custName}
+                    onChange={(e) => setCustName(e.target.value)}
+                  />
+                </div>
+                <div className="field">
+                  <label className="label">Phone</label>
+                  <input
+                    className="input"
+                    placeholder="e.g. 0712 345 678"
+                    value={custPhone}
+                    onChange={(e) => setCustPhone(e.target.value)}
+                  />
+                </div>
+                <div className="field">
+                  <label className="label">Email</label>
+                  <input
+                    className="input"
+                    type="email"
+                    placeholder="e.g. jane@example.com"
+                    value={custEmail}
+                    onChange={(e) => setCustEmail(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="totals">
               <div className="row">
                 <span className="totalLabel">Total</span>
@@ -338,16 +406,14 @@ export default function Home() {
               </div>
 
               <button
-                disabled={cartLines.length === 0}
-                className={`payBtn ${cartLines.length ? "" : "payBtn--disabled"}`}
+                disabled={cartLines.length === 0 || !emailOk || !phoneOk || !nameOk}
+                className={`payBtn ${cartLines.length && emailOk && phoneOk && nameOk ? "" : "payBtn--disabled"}`}
                 onClick={handlePaystack}
               >
                 Pay with M-Pesa (Paystack)
               </button>
 
-              <p className="note">
-                You’ll be redirected to complete payment securely via Paystack.
-              </p>
+              <p className="note">You’ll be redirected to complete payment securely via Paystack.</p>
             </div>
           </aside>
         </div>
@@ -429,7 +495,7 @@ export default function Home() {
         .footText, .footList { color:#555; }
         .footList { list-style:none; padding:0; margin:0; display:grid; gap:4px; }
 
-        /* === Cart Drawer (screenshot look) === */
+        /* === Cart Drawer === */
         .overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; justify-content:flex-end; z-index:60; }
         .drawer {
           background:#fff; width:min(92vw, 420px);
@@ -441,11 +507,7 @@ export default function Home() {
         }
         @media (min-width: 900px) { .drawer { width: 380px; } }
 
-        .drawer__top {
-          display:flex; align-items:center; justify-content:space-between;
-          padding:16px 18px; border-bottom:1px solid #eee;
-        }
-
+        .drawer__top { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid #eee; }
         .chip { border-radius:12px; padding:8px 12px; font-weight:800; cursor:pointer; border:1px solid #ddd; }
         .chip--light { background:#fff; color:#111; }
         .chip--dark { background:#111; color:#fff; border:none; }
@@ -463,20 +525,31 @@ export default function Home() {
         .pill--danger { background:#ffe8e8; border-color:#ffd5d5; color:#b42323; width:48px; }
         .pill--danger:hover { background:#ffdede; }
 
+        /* Customer fields */
+        .cust { padding: 6px 18px 0; }
+        .field { display:flex; flex-direction:column; gap:6px; margin-top:10px; }
+        .label { font-weight:700; font-size:12px; color:#374151; }
+        .input {
+          height: 42px; border-radius: 10px; border:1px solid #e5e7eb;
+          padding: 0 12px; outline: none; font-size:14px; background:#fff;
+        }
+        .input:focus { border-color:#c7d2fe; box-shadow:0 0 0 3px rgba(59,130,246,.15); }
+
         .totals { padding:14px 18px 18px; border-top:1px solid #f0f0f0; }
         .row { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
         .totalLabel { font-weight:800; font-size:20px; }
         .totalValue { font-weight:800; font-size:22px; }
 
+        /* Lighter Paystack green */
         .payBtn {
           width:100%; border:none; border-radius:12px; padding:14px 16px;
-          font-weight:800; font-size:16px; color:#fff; background:#08a05c;
+          font-weight:800; font-size:16px; color:#fff; background:#21C97A;
           cursor:pointer; transition:transform .02s ease-in-out;
         }
         .payBtn:active { transform: translateY(1px); }
-        .payBtn--disabled { background:#9ad9bb; cursor:not-allowed; }
+        .payBtn--disabled { background:#b9e9d0; cursor:not-allowed; }
 
-        .note { margin:10px 2px 0; color:#6b7280; font-size:14px; line-height:1.3; }
+        .note { margin:10px 2px 0; color:#8a97a8; font-size:14px; line-height:1.3; }
 
         /* WhatsApp FAB */
         .waFab { position:fixed; right:16px; bottom:20px; z-index:55; background:#25D366; border-radius:9999px; padding:10px; box-shadow:0 6px 18px rgba(0,0,0,.25); }
