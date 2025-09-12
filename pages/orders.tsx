@@ -72,7 +72,7 @@ const HeaderPill = ({ reference }: { reference?: string }) => {
   return (
     <span
       style={{
-        background: paid ? "#dcfce7" : "#f1f5f9", // light pastel green / grey
+        background: paid ? "#dcfce7" : "#f1f5f9", // pastel green / grey
         color: paid ? "#16a34a" : "#64748b",
         fontSize: 12,
         fontWeight: 800,
@@ -81,7 +81,7 @@ const HeaderPill = ({ reference }: { reference?: string }) => {
         whiteSpace: "nowrap",
       }}
     >
-      {paid ? "COMPLETED" : "FAILED"}
+      {paid ? "Completed" : "Failed"}
     </span>
   );
 };
@@ -91,7 +91,7 @@ const StatusPill = ({ reference }: { reference?: string }) => {
   return (
     <span
       style={{
-        background: paid ? "#bbf7d0" : "#fee2e2", // light pastel green / red
+        background: paid ? "#bbf7d0" : "#fee2e2", // pastel green / red
         color: paid ? "#16a34a" : "#dc2626",
         fontSize: 12,
         fontWeight: 800,
@@ -100,7 +100,7 @@ const StatusPill = ({ reference }: { reference?: string }) => {
         whiteSpace: "nowrap",
       }}
     >
-      {paid ? "PAID" : "FAILED"}
+      {paid ? "Paid" : "Failed"}
     </span>
   );
 };
@@ -389,7 +389,16 @@ export default function OrdersPage() {
                           </button>
                         ) : null}
                         {copied === order.reference && (
-                          <span style={{ color: "#16a34a", fontWeight: 700, fontSize: 12 }}>
+                          <span
+                            style={{
+                              background: "#dcfce7",
+                              color: "#16a34a",
+                              fontSize: 12,
+                              fontWeight: 800,
+                              padding: "4px 10px",
+                              borderRadius: 999,
+                            }}
+                          >
                             Copied!
                           </span>
                         )}
