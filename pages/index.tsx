@@ -53,7 +53,6 @@ export default function Home() {
   // ---- Cart helpers ----
   const add = (id: string) =>
     setCartMap((m) => ({ ...m, [id]: (m[id] ?? 0) + 1 }));
-
   const sub = (id: string) =>
     setCartMap((m) => {
       const q = (m[id] ?? 0) - 1;
@@ -62,14 +61,12 @@ export default function Home() {
       else next[id] = q;
       return next;
     });
-
   const remove = (id: string) =>
     setCartMap((m) => {
       const n = { ...m };
       delete n[id];
       return n;
     });
-
   const clear = () => setCartMap({});
 
   const cartLines: CartLine[] = useMemo(() => {
@@ -84,7 +81,6 @@ export default function Home() {
     () => Object.values(cartMap).reduce((a, b) => a + b, 0),
     [cartMap]
   );
-
   const cartTotal = useMemo(
     () =>
       cartLines.reduce(
@@ -100,9 +96,7 @@ export default function Home() {
   // ---- Paystack handler ----
   const handlePaystack = () => {
     const PaystackPop =
-      typeof window !== "undefined"
-        ? (window as any)?.PaystackPop
-        : undefined;
+      typeof window !== "undefined" ? (window as any)?.PaystackPop : undefined;
 
     if (!PaystackPop) {
       alert("Couldn't start Paystack. Please refresh and try again.");
@@ -114,7 +108,7 @@ export default function Home() {
     }
 
     const handler = PaystackPop.setup({
-      key: "pk_live_10bc141ee6ae2ae48edcd102c06540ffe1cb3ae6",
+      key: "pk_live_10bc141ee6ae2ae48edcd102c06540ffe1cb3ae6", // LIVE key
       email: customerEmail,
       amount: Math.round(cartTotal) * 100, // kobo (KES × 100)
       currency: "KES",
@@ -122,11 +116,6 @@ export default function Home() {
         custom_fields: [
           { display_name: "Name", variable_name: "customer_name", value: customerName || "-" },
           { display_name: "Phone", variable_name: "customer_phone", value: customerPhone || "-" },
-          {
-            display_name: "Items",
-            variable_name: "items",
-            value: cartLines.map((l) => `${l.product.name}×${l.qty}`).join(", "),
-          },
         ],
       },
       callback: function (response: any) {
@@ -142,13 +131,14 @@ export default function Home() {
     handler.openIframe();
   };
 
-  // ---- Search filter ----
+  // ---- Filtered products ----
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return products;
     return products.filter((p) => {
-      const hay =
-        `${p.name} ${p.sku ?? ""} ${p.id}`.toLowerCase().replace(/\s+/g, " ");
+      const hay = `${p.name} ${p.sku ?? ""} ${p.id}`
+        .toLowerCase()
+        .replace(/\s+/g, " ");
       return hay.includes(q);
     });
   }, [products, query]);
@@ -166,7 +156,7 @@ export default function Home() {
         <script src="https://js.paystack.co/v1/inline.js" async></script>
       </Head>
 
-      {/* ===== Top Bar (full-width black) ===== */}
+      {/* ===== Top Bar (edge-to-edge black) ===== */}
       <header className="topbar">
         <div className="topbar__inner">
           <div className="brand">
@@ -191,7 +181,9 @@ export default function Home() {
         <div className="hero">
           <div className="hero__bubble" aria-hidden />
           <div className="eyebrow">TRUSTED IN SOTIK</div>
-          <h1 className="h1">Quality Electronics, Lighting & Gas — Fast Delivery</h1>
+          <h1 className="h1">
+            Quality Electronics, Lighting & Gas — Fast Delivery
+          </h1>
           <p className="lead">
             Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay with
             Paystack. Pickup or same-day delivery.
@@ -218,8 +210,13 @@ export default function Home() {
               >
                 View on Maps
               </a>
-              <a href="tel:+254715151010" className="btn btn--light">📞 0715151010</a>
-              <a href="mailto:sales@mastermindelectricals.com" className="btn btn--light">
+              <a href="tel:+254715151010" className="btn btn--light">
+                📞 0715151010
+              </a>
+              <a
+                href="mailto:sales@mastermindelectricals.com"
+                className="btn btn--light"
+              >
                 ✉️ sales@mastermindelectricals.com
               </a>
             </div>
@@ -231,20 +228,35 @@ export default function Home() {
             <div className="eyebrow">SERVICES</div>
 
             <div className="servicesHeader">
-              <img src="/mpesa.png" alt="M-Pesa" className="mpesaLogo" loading="lazy" />
+              <img
+                src="/mpesa.png"
+                alt="M-Pesa"
+                className="mpesaLogo"
+                loading="lazy"
+              />
               <span className="amp">&nbsp;&amp;&nbsp;</span>
               <span className="servicesText">Gas Refill</span>
             </div>
 
             <div className="cylinders">
               <div className="cylCard">
-                <img src="/gas-6kg.png" alt="6KG Gas" className="cylImg cylImg--tight" loading="lazy" />
+                <img
+                  src="/gas-6kg.png"
+                  alt="6KG Gas"
+                  className="cylImg cylImg--tight"
+                  loading="lazy"
+                />
                 <button className="btn btn--ghost" onClick={() => add("gas-6kg")}>
                   6KG — KES 1,110
                 </button>
               </div>
               <div className="cylCard">
-                <img src="/gas-13kg.png" alt="13KG Gas" className="cylImg" loading="lazy" />
+                <img
+                  src="/gas-13kg.png"
+                  alt="13KG Gas"
+                  className="cylImg"
+                  loading="lazy"
+                />
                 <button className="btn btn--ghost" onClick={() => add("gas-13kg")}>
                   13KG — KES 2,355
                 </button>
@@ -289,11 +301,16 @@ export default function Home() {
                 </div>
                 <div className="sku">{p.sku || ""}</div>
                 <div className="name">{p.name}</div>
-                <div className="price">KES {Math.round(price).toLocaleString("en-KE")}</div>
+                <div className="price">
+                  KES {Math.round(price).toLocaleString("en-KE")}
+                </div>
                 <div className="stock">Stock: {stock}</div>
 
                 {stock > 0 ? (
-                  <button className="btn btn--accent small" onClick={() => add(p.id)}>
+                  <button
+                    className="btn btn--accent small"
+                    onClick={() => add(p.id)}
+                  >
                     Add to Cart
                   </button>
                 ) : (
@@ -310,7 +327,9 @@ export default function Home() {
         <div className="container footerGrid">
           <div>
             <div className="footTitle">Mastermind Electricals & Electronics</div>
-            <div className="footText">Genuine stock • Fair prices • Friendly support.</div>
+            <div className="footText">
+              Genuine stock • Fair prices • Friendly support.
+            </div>
           </div>
           <div>
             <div className="footTitle">Contact</div>
@@ -337,104 +356,123 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* ===== Cart Drawer (scrollable body) ===== */}
+      {/* ===== Cart Drawer (floating, short, scrollable list) ===== */}
       {showCart && (
         <div className="overlay" onClick={() => setShowCart(false)}>
-          <aside className="drawer" onClick={(e) => e.stopPropagation()} aria-label="Cart">
+          <aside
+            className="drawer drawer--floating"
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Cart"
+          >
             <div className="drawer__top">
               <div className="h4">Your Cart</div>
               <div style={{ display: "flex", gap: 8 }}>
                 {cartCount > 1 && (
-                  <button className="btn btn--light small" onClick={clear} aria-label="Remove all">
+                  <button
+                    className="btn btn--light small"
+                    onClick={clear}
+                    aria-label="Remove all items"
+                  >
                     Remove all
                   </button>
                 )}
-                <button className="btn btn--dark small" onClick={() => setShowCart(false)}>
+                <button
+                  className="btn btn--dark small"
+                  onClick={() => setShowCart(false)}
+                >
                   Close
                 </button>
               </div>
             </div>
 
-            {/* SCROLLS from here to (and including) the small note */}
-            <div className="drawer__body">
-              {cartLines.length === 0 ? (
-                <div className="empty">Your cart is empty.</div>
-              ) : (
-                <div className="lines">
-                  {cartLines.map((l) => {
-                    const price = Number(l.product.price) || 0;
-                    return (
-                      <div key={l.product.id} className="line">
-                        <div>
-                          <div className="line__name">{l.product.name}</div>
-                          <div className="line__price">
-                            {currency(price)} × {l.qty}
-                          </div>
-                        </div>
-
-                        {/* controls on the right: −  +  ✕  (NO qty number between) */}
-                        <div className="qty">
-                          <button className="qtyBtn" onClick={() => sub(l.product.id)} aria-label="Decrease">
-                            −
-                          </button>
-                          <button className="qtyBtn" onClick={() => add(l.product.id)} aria-label="Increase">
-                            +
-                          </button>
-                          <button
-                            className="qtyBtn qtyBtn--danger"
-                            onClick={() => remove(l.product.id)}
-                            aria-label="Remove"
-                          >
-                            ✕
-                          </button>
+            {cartLines.length === 0 ? (
+              <div className="empty">Your cart is empty.</div>
+            ) : (
+              <div className="lines scrollArea">
+                {cartLines.map((l) => {
+                  const price = Number(l.product.price) || 0;
+                  return (
+                    <div key={l.product.id} className="line">
+                      <div>
+                        <div className="line__name">{l.product.name}</div>
+                        <div className="line__price">
+                          {currency(price)} × {l.qty}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                      <div className="qty">
+                        <button
+                          className="qtyBtn"
+                          onClick={() => sub(l.product.id)}
+                          aria-label="Decrease"
+                        >
+                          −
+                        </button>
+                        <button
+                          className="qtyBtn"
+                          onClick={() => add(l.product.id)}
+                          aria-label="Increase"
+                        >
+                          +
+                        </button>
+                        <button
+                          className="qtyBtn"
+                          onClick={() => remove(l.product.id)}
+                          aria-label="Remove"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
-              <div className="totals">
-                <div className="row" style={{ marginBottom: 6 }}>
-                  <span>Total</span>
-                  <span className="strong">{currency(cartTotal)}</span>
-                </div>
+            <div className="totals">
+              <div className="row">
+                <span>Total</span>
+                <span className="strong">{currency(cartTotal)}</span>
+              </div>
 
-                {/* Customer details */}
-                <div className="fields">
-                  <input
-                    type="text"
-                    placeholder="Your name"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    className="input"
-                  />
-                  <input
-                    type="tel"
-                    placeholder="Phone (M-Pesa)"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    className="input"
-                  />
-                  <input
-                    type="email"
-                    placeholder="Email (required)"
-                    value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                    className="input"
-                    required
-                  />
-                </div>
+              {/* Checkout fields */}
+              <input
+                type="text"
+                placeholder="Your name"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                className="input"
+                style={{ marginTop: 6 }}
+              />
+              <input
+                type="tel"
+                placeholder="Your phone"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                className="input"
+                style={{ marginTop: 6 }}
+              />
+              <input
+                type="email"
+                placeholder="Your email"
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+                className="input"
+                style={{ marginTop: 6 }}
+                required
+              />
 
-                <button
-                  disabled={cartLines.length === 0 || !customerEmail}
-                  className={`btn ${cartLines.length && customerEmail ? "btn--paystack" : "btn--disabled"}`}
-                  onClick={handlePaystack}
-                >
-                  Pay with M-Pesa (Paystack)
-                </button>
+              <button
+                disabled={cartLines.length === 0 || !customerEmail}
+                className={`btn ${
+                  cartLines.length && customerEmail ? "btn--paystack" : "btn--disabled"
+                }`}
+                onClick={handlePaystack}
+              >
+                Pay with M-Pesa (Paystack)
+              </button>
 
-                <div className="note">You’ll be redirected to complete payment securely via Paystack.</div>
+              <div className="note smallNote">
+                You’ll be redirected to complete payment securely via Paystack.
               </div>
             </div>
           </aside>
@@ -502,8 +540,7 @@ export default function Home() {
         .btn--dark { background:#111; color:#fff; padding:10px 16px; border:none; }
         .btn--ghost { background:#fff; color:#111; border:1px solid #ddd; padding:8px 12px; border-radius:10px; }
         .btn--disabled { background:#eee; color:#888; pointer-events:none; }
-        .btn--paystack { background:#21c77a; color:#fff; border:none; padding:12px 16px; border-radius:12px; font-weight:800; }
-        .btn--paystack:hover { filter: brightness(0.95); }
+        .btn--paystack { background:#3ecf7f; color:#fff; border:none; padding:10px 14px; border-radius:12px; font-weight:800; }
         .small { padding:8px 14px; }
 
         .search { width:100%; height:44px; padding:0 14px; border-radius:12px; border:1px solid #ddd; background:#fff; font-size:15px; outline:none; }
@@ -518,41 +555,72 @@ export default function Home() {
 
         .footer { border-top:1px solid #eaeaea; padding:18px 0 12px; background:#fafafa; }
         .footerGrid { display:grid; grid-template-columns:1fr; gap:16px; padding:14px 12px; }
-        @media (min-width: 900px) { .footerGrid { grid-template-columns: repeat(3, 1fr); } }
+        @media (min-width: 900px) {
+          .footerGrid { grid-template-columns: 1fr 1fr 1fr; }
+        }
         .footTitle { font-weight:800; margin-bottom:6px; }
-        .footText, .footList { color:#666; }
-        .footList { margin:0; padding-left:16px; }
+        .footText, .footList { color:#666; font-size:14px; }
+        .footList { list-style:none; padding:0; margin:0; display:grid; gap:6px; }
 
-        /* Cart overlay & drawer (SCROLLABLE BODY) */
-        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 60; display:flex; justify-content:flex-end; }
+        /* -------- Cart Drawer (floating) -------- */
+        .overlay {
+          position: fixed; inset: 0;
+          background: rgba(0,0,0,0.25);
+          display: flex; align-items: flex-start; justify-content: flex-end;
+          padding: 10px;
+          z-index: 60;
+        }
         .drawer {
-          width: min(520px, 100%); background:#fff; max-height: 88vh;
-          margin: 6vh 8px; border-radius: 16px; border:1px solid #eee;
-          display:flex; flex-direction:column; overflow:hidden;
+          background: #fff; border: 1px solid #eee; border-radius: 16px; padding: 14px;
+          display: flex; flex-direction: column;
         }
-        .drawer__top { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid #f0f0f0; position:sticky; top:0; background:#fff; z-index:1; }
-        .drawer__body { flex:1; min-height:0; overflow:auto; padding: 8px 14px 16px; }
-        .lines { padding: 0; }
-        .line { display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px dashed #eee; gap:10px; }
-        .line__name { font-weight:800; }
-        .line__price { color:#7b8794; font-size:13px; }
-        .qty { display:flex; gap:10px; align-items:center; }
-        .qtyBtn {
-          background:#f4f6f8; border:1px solid #e6eaee; border-radius:10px; width:42px; height:36px;
-          display:flex; align-items:center; justify-content:center; font-size:18px; cursor:pointer;
+        .drawer--floating {
+          position: fixed; right: 12px; top: 76px;
+          width: min(92vw, 420px);
+          height: auto;
+          max-height: calc(100vh - 160px);
+          box-shadow: 0 10px 30px rgba(0,0,0,0.12);
         }
-        .qtyBtn--danger { background:#fde8ea; border-color:#fad1d7; color:#c81e1e; }
+        .drawer__top { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
 
-        .totals { padding-top: 10px; border-top:1px solid #f0f0f0; }
-        .row { display:flex; align-items:center; justify-content:space-between; font-weight:800; font-size:20px; margin-bottom:8px; }
+        .lines { display:grid; gap:8px; }
+        .scrollArea { overflow: auto; max-height: 300px; }
+
+        .line {
+          display:grid; grid-template-columns: 1fr auto;
+          gap: 10px; padding: 8px 0; border-bottom: 1px solid #f0f0f0;
+        }
+        .line__name { font-weight: 700; }
+        .line__price { color:#6b7280; font-size: 13px; }
+
+        .qty { display:flex; gap:6px; }
+        .qtyBtn {
+          background:#f3f4f6; border:1px solid #e5e7eb;
+          padding:4px 10px; border-radius:8px; font-weight:800; cursor:pointer;
+        }
+        .qtyBtn:hover { background:#e5e7eb; }
+
+        .empty { color:#666; text-align:center; padding:16px 8px; }
+
+        .totals { margin-top:10px; display:grid; gap:8px; }
+        .row { display:flex; align-items:center; justify-content:space-between; }
         .strong { font-weight:800; }
-        .fields { display:grid; gap:8px; margin:8px 0 10px; }
-        .input { height:42px; border:1px solid #e2e8f0; border-radius:10px; padding:0 12px; outline:none; }
-        .note { color:#7b8794; font-size:12px; margin-top:8px; }
+
+        .input {
+          width: 100%; height: 40px; border-radius: 10px;
+          border: 1px solid #e5e7eb; padding: 0 12px; font-size: 14px;
+        }
+
+        .note { color:#6b7280; font-size:12px; }
+        .smallNote { margin-top:6px; }
 
         /* WhatsApp FAB */
-        .waFab { position: fixed; right: 16px; bottom: 16px; width: 56px; height: 56px; background: #25D366; border-radius: 9999px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,.15); z-index:70; }
-        .waIcon { width: 28px; height: 28px; }
+        .waFab {
+          position: fixed; right: 16px; bottom: 16px;
+          background: #25D366; border-radius: 999px; padding: 10px;
+          box-shadow: 0 10px 26px rgba(0,0,0,.18);
+        }
+        .waIcon { width: 38px; height: 38px; display:block; }
       `}</style>
     </div>
   );
