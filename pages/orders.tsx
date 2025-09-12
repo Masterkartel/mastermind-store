@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Head from "next/head";
 
 type OrderItem = {
@@ -10,130 +10,167 @@ type OrderItem = {
 };
 
 type Order = {
-  id: string;               // display id (e.g. T... or timestamp id)
-  reference: string;        // Paystack reference
-  createdAt?: string;       // ISO string
+  id: string; // display id like T...
+  reference: string; // paystack reference
+  createdAt?: string; // ISO
   total: number;
   items: OrderItem[];
-  // Status at the “header” level
+
+  // header status
   status: "PENDING" | "COMPLETED" | "FAILED";
-  // Payment status line
+
+  // detail payment pill
   paymentStatus: "PENDING" | "PAID" | "FAILED";
 };
 
-const load = (): Order[] => {
+const currency = (n: number) => `KES ${Math.round(n).toLocaleString("en-KE")}`;
+
+const loadOrders = (): Order[] => {
   try {
     const raw = localStorage.getItem("mm_orders");
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
   } catch {
     return [];
   }
 };
-
-const persist = (orders: Order[]) => {
+const saveOrders = (orders: Order[]) => {
   try {
     localStorage.setItem("mm_orders", JSON.stringify(orders));
   } catch {}
 };
 
-const currency = (n: number) => `KES ${Math.round(n).toLocaleString("en-KE")}`;
+const Pill = ({
+  text,
+  tone,
+}: {
+  text: string;
+  tone: "green" | "red" | "gray";
+}) => <span className={`pill pill--${tone}`}>{text}</span>;
 
-const Pill = ({ text, tone }: { text: string; tone: "green" | "red" | "gray" }) => (
-  <span
-    className={`pill pill--${tone}`}
-    role="status"
-    aria-label={`${text} status`}
-  >
-    {text}
-  </span>
-);
+// Robust interpreter for different verify payloads
+function interpretVerify(json: any): "success" | "failed" | "pending" | "unknown" {
+  try {
+    // Cloudflare function shape: { status: "success" | "failed" | "pending" }
+    const s1 = (json?.status ?? "").toString().toLowerCase();
+    if (["success", "failed", "pending"].includes(s1)) return s1 as any;
+
+    // Paystack native: {status:true/false, data:{status:"success"|"failed"|"pending"}}
+    const s2 = (json?.data?.status ?? "").toString().toLowerCase();
+    if (["success", "failed", "pending"].includes(s2)) return s2 as any;
+
+    // Some gateways return gateway_response / message
+    const s3 = (json?.data?.gateway_response ?? "").toString().toLowerCase();
+    if (s3.includes("success")) return "success";
+    if (s3.includes("fail")) return "failed";
+  } catch {}
+  return "unknown";
+}
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
+  const verifyingRef = useRef(false);
 
   // Load once
   useEffect(() => {
-    const o = load();
-    setOrders(o);
+    setOrders(loadOrders());
   }, []);
 
-  // Auto-verify any PENDING orders once after mount (and if orders list changes later)
+  // Auto-verify any PENDING orders, with a few retries in the background
   useEffect(() => {
+    if (verifyingRef.current) return;
     const pending = orders.filter((o) => o.paymentStatus === "PENDING");
-    if (!pending.length) return;
+    if (pending.length === 0) return;
 
+    verifyingRef.current = true;
     let cancelled = false;
 
-    (async () => {
-      // Verify one by one to keep it simple
-      for (const ord of pending) {
-        try {
-          const res = await fetch(
-            `/api/paystack-verify?reference=${encodeURIComponent(ord.reference)}`
+    const verifyOnce = async (ord: Order) => {
+      try {
+        const res = await fetch(
+          `/api/paystack-verify?reference=${encodeURIComponent(ord.reference)}`
+        ).catch(() => null as any);
+        if (!res?.ok) return false;
+        const json = await res.json().catch(() => ({}));
+        const verdict = interpretVerify(json);
+
+        if (verdict === "success") {
+          const next = orders.map((o) =>
+            o.id === ord.id
+              ? { ...o, status: "COMPLETED", paymentStatus: "PAID" }
+              : o
           );
-
-          // If function errored or non-200, just skip without alert
-          if (!res.ok) continue;
-
-          // Our function returns: { status: "success" | "failed" | "pending", raw: ... }
-          const data: any = await res.json().catch(() => ({}));
-          const s: string = (data?.status || "").toLowerCase();
-
-          let newPayment: Order["paymentStatus"] = ord.paymentStatus;
-          let newStatus: Order["status"] = ord.status;
-
-          if (s === "success") {
-            newPayment = "PAID";
-            newStatus = "COMPLETED";
-          } else if (s === "failed") {
-            newPayment = "FAILED";
-            newStatus = "FAILED";
-          } else {
-            // keep pending
+          if (!cancelled) {
+            setOrders(next);
+            saveOrders(next);
           }
-
-          if (newPayment !== ord.paymentStatus || newStatus !== ord.status) {
-            const next: Order[] = orders.map((o) =>
-              o.id === ord.id
-                ? {
-                    ...o,
-                    paymentStatus: newPayment,
-                    status: newStatus,
-                  }
-                : o
-            );
-            if (!cancelled) {
-              setOrders(next);
-              persist(next);
-            }
+          return true;
+        } else if (verdict === "failed") {
+          const next = orders.map((o) =>
+            o.id === ord.id
+              ? { ...o, status: "FAILED", paymentStatus: "FAILED" }
+              : o
+          );
+          if (!cancelled) {
+            setOrders(next);
+            saveOrders(next);
           }
-        } catch {
-          // swallow – we’ll stay pending and user can refresh later
+          return true;
+        }
+        // pending or unknown — let retry handle it
+        return false;
+      } catch {
+        return false;
+      }
+    };
+
+    (async () => {
+      // retry each pending order up to 6 times (about 60s)
+      const maxTries = 6;
+      for (let t = 0; t < maxTries && !cancelled; t++) {
+        let anyProgress = false;
+        for (const ord of pending) {
+          // Skip if already updated by a previous loop
+          const fresh = (id: string) => orders.find((o) => o.id === id);
+          const current = fresh(ord.id);
+          if (!current || current.paymentStatus !== "PENDING") continue;
+          const ok = await verifyOnce(current);
+          if (ok) anyProgress = true;
+        }
+        if (!anyProgress) {
+          // wait 10s before next attempt
+          await new Promise((r) => setTimeout(r, 10000));
+        } else {
+          // reload latest for next loop round
+          if (!cancelled) {
+            const latest = loadOrders();
+            setOrders(latest);
+          }
         }
       }
+      verifyingRef.current = false;
     })();
 
     return () => {
       cancelled = true;
+      verifyingRef.current = false;
     };
-  }, [orders]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders.length]); // trigger when list size changes (initial load or new order added)
 
-  const view = useMemo(() => orders.slice().reverse(), [orders]);
+  const sorted = useMemo(() => orders.slice().reverse(), [orders]);
 
-  const statusPill = (o: Order) => {
+  const headerPill = (o: Order) => {
     if (o.status === "COMPLETED") return <Pill text="COMPLETED" tone="green" />;
     if (o.status === "FAILED") return <Pill text="FAILED" tone="red" />;
     return <Pill text="PENDING" tone="gray" />;
   };
 
-  const payPill = (o: Order) => {
+  const paymentPill = (o: Order) => {
     if (o.paymentStatus === "PAID") return <Pill text="PAID" tone="green" />;
     if (o.paymentStatus === "FAILED") return <Pill text="FAILED" tone="red" />;
     return <Pill text="PENDING" tone="gray" />;
-    // If you prefer “PAID/FAILED” only here and keep “COMPLETED/FAILED/PENDING” up top, this matches that.
   };
 
   return (
@@ -144,8 +181,9 @@ export default function OrdersPage() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <header className="bar">
-        <div className="bar__inner">
+      {/* Top bar */}
+      <header className="topbar">
+        <div className="topbar__inner">
           <div className="brand">
             <img src="/favicon.ico" alt="" className="brandIcon" aria-hidden />
             My Orders
@@ -155,14 +193,12 @@ export default function OrdersPage() {
       </header>
 
       <main className="container" style={{ padding: "12px 12px 24px" }}>
-        {view.length === 0 ? (
+        {sorted.length === 0 ? (
           <div className="emptyCard">No orders yet.</div>
         ) : (
-          view.map((o) => {
+          sorted.map((o) => {
             const open = openId === o.id;
-            const created = o.createdAt
-              ? new Date(o.createdAt)
-              : null;
+            const created = o.createdAt ? new Date(o.createdAt) : null;
 
             return (
               <article
@@ -170,18 +206,16 @@ export default function OrdersPage() {
                 className="orderCard"
                 onClick={() => setOpenId(open ? null : o.id)}
               >
-                {/* Header row */}
                 <div className="orderCard__top">
-                  <div className="orderId">
+                  <div className="orderTitle">
                     Order <span className="mono">#{o.id}</span>
                   </div>
-                  <div className="topRight">
-                    {statusPill(o)}
+                  <div className="right">
+                    {headerPill(o)}
                     <div className="amount">{currency(o.total)}</div>
                   </div>
                 </div>
 
-                {/* Datetime */}
                 {created && (
                   <div className="dt">
                     {created.toLocaleDateString()}{" "}
@@ -189,10 +223,9 @@ export default function OrdersPage() {
                   </div>
                 )}
 
-                {/* Collapsible details */}
                 {open && (
                   <div className="details" onClick={(e) => e.stopPropagation()}>
-                    {/* First item preview (with image) */}
+                    {/* First line preview with image */}
                     {o.items[0] && (
                       <div className="line">
                         <div className="thumb">
@@ -217,29 +250,29 @@ export default function OrdersPage() {
                       </div>
                     )}
 
-                    {/* Reference */}
+                    {/* Reference row */}
                     <div className="row">
                       <div className="label">Reference</div>
                       <div className="refWrap">
                         <code className="ref mono">{o.reference}</code>
                         <button
                           className="copyBtn"
-                          onClick={() => {
-                            navigator.clipboard?.writeText(o.reference);
-                          }}
+                          onClick={() =>
+                            navigator.clipboard?.writeText(o.reference)
+                          }
                         >
                           Copy
                         </button>
                       </div>
                     </div>
 
-                    {/* Payment Status */}
+                    {/* Payment Status row */}
                     <div className="row">
                       <div className="label">Status</div>
-                      <div>{payPill(o)}</div>
+                      <div>{paymentPill(o)}</div>
                     </div>
 
-                    {/* Total */}
+                    {/* Total row */}
                     <div className="row">
                       <div className="label">Total</div>
                       <div className="totalVal">{currency(o.total)}</div>
@@ -255,20 +288,18 @@ export default function OrdersPage() {
       <style jsx>{`
         .container { max-width: 900px; margin: 0 auto; }
 
-        .bar { background:#111; color:#fff; position:sticky; top:0; z-index:50; }
-        .bar__inner { max-width: 900px; margin: 0 auto; display:flex; align-items:center; justify-content:space-between; padding:10px 12px; }
+        .topbar { background:#111; color:#fff; position:sticky; top:0; z-index:50; }
+        .topbar__inner { max-width:900px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:10px 12px; }
         .brand { font-weight:800; display:flex; align-items:center; gap:8px; }
         .brandIcon { width:22px; height:22px; border-radius:4px; }
-        .backBtn { background:#fff; color:#111; padding:8px 12px; border-radius:12px; text-decoration:none; font-weight:800; }
+        .backBtn { background:#fff; color:#111; padding:8px 12px; border-radius:12px; font-weight:800; text-decoration:none; }
 
         .orderCard { background:#fff; border:1px solid #eee; border-radius:16px; padding:12px; margin:12px 0; box-shadow:0 1px 0 rgba(0,0,0,.03); cursor:pointer; }
         .orderCard__top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-        .orderId { font-weight:800; }
-        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
-        .topRight { display:flex; align-items:center; gap:8px; }
+        .orderTitle { font-weight:800; }
+        .right { display:flex; align-items:center; gap:8px; }
         .amount { font-weight:800; }
-
-        .dt { color:#888; margin:6px 0 10px; }
+        .dt { color:#777; margin:6px 0 8px; }
 
         .details { border-top:1px dashed #eee; padding-top:10px; cursor:default; }
         .line { display:flex; gap:10px; align-items:center; }
@@ -291,6 +322,9 @@ export default function OrdersPage() {
         .pill--green { background:#e7f6ec; color:#167e3d; }
         .pill--red { background:#fdecec; color:#b42318; }
         .pill--gray { background:#eee; color:#555; }
+        
+        .emptyCard { background:#fff; border:1px dashed #ddd; color:#666; padding:16px; border-radius:16px; text-align:center; margin-top:16px; }
+        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
       `}</style>
     </div>
   );
