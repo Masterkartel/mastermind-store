@@ -1,8 +1,10 @@
 // pages/orders.tsx
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import Head from "next/head";
 
 type OrderItem = {
+  id: string;
   name: string;
   price: number;
   qty: number;
@@ -10,86 +12,129 @@ type OrderItem = {
 };
 
 type Order = {
-  id: string;                 // internal id
-  reference: string;          // Paystack reference (T0…)
-  status: "paid" | "failed" | "pending" | "completed";
+  id: string;                 // e.g. "T698660489556561"
+  reference?: string;         // Paystack reference
+  createdAt?: string;         // ISO string
   total: number;
-  createdAt?: string;         // ISO
+  status?: "PENDING" | "COMPLETED" | "FAILED";
+  paymentStatus?: "PENDING" | "PAID" | "FAILED"; // UI line
   items: OrderItem[];
 };
 
-function currency(n: number) {
-  return `KES ${Math.round(n).toLocaleString("en-KE")}`;
-}
-
-// Fallback name→image mapper for items missing an image
-function imageForName(name: string) {
-  const n = name.toLowerCase();
-  if (n.includes("6kg")) return "/6kg.png";
-  if (n.includes("13kg")) return "/13kg.png";
-  if (n.includes("torch")) return "/torch.png";
-  return "/placeholder.png";
-}
+const ORDERS_KEY = "mm_orders";
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [copiedRef, setCopiedRef] = useState<string | null>(null);
+  const [verifyingRefs, setVerifyingRefs] = useState<Record<string, boolean>>(
+    {}
+  );
 
-  // Load orders from localStorage (created at checkout callback)
+  // Load orders from localStorage
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("mm_orders");
-      if (raw) {
-        const parsed: Order[] = JSON.parse(raw);
-        setOrders(Array.isArray(parsed) ? parsed : []);
-      }
+      const raw = localStorage.getItem(ORDERS_KEY);
+      const arr: Order[] = raw ? JSON.parse(raw) : [];
+      setOrders(Array.isArray(arr) ? arr : []);
     } catch {
       setOrders([]);
     }
   }, []);
 
-  // If URL has ?r=<reference>, highlight / open that order
+  // Save orders when they change
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    const r = url.searchParams.get("r");
-    if (!r) return;
-    const found = orders.find((o) => o.reference === r);
-    if (found) setOpenId(found.id);
+    try {
+      localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+    } catch {}
   }, [orders]);
 
-  const labelFor = (s: Order["status"]) => {
-    switch (s) {
-      case "paid":
-      case "completed":
-        return { text: s.toUpperCase(), className: "pill pill--ok" };
-      case "failed":
-        return { text: "FAILED", className: "pill pill--bad" };
-      default:
-        return { text: "PENDING", className: "pill pill--pending" };
-    }
+  // Auto-verify any PENDING order that has a reference
+  useEffect(() => {
+    const pending = orders.filter(
+      (o) => (o.status ?? "PENDING") === "PENDING" && o.reference
+    );
+    if (!pending.length) return;
+
+    const controller = new AbortController();
+
+    (async () => {
+      for (const o of pending) {
+        const ref = o.reference!;
+        if (verifyingRefs[ref]) continue;
+
+        setVerifyingRefs((m) => ({ ...m, [ref]: true }));
+        try {
+          const res = await fetch(`/api/paystack-verify?reference=${encodeURIComponent(ref)}`, {
+            method: "GET",
+            signal: controller.signal,
+          });
+
+          // If API is reachable and returns result
+          if (res.ok) {
+            const json = await res.json().catch(() => ({} as any));
+
+            // Heuristic: accept multiple possible shapes from the worker
+            const ok =
+              json?.status === "success" ||
+              json?.data?.status === "success" ||
+              json?.data?.data?.status === "success";
+
+            const failed =
+              json?.status === "failed" ||
+              json?.data?.status === "failed" ||
+              json?.data?.data?.status === "failed";
+
+            setOrders((prev) =>
+              prev.map((ord) => {
+                if (ord.reference !== ref) return ord;
+                if (ok) {
+                  return {
+                    ...ord,
+                    status: "COMPLETED",
+                    paymentStatus: "PAID",
+                  };
+                }
+                if (failed) {
+                  return {
+                    ...ord,
+                    status: "FAILED",
+                    paymentStatus: "FAILED",
+                  };
+                }
+                // No conclusive answer; keep pending
+                return ord;
+              })
+            );
+          }
+        } catch {
+          // Network fail: keep it pending; user can refresh later
+        } finally {
+          setVerifyingRefs((m) => {
+            const n = { ...m };
+            delete n[ref];
+            return n;
+          });
+        }
+      }
+    })();
+
+    return () => controller.abort();
+  }, [orders, verifyingRefs]);
+
+  const niceDate = (iso?: string) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleString(undefined, {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
   };
 
-  const list = useMemo(
-    () =>
-      [...orders].sort((a, b) => {
-        const at = a.createdAt ? Date.parse(a.createdAt) : 0;
-        const bt = b.createdAt ? Date.parse(b.createdAt) : 0;
-        return bt - at;
-      }),
-    [orders]
-  );
-
-  const copyRef = async (ref: string) => {
-    try {
-      await navigator.clipboard.writeText(ref);
-      setCopiedRef(ref);
-      setTimeout(() => setCopiedRef(null), 900);
-    } catch {
-      // no-op
-    }
-  };
+  const hasOrders = useMemo(() => orders.length > 0, [orders]);
 
   return (
     <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
@@ -98,152 +143,198 @@ export default function OrdersPage() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      {/* Header bar */}
+      {/* Header */}
       <header className="topbar">
         <div className="topbar__inner">
           <div className="brand">
-            <img src="/favicon.ico" alt="" className="brandIcon" aria-hidden />
+            <span className="brandDot" aria-hidden />
             My Orders
           </div>
-
-          <a href="/" className="backBtn">← Back to Shop</a>
+          <Link href="/" className="backBtn" aria-label="Back to Shop">
+            ← Back to Shop
+          </Link>
         </div>
       </header>
 
-      <main className="container" style={{ padding: "12px 12px 36px" }}>
-        {list.length === 0 ? (
-          <div className="empty">No orders yet.</div>
+      <main className="container" style={{ padding: "12px" }}>
+        {!hasOrders ? (
+          <div className="empty">
+            No orders yet.{" "}
+            <Link href="/" className="link">
+              Go back to shop
+            </Link>
+            .
+          </div>
         ) : (
-          <div className="stack">
-            {list.map((o) => {
-              const lab = labelFor(o.status);
-              const created =
-                o.createdAt && !isNaN(Date.parse(o.createdAt))
-                  ? new Date(o.createdAt).toLocaleString()
-                  : undefined;
-
-              const opened = openId === o.id;
-
-              return (
-                <article key={o.id} className="orderCard">
-                  {/* Card header: clickable */}
-                  <button
-                    className="orderHead"
-                    onClick={() => setOpenId(opened ? null : o.id)}
-                    aria-expanded={opened}
-                  >
-                    <div className="orderHead__left">
-                      <div className="orderTitle">
-                        <span className="muted">Order</span>
-                        <span className="mono">#{o.reference}</span>
+          <div className="col">
+            {orders
+              .slice()
+              .reverse()
+              .map((o, idx) => {
+                const topBadge =
+                  o.status === "COMPLETED"
+                    ? "COMPLETED"
+                    : o.status === "FAILED"
+                    ? "FAILED"
+                    : "PENDING";
+                const payLine =
+                  o.paymentStatus ??
+                  (o.status === "COMPLETED"
+                    ? "PAID"
+                    : o.status === "FAILED"
+                    ? "FAILED"
+                    : "PENDING");
+                return (
+                  <article key={(o.reference || o.id) + idx} className="orderCard">
+                    <div className="orderCard__head">
+                      <div className="idRow">
+                        <div className="muted">Order</div>
+                        <div className="mono strong">
+                          #{o.id || o.reference || "—"}
+                        </div>
+                        <div className={`pill pill--${topBadge.toLowerCase()}`}>
+                          {topBadge}
+                        </div>
                       </div>
-                      {created ? (
-                        <div className="muted small">{created}</div>
-                      ) : null}
+                      <div className="right">
+                        <div className="amount">
+                          KES {Math.round(o.total).toLocaleString("en-KE")}
+                        </div>
+                      </div>
                     </div>
-                    <div className="orderHead__right">
-                      <span className={lab.className}>{lab.text}</span>
-                      <span className="totalBadge">{currency(o.total)}</span>
-                    </div>
-                  </button>
 
-                  {/* Details */}
-                  {opened && (
-                    <div className="orderBody">
-                      {o.items.map((it, idx) => {
-                        const img = it.img || imageForName(it.name);
-                        return (
-                          <div key={idx} className="line">
-                            <img src={img} alt="" className="thumb" />
-                            <div className="grow">
-                              <div className="lineName">{it.name}</div>
-                              <div className="linePrice">
-                                {currency(it.price)} × {it.qty} ={" "}
-                                <b>{currency(it.price * it.qty)}</b>
-                              </div>
+                    {o.createdAt ? (
+                      <div className="orderDate">{niceDate(o.createdAt)}</div>
+                    ) : null}
+
+                    {/* Items (first item expanded) */}
+                    <div className="items">
+                      {o.items.map((it, i) => (
+                        <div className="item" key={it.id + i}>
+                          <div className="thumbWrap">
+                            {it.img ? (
+                              <img
+                                src={it.img}
+                                alt={it.name}
+                                className="thumb"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="thumb thumb--empty" />
+                            )}
+                          </div>
+                          <div className="itemBody">
+                            <div className="itemName">{it.name}</div>
+                            <div className="muted">
+                              KES {Math.round(it.price).toLocaleString("en-KE")} ×{" "}
+                              {it.qty} ={" "}
+                              <span className="strong">
+                                KES{" "}
+                                {Math.round(it.price * it.qty).toLocaleString("en-KE")}
+                              </span>
                             </div>
                           </div>
-                        );
-                      })}
+                        </div>
+                      ))}
+                    </div>
 
-                      <div className="kv">
-                        <div className="k">Reference</div>
-                        <div className="v">
-                          <span className="mono">{o.reference}</span>
-                          <button
-                            className="copyBtn"
-                            onClick={() => copyRef(o.reference)}
-                            title="Copy reference"
-                          >
-                            {copiedRef === o.reference ? "Copied!" : "Copy"}
-                          </button>
+                    {/* Meta */}
+                    <div className="meta">
+                      <div className="metaRow">
+                        <div className="muted">Reference</div>
+                        <div className="mono">
+                          {o.reference || "—"}{" "}
+                          {o.reference ? (
+                            <button
+                              className="copyBtn"
+                              onClick={() => {
+                                navigator.clipboard
+                                  .writeText(o.reference!)
+                                  .catch(() => {});
+                              }}
+                            >
+                              Copy
+                            </button>
+                          ) : null}
                         </div>
                       </div>
 
-                      <div className="kv">
-                        <div className="k">Status</div>
-                        <div className="v"><span className={lab.className}>{lab.text}</span></div>
+                      <div className="metaRow">
+                        <div className="muted">Status</div>
+                        <div>
+                          <span
+                            className={`pill pill--${
+                              payLine === "PAID"
+                                ? "completed"
+                                : payLine === "FAILED"
+                                ? "failed"
+                                : "pending"
+                            }`}
+                          >
+                            {payLine}
+                          </span>
+                          {o.reference && (o.status ?? "PENDING") === "PENDING" ? (
+                            <span className="checking">
+                              {verifyingRefs[o.reference]
+                                ? " • checking…"
+                                : " • awaiting confirmation"}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
 
-                      <div className="kv">
-                        <div className="k">Total</div>
-                        <div className="v strong">{currency(o.total)}</div>
+                      <div className="metaRow">
+                        <div className="muted">Total</div>
+                        <div className="strong">
+                          KES {Math.round(o.total).toLocaleString("en-KE")}
+                        </div>
                       </div>
                     </div>
-                  )}
-                </article>
-              );
-            })}
+                  </article>
+                );
+              })}
           </div>
         )}
       </main>
 
       <style jsx>{`
         .container { max-width: 980px; margin: 0 auto; }
+        .topbar { background:#111; color:#fff; position:sticky; top:0; z-index:20; }
+        .topbar__inner { max-width:980px; margin:0 auto; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; }
+        .brand { font-weight:800; display:flex; align-items:center; gap:10px; }
+        .brandDot { width:18px; height:18px; border-radius:6px; background:#f4d03f; display:inline-block; }
+        .backBtn { background:#fff; color:#111; padding:8px 14px; border-radius:12px; text-decoration:none; border:1px solid #eee; font-weight:700; }
 
-        .topbar { position: sticky; top: 0; z-index: 20; background: #111; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); }
-        .topbar__inner { max-width: 980px; margin: 0 auto; padding: 10px 12px; display: grid; grid-template-columns: 1fr auto; align-items: center; }
-        .brand { display:flex; gap:8px; align-items:center; font-weight:800; }
-        .brandIcon { width:22px; height:22px; border-radius:4px; }
-        .backBtn { background:#fff; color:#111; text-decoration:none; padding:10px 14px; border-radius:12px; font-weight:800; }
+        .empty { margin:18px; background:#fff; border:1px solid #eee; border-radius:12px; padding:16px; }
+        .link { color:#5b34eb; font-weight:700; }
 
-        .empty { color:#666; background:#fff; border:1px solid #eee; border-radius:14px; padding:18px; text-align:center; }
-
-        .stack { display:grid; gap:12px; }
-
-        .orderCard { background:#fff; border:1px solid #eee; border-radius:16px; overflow:hidden; }
-        .orderHead { width:100%; display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 14px; background:#fff; border:none; cursor:pointer; }
-        .orderHead:hover { background:#fafafa; }
-        .orderHead__left { display:grid; gap:4px; }
-        .orderTitle { display:flex; gap:8px; align-items:center; font-weight:800; }
-        .muted { color:#6b7280; }
-        .small { font-size:12px; }
-        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-        .orderHead__right { display:flex; gap:10px; align-items:center; }
-        .totalBadge { font-weight:800; color:#111; }
-
-        .orderBody { padding: 0 14px 14px; border-top:1px solid #f0f0f0; display:grid; gap:10px; }
-        .line { display:flex; gap:10px; padding-top:10px; }
-        .thumb { width:56px; height:56px; border-radius:12px; object-fit:cover; background:#f3f3f3; border:1px solid #eee; }
-        .grow { flex:1; }
-        .lineName { font-weight:700; }
-        .linePrice { color:#6b7280; font-size:13px; }
-
-        .kv { display:grid; grid-template-columns: 120px 1fr; gap:10px; align-items:center; }
-        .k { color:#6b7280; }
-        .v { display:flex; align-items:center; gap:8px; }
+        .col { display:grid; gap:12px; }
+        .orderCard { background:#fff; border:1px solid #eee; border-radius:16px; padding:12px; }
+        .orderCard__head { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+        .idRow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .muted { color:#777; }
+        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
         .strong { font-weight:800; }
+        .amount { font-weight:800; }
+        .orderDate { color:#666; margin:4px 0 8px; }
 
-        .pill { padding:6px 12px; border-radius:999px; font-weight:800; font-size:12px; display:inline-flex; align-items:center; }
-        .pill--ok { background: #d1fae5; color: #065f46; }
-        .pill--bad { background: #fee2e2; color: #991b1b; }
-        .pill--pending { background: #e5e7eb; color: #111; }
+        .items { display:grid; gap:8px; margin-top:6px; }
+        .item { display:flex; gap:12px; align-items:center; }
+        .thumbWrap { width:56px; height:56px; border-radius:12px; background:#f4f4f4; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+        .thumb { width:100%; height:100%; object-fit:cover; display:block; }
+        .thumb--empty { width:56px; height:56px; border-radius:12px; background:#eee; }
+        .itemBody { flex:1; }
+        .itemName { font-weight:800; }
 
-        .copyBtn {
-          border:1px solid #e5e7eb; background:#fff; border-radius:999px;
-          padding:4px 10px; font-weight:700; font-size:12px; cursor:pointer;
-        }
-        .copyBtn:hover { background:#f9fafb; }
+        .meta { margin-top:10px; display:grid; gap:8px; }
+        .metaRow { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+        .copyBtn { margin-left:8px; border:1px solid #e5e5e5; background:#fff; padding:2px 8px; border-radius:10px; font-weight:700; cursor:pointer; }
+        .checking { color:#888; font-size:12px; margin-left:6px; }
+
+        .pill { padding:4px 10px; border-radius:999px; font-weight:800; font-size:12px; text-transform:uppercase; }
+        .pill--completed { background:#dff5e6; color:#116b2d; }
+        .pill--pending { background:#f4f4f4; color:#444; }
+        .pill--failed { background:#fde2e2; color:#8a1f1f; }
       `}</style>
     </div>
   );
