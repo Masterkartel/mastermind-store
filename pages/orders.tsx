@@ -5,17 +5,16 @@ import { useEffect, useState } from "react";
 type OrderItem = {
   name: string;
   price: number;
-  quantity?: number; // accept quantity or qty (legacy)
+  quantity?: number;
   qty?: number;
   image?: string;
-  // allow extra fields without breaking
   [key: string]: any;
 };
 
 type Order = {
   id: string;
-  reference?: string; // exists when paid (same as order number in your flow)
-  createdAt?: string; // human-friendly date/time
+  reference?: string;
+  createdAt?: string;
   total: number;
   items: OrderItem[];
 };
@@ -29,7 +28,6 @@ const pad = (n: number) => String(n).padStart(2, "0");
 const formatDateTime = (d: Date) =>
   `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
-/** Try to derive a createdAt from a timestamp-ish id */
 const createdFromId = (id: string): string | undefined => {
   const ts = Number(id?.replace(/^\D+/, ""));
   if (!Number.isFinite(ts)) return;
@@ -37,22 +35,18 @@ const createdFromId = (id: string): string | undefined => {
   return isNaN(d.getTime()) ? undefined : formatDateTime(d);
 };
 
-/** -------- Image helpers (added) -------- */
+/** -------- Image helpers -------- */
 const PLACEHOLDER = "https://via.placeholder.com/56x56.png?text=%20";
-
 const slugify = (s: string) =>
   (s || "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 
-/** Choose the best image source for an order item */
 const resolveItemImage = (it: { [k: string]: any }) => {
-  // 1) direct fields
   const direct = it.image || it.img || it.imageUrl || it.photo || it.picture;
   if (typeof direct === "string" && direct.trim()) return direct.trim();
 
-  // 2) optional mapping saved in localStorage: { "<item name>": "url" }
   if (typeof window !== "undefined") {
     try {
       const raw = localStorage.getItem("productImages");
@@ -65,18 +59,16 @@ const resolveItemImage = (it: { [k: string]: any }) => {
     } catch {}
   }
 
-  // 3) public image by slug from /public/images/<name>.webp
   const slug = slugify(it.name);
   if (slug) return `/images/${slug}.webp`;
-
-  // 4) final fallback
   return PLACEHOLDER;
 };
 
-/** -------- Pills (light, current scheme) -------- */
+/** -------- Pills (lighter shades) -------- */
 const HeaderPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
-  const bg = paid ? "#86efac" : "#fca5a5"; // green / light red if failed
+  // even softer shades
+  const bg = paid ? "#bbf7d0" : "#fde2e2"; // light green / very light red
   const fg = paid ? "#065f46" : "#7f1d1d";
   const text = paid ? "COMPLETED" : "FAILED";
   return (
@@ -98,7 +90,7 @@ const HeaderPill = ({ reference }: { reference?: string }) => {
 
 const StatusPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
-  const bg = paid ? "#34d399" : "#fca5a5";
+  const bg = paid ? "#a7f3d0" : "#fecaca"; // light green / light red
   const fg = paid ? "#064e3b" : "#7f1d1d";
   const text = paid ? "PAID" : "FAILED";
   return (
@@ -121,9 +113,9 @@ const StatusPill = ({ reference }: { reference?: string }) => {
 /** -------- Page -------- */
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[] | null>(null);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({}); // per-order toggle
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [copiedForRef, setCopiedForRef] = useState<string | null>(null); // <-- tiny "Copied!" badge
 
-  // Load orders, normalize, migrate to canonical key
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -146,7 +138,6 @@ export default function OrdersPage() {
         return { ...o, createdAt: created, items };
       });
 
-    // newest first if ids are timestamp-like
     normalized.sort((a, b) => {
       const na = Number(a.id.replace(/^\D+/, ""));
       const nb = Number(b.id.replace(/^\D+/, ""));
@@ -154,7 +145,6 @@ export default function OrdersPage() {
       return 0;
     });
 
-    // write back to single key and remove legacy keys
     try {
       localStorage.setItem(CANONICAL_KEY, JSON.stringify(normalized));
       for (const key of POSSIBLE_KEYS) {
@@ -162,7 +152,7 @@ export default function OrdersPage() {
       }
     } catch {}
 
-    // collapsed-by-default on load
+    // collapsed by default
     const initialExpanded: Record<string, boolean> = {};
     normalized.forEach((o) => (initialExpanded[o.id] = false));
 
@@ -285,7 +275,7 @@ export default function OrdersPage() {
                         borderBottom: "1px solid #f0f0f0",
                       }}
                     >
-                      {/* Left: order id + date under it */}
+                      {/* Left: order id + date */}
                       <div style={{ display: "flex", flexDirection: "column" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ color: "#666" }}>Order</span>
@@ -387,23 +377,41 @@ export default function OrdersPage() {
                           {order.reference || "—"}
                         </span>
                         {order.reference ? (
-                          <button
-                            onClick={() =>
-                              navigator.clipboard.writeText(order.reference!)
-                            }
-                            style={{
-                              background: "#fde68a",
-                              color: "#111",
-                              fontWeight: 800,
-                              border: "none",
-                              padding: "6px 10px",
-                              borderRadius: 10,
-                              cursor: "pointer",
-                            }}
-                            aria-label="Copy reference"
-                          >
-                            Copy
-                          </button>
+                          <>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(order.reference!);
+                                setCopiedForRef(order.reference!);
+                                setTimeout(() => setCopiedForRef(null), 1200);
+                              }}
+                              style={{
+                                background: "#fde68a",
+                                color: "#111",
+                                fontWeight: 800,
+                                border: "none",
+                                padding: "6px 10px",
+                                borderRadius: 10,
+                                cursor: "pointer",
+                              }}
+                              aria-label="Copy reference"
+                            >
+                              Copy
+                            </button>
+                            {copiedForRef === order.reference && (
+                              <span
+                                style={{
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  color: "#065f46",
+                                  background: "#d1fae5",
+                                  padding: "4px 8px",
+                                  borderRadius: 8,
+                                }}
+                              >
+                                Copied!
+                              </span>
+                            )}
+                          </>
                         ) : null}
                       </div>
 
@@ -413,12 +421,12 @@ export default function OrdersPage() {
                         <StatusPill reference={order.reference} />
                       </div>
 
-                      {/* Total */}
+                      {/* Total — amount sits close to the label */}
                       <div
                         style={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr auto",
+                          display: "flex",
                           alignItems: "center",
+                          gap: 8,
                           marginTop: 2,
                         }}
                       >
