@@ -8,6 +8,8 @@ type OrderItem = {
   quantity?: number; // accept quantity or qty (legacy)
   qty?: number;
   image?: string;
+  // we may also see: img, imageUrl, photo, picture
+  [key: string]: any;
 };
 
 type Order = {
@@ -32,6 +34,39 @@ const createdFromId = (id: string): string | undefined => {
   if (!Number.isFinite(ts)) return;
   const d = new Date(ts);
   return isNaN(d.getTime()) ? undefined : formatDateTime(d);
+};
+
+const PLACEHOLDER = "https://via.placeholder.com/56x56.png?text=%20";
+const slugify = (s: string) =>
+  (s || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+
+const resolveItemImage = (it: OrderItem) => {
+  // 1) direct fields
+  const direct = it.image || it.img || it.imageUrl || it.photo || it.picture;
+  if (typeof direct === "string" && direct.trim()) return direct.trim();
+
+  // 2) localStorage map (optional): { "<item name>": "url" }
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("productImages");
+      if (raw) {
+        const map = JSON.parse(raw);
+        if (map && typeof map === "object" && map[it.name]) {
+          return String(map[it.name]);
+        }
+      }
+    } catch {}
+  }
+
+  // 3) public images by slug
+  const slug = slugify(it.name);
+  if (slug) return `/images/${slug}.webp`;
+
+  // 4) final fallback
+  return PLACEHOLDER;
 };
 
 /** -------- Pills (lightened colors) -------- */
@@ -115,7 +150,7 @@ export default function OrdersPage() {
       }
     } catch {}
 
-    // default: all expanded (you can tap to collapse)
+    // default: all expanded (tap header to collapse)
     const initialExpanded: Record<string, boolean> = {};
     normalized.forEach((o) => (initialExpanded[o.id] = true));
 
@@ -225,11 +260,7 @@ export default function OrdersPage() {
                   {/* Header row (tap to toggle) */}
                   <button
                     onClick={() => toggle(order.id)}
-                    style={{
-                      all: "unset",
-                      cursor: "pointer",
-                      width: "100%",
-                    }}
+                    style={{ all: "unset", cursor: "pointer", width: "100%" }}
                     aria-expanded={isOpen}
                   >
                     <div
@@ -242,7 +273,7 @@ export default function OrdersPage() {
                         borderBottom: "1px solid #f0f0f0",
                       }}
                     >
-                      {/* Left: order id + date BELOW (so pill never gets pushed) */}
+                      {/* Left: order id + date BELOW so pill never gets pushed off */}
                       <div style={{ display: "flex", flexDirection: "column" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ color: "#666" }}>Order</span>
@@ -278,6 +309,7 @@ export default function OrdersPage() {
                       {order.items.map((it, i) => {
                         const qty = Number(it.quantity ?? it.qty ?? 1);
                         const price = Number(it.price) || 0;
+                        const src = resolveItemImage(it);
                         return (
                           <div
                             key={i}
@@ -289,11 +321,12 @@ export default function OrdersPage() {
                             }}
                           >
                             <img
-                              src={
-                                it.image ||
-                                "https://via.placeholder.com/56x56.png?text=%20"
-                              }
+                              src={src}
                               alt={it.name}
+                              loading="lazy"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).src = PLACEHOLDER;
+                              }}
                               style={{
                                 width: 56,
                                 height: 56,
@@ -302,7 +335,6 @@ export default function OrdersPage() {
                                 background: "#f4f4f4",
                                 border: "1px solid #eee",
                               }}
-                              loading="lazy"
                             />
                             <div>
                               <div style={{ fontWeight: 800 }}>{it.name}</div>
