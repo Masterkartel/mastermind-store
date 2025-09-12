@@ -11,17 +11,14 @@ type Product = {
   img?: string;
 };
 
-type CartItem = {
-  id: string;
-  name: string;
-  price: number;
-  image: string;
-};
+type CartLine = { product: Product; qty: number };
 
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [showCart, setShowCart] = useState(false);
+  const [cartMap, setCartMap] = useState<Record<string, number>>({});
+  const [customerEmail, setCustomerEmail] = useState("");
 
   // ---- Load products.json ----
   useEffect(() => {
@@ -36,46 +33,101 @@ export default function Home() {
     })();
   }, []);
 
-  // ---- Simple cart like your example ----
-  const addToCart = (p: Product) => {
-    const price = Number(p.price) || 0;
-    setCart((prev) => [
-      ...prev,
-      { id: p.id, name: p.name, price, image: typeof p.img === "string" ? p.img : "" },
-    ]);
-  };
+  // ---- Cart persistence ----
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("mm_cart");
+      if (saved) setCartMap(JSON.parse(saved));
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem("mm_cart", JSON.stringify(cartMap));
+    } catch {}
+  }, [cartMap]);
 
-  const total = useMemo(() => cart.reduce((sum, item) => sum + item.price, 0), [cart]);
+  // ---- Cart helpers ----
+  const add = (id: string) =>
+    setCartMap((m) => ({ ...m, [id]: (m[id] ?? 0) + 1 }));
+  const sub = (id: string) =>
+    setCartMap((m) => {
+      const q = (m[id] ?? 0) - 1;
+      const next = { ...m };
+      if (q <= 0) delete next[id];
+      else next[id] = q;
+      return next;
+    });
+  const remove = (id: string) =>
+    setCartMap((m) => {
+      const n = { ...m };
+      delete n[id];
+      return n;
+    });
+  const clear = () => setCartMap({});
+
+  const cartLines: CartLine[] = useMemo(() => {
+    const byId: Record<string, Product> = {};
+    products.forEach((p) => (byId[p.id] = p));
+    return Object.entries(cartMap)
+      .map(([id, qty]) => (byId[id] ? { product: byId[id], qty } : null))
+      .filter(Boolean) as CartLine[];
+  }, [cartMap, products]);
+
+  const cartCount = useMemo(
+    () => Object.values(cartMap).reduce((a, b) => a + b, 0),
+    [cartMap]
+  );
+  const cartTotal = useMemo(
+    () =>
+      cartLines.reduce(
+        (sum, l) => sum + (Number(l.product.price) || 0) * l.qty,
+        0
+      ),
+    [cartLines]
+  );
 
   // ---- Search filter ----
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return products;
     return products.filter((p) => {
-      const hay = `${p.name} ${p.sku ?? ""} ${p.id}`.toLowerCase().replace(/\s+/g, " ");
+      const hay =
+        `${p.name} ${p.sku ?? ""} ${p.id}`.toLowerCase().replace(/\s+/g, " ");
       return hay.includes(q);
     });
   }, [products, query]);
 
-  // ---- Paystack handler (exact pattern) ----
-  const payWithPaystack = () => {
-    // @ts-ignore Paystack injected by script
-    const PaystackPop = (typeof window !== "undefined" ? (window as any).PaystackPop : undefined);
+  const currency = (n: number) =>
+    `KES ${Math.round(n).toLocaleString("en-KE")}`;
+
+  // ---- Paystack handler (uses customerEmail) ----
+  const handlePaystack = () => {
+    const PaystackPop =
+      typeof window !== "undefined"
+        ? (window as any)?.PaystackPop
+        : undefined;
+
     if (!PaystackPop) {
       alert("Couldn't start Paystack. Please refresh and try again.");
       return;
     }
+    if (!customerEmail) {
+      alert("Please enter your email to continue.");
+      return;
+    }
 
     const handler = PaystackPop.setup({
-      key: process.env.NEXT_PUBLIC_PAYSTACK_KEY,
-      email: "customer@mastermindelectricals.com",
-      amount: total * 100, // kobo/cents
+      key: "pk_live_10bc141ee6ae2ae48edcd102c06540ffe1cb3ae6", // LIVE public key
+      email: customerEmail,
+      amount: Math.round(cartTotal) * 100, // amount in kobo (KES x 100)
       currency: "KES",
       callback: function (response: any) {
-        window.location.href = `/payment-status?reference=${response.reference}`;
+        alert("Payment complete! Reference: " + response.reference);
+        clear();
+        setShowCart(false);
       },
       onClose: function () {
-        alert("Payment window closed.");
+        alert("Transaction was not completed, window closed.");
       },
     });
 
@@ -86,10 +138,13 @@ export default function Home() {
     <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
       <Head>
         <title>Mastermind Electricals & Electronics</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, viewport-fit=cover"
+        />
         <link rel="icon" href="/favicon.ico" />
-        {/* Paystack inline script (required for the button) */}
-        <script src="https://js.paystack.co/v1/inline.js"></script>
+        {/* Paystack script */}
+        <script src="https://js.paystack.co/v1/inline.js" async></script>
       </Head>
 
       {/* ===== Top Bar ===== */}
@@ -99,9 +154,13 @@ export default function Home() {
             <img src="/favicon.ico" alt="" className="brandIcon" aria-hidden />
             Mastermind Electricals & Electronics
           </div>
-          <div className="muted" aria-hidden>
-            Open Mon–Sun • 8:00am – 9:00pm
-          </div>
+          <button
+            onClick={() => setShowCart(true)}
+            className="cartBtn"
+            aria-label="Open cart"
+          >
+            🛒 Cart: {cartCount}
+          </button>
         </div>
       </header>
 
@@ -110,20 +169,24 @@ export default function Home() {
         <div className="hero">
           <div className="hero__bubble" aria-hidden />
           <div className="eyebrow">TRUSTED IN SOTIK</div>
-          <h1 className="h1">Quality Electronics, Lighting & Gas — Fast Delivery</h1>
+          <h1 className="h1">
+            Quality Electronics, Lighting & Gas — Fast Delivery
+          </h1>
           <p className="lead">
-            Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay via M-Pesa. Pickup or
-            same-day delivery.
+            Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay with
+            Paystack. Pickup or same-day delivery.
           </p>
         </div>
 
         {/* ===== Two cards side-by-side on desktop ===== */}
         <div className="twoCol">
-          {/* Left: Visit shop */}
+          {/* Left: Visit shop (dark, centered) */}
           <div className="shopCard">
             <div className="shopCard__bubble" aria-hidden />
             <div className="shopCard__title">Visit Our Shop</div>
-            <div className="muted center">Mastermind Electricals & Electronics, Sotik Town</div>
+            <div className="muted center">
+              Mastermind Electricals & Electronics, Sotik Town
+            </div>
             <div className="muted center">Open Mon–Sun • 8:00am – 9:00pm</div>
 
             <div className="actions actions--center">
@@ -138,31 +201,54 @@ export default function Home() {
               <a href="tel:+254715151010" className="btn btn--light">
                 📞 0715151010
               </a>
-              <a href="mailto:sales@mastermindelectricals.com" className="btn btn--light">
+              <a
+                href="mailto:sales@mastermindelectricals.com"
+                className="btn btn--light"
+              >
                 ✉️ sales@mastermindelectricals.com
               </a>
             </div>
           </div>
 
-          {/* Right: SERVICES */}
+          {/* Right: SERVICES with M-Pesa logo image + Gas mini-cards */}
           <div className="infoCard">
             <div className="infoCard__bubble" aria-hidden />
             <div className="eyebrow">SERVICES</div>
 
             <div className="servicesHeader">
-              <img src="/mpesa.png" alt="M-Pesa" className="mpesaLogo" loading="lazy" />
+              <img
+                src="/mpesa.png"
+                alt="M-Pesa"
+                className="mpesaLogo"
+                loading="lazy"
+              />
               <span className="amp">&nbsp;&amp;&nbsp;</span>
               <span className="servicesText">Gas Refill</span>
             </div>
 
+            {/* Gas semi-cards, centered */}
             <div className="cylinders">
               <div className="cylCard">
-                <img src="/gas-6kg.png" alt="6KG Gas" className="cylImg cylImg--tight" loading="lazy" />
-                <button className="btn btn--ghost">6KG — KES 1,110</button>
+                <img
+                  src="/gas-6kg.png"
+                  alt="6KG Gas"
+                  className="cylImg cylImg--tight"
+                  loading="lazy"
+                />
+                <button className="btn btn--ghost" onClick={() => add("gas-6kg")}>
+                  6KG — KES 1,110
+                </button>
               </div>
               <div className="cylCard">
-                <img src="/gas-13kg.png" alt="13KG Gas" className="cylImg" loading="lazy" />
-                <button className="btn btn--ghost">13KG — KES 2,355</button>
+                <img
+                  src="/gas-13kg.png"
+                  alt="13KG Gas"
+                  className="cylImg"
+                  loading="lazy"
+                />
+                <button className="btn btn--ghost" onClick={() => add("gas-13kg")}>
+                  13KG — KES 2,355
+                </button>
               </div>
             </div>
           </div>
@@ -192,18 +278,28 @@ export default function Home() {
                     <img
                       src={p.img}
                       alt={p.name}
-                      style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }}
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "100%",
+                        objectFit: "contain",
+                        display: "block",
+                      }}
                       loading="lazy"
                     />
                   ) : null}
                 </div>
                 <div className="sku">{p.sku || ""}</div>
                 <div className="name">{p.name}</div>
-                <div className="price">KES {Math.round(price).toLocaleString("en-KE")}</div>
+                <div className="price">
+                  KES {Math.round(price).toLocaleString("en-KE")}
+                </div>
                 <div className="stock">Stock: {stock}</div>
 
                 {stock > 0 ? (
-                  <button className="btn btn--accent small" onClick={() => addToCart(p)}>
+                  <button
+                    className="btn btn--accent small"
+                    onClick={() => add(p.id)}
+                  >
                     Add to Cart
                   </button>
                 ) : (
@@ -215,36 +311,14 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== Cart (EXACT style/structure of your example) ===== */}
-      <div className="container">
-        <div className="cart">
-          <h2>Cart</h2>
-          {cart.length === 0 ? (
-            <p>No items yet.</p>
-          ) : (
-            <ul>
-              {cart.map((item, i) => (
-                <li key={`${item.id}-${i}`}>
-                  {item.name} – KES {item.price}
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="total">Total: KES {total}</p>
-          {cart.length > 0 && (
-            <button className="paystack-btn" onClick={payWithPaystack}>
-              Pay with M-Pesa (Paystack)
-            </button>
-          )}
-        </div>
-      </div>
-
       {/* ===== Footer ===== */}
       <footer className="footer">
         <div className="container footerGrid">
           <div>
             <div className="footTitle">Mastermind Electricals & Electronics</div>
-            <div className="footText">Genuine stock • Fair prices • Friendly support.</div>
+            <div className="footText">
+              Genuine stock • Fair prices • Friendly support.
+            </div>
           </div>
           <div>
             <div className="footTitle">Contact</div>
@@ -271,6 +345,107 @@ export default function Home() {
         </div>
       </footer>
 
+      {/* ===== Cart Drawer ===== */}
+      {showCart && (
+        <div className="overlay" onClick={() => setShowCart(false)}>
+          <aside
+            className="drawer"
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Cart"
+          >
+            <div className="drawer__top">
+              <div className="h4">Your Cart</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                {cartCount > 1 && (
+                  <button
+                    className="btn btn--light small"
+                    onClick={clear}
+                    aria-label="Remove all items"
+                  >
+                    Remove all
+                  </button>
+                )}
+                <button
+                  className="btn btn--dark small"
+                  onClick={() => setShowCart(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            {cartLines.length === 0 ? (
+              <div className="empty">Your cart is empty.</div>
+            ) : (
+              <div className="lines">
+                {cartLines.map((l) => {
+                  const price = Number(l.product.price) || 0;
+                  return (
+                    <div key={l.product.id} className="line">
+                      <div>
+                        <div className="line__name">{l.product.name}</div>
+                        <div className="line__price">{currency(price)}</div>
+                      </div>
+                      <div className="qty">
+                        <button
+                          className="qtyBtn"
+                          onClick={() => sub(l.product.id)}
+                          aria-label="Decrease"
+                        >
+                          −
+                        </button>
+                        <div className="qtyNum">{l.qty}</div>
+                        <button
+                          className="qtyBtn"
+                          onClick={() => add(l.product.id)}
+                          aria-label="Increase"
+                        >
+                          +
+                        </button>
+                        <button
+                          className="qtyBtn"
+                          onClick={() => remove(l.product.id)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="totals">
+              <div className="row">
+                <span>Total</span>
+                <span className="strong">{currency(cartTotal)}</span>
+              </div>
+
+              {/* Customer email for Paystack */}
+              <input
+                type="email"
+                placeholder="Enter your email"
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+                className="input"
+                style={{ marginTop: 6 }}
+                required
+              />
+
+              <button
+                disabled={cartLines.length === 0 || !customerEmail}
+                className={`btn ${
+                  cartLines.length && customerEmail ? "btn--paystack" : "btn--disabled"
+                }`}
+                onClick={handlePaystack}
+              >
+                Pay with Paystack
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+
       {/* ===== Floating WhatsApp ===== */}
       <a
         href="https://wa.me/254715151010"
@@ -290,17 +465,23 @@ export default function Home() {
         .topbar__inner { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 12px; }
         .brand { font-weight: 800; letter-spacing: .3px; display:flex; align-items:center; gap:8px; }
         .brandIcon { width: 22px; height: 22px; border-radius: 4px; }
-        .muted { color:#888; }
-        .center { text-align:center; }
+
+        .cartBtn { background:#f4d03f; color:#111; border:none; padding:8px 12px; border-radius:12px; font-weight:800; cursor:pointer; white-space:nowrap; }
 
         .hero { position: relative; background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; overflow:hidden; }
         .hero__bubble { position:absolute; right:-60px; top:-40px; width:240px; height:240px; background:#f4d03f; opacity:.28; border-radius:9999px; z-index:0; }
         .eyebrow { color:#666; font-weight:700; font-size:12px; position:relative; z-index:1; }
         .h1 { margin:6px 0 8px; font-size:28px; line-height:1.15; letter-spacing:-.2px; position:relative; z-index:1; }
+        .h3 { margin:4px 0 8px; font-size:20px; font-weight:800; }
+        .h4 { font-weight:800; font-size:18px; }
         .lead { color:#444; font-size:15px; position:relative; z-index:1; }
+        .muted { color:#888; }
+        .center { text-align:center; }
 
         .twoCol { display:grid; grid-template-columns:1fr; gap:12px; margin-top:12px; }
-        @media (min-width: 900px) { .twoCol { grid-template-columns: 1fr 1fr; } }
+        @media (min-width: 900px) {
+          .twoCol { grid-template-columns: 1fr 1fr; }
+        }
 
         .shopCard { position:relative; background:#111; color:#fff; border-radius:16px; padding:16px; overflow:hidden; text-align:center; }
         .shopCard__bubble { position:absolute; right:-50px; bottom:-70px; width:180px; height:180px; background:#f4d03f; opacity:.25; border-radius:9999px; }
@@ -310,11 +491,13 @@ export default function Home() {
 
         .infoCard { position:relative; background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; overflow:hidden; }
         .infoCard__bubble { position:absolute; right:-40px; bottom:-60px; width:160px; height:160px; background:#f4d03f; opacity:.25; border-radius:9999px; }
+
         .servicesHeader { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-weight:800; font-size:20px; margin:4px 0 12px; justify-content:center; }
         .mpesaLogo { height:60px; width:auto; display:block; }
         .amp { font-size:20px; color:#222; line-height:1; }
         .servicesText { font-size:20px; font-weight:800; color:#111; }
 
+        /* Gas mini cards, centered */
         .cylinders { display:flex; justify-content:center; gap:14px; flex-wrap:wrap; }
         .cylCard { background:#fff; border:1px solid #eee; border-radius:12px; padding:12px; width:min(220px, 46%); display:flex; flex-direction:column; align-items:center; gap:8px; }
         .cylImg { height:74px; width:auto; object-fit:contain; }
@@ -323,7 +506,10 @@ export default function Home() {
         .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:12px; font-weight:800; text-decoration:none; cursor:pointer; }
         .btn--accent { background:#f4d03f; color:#111; padding:10px 14px; border:none; }
         .btn--light { background:#fff; color:#111; padding:10px 14px; border:1px solid #eee; }
+        .btn--dark { background:#111; color:#fff; padding:10px 16px; border:none; }
+        .btn--ghost { background:#fff; color:#111; border:1px solid #ddd; padding:8px 12px; border-radius:10px; }
         .btn--disabled { background:#eee; color:#888; pointer-events:none; }
+        .btn--paystack { background:#3bb75e; color:#fff; border:none; padding:12px 16px; border-radius:12px; font-weight:800; }
         .small { padding:8px 14px; }
 
         .search { width:100%; height:44px; padding:0 14px; border-radius:12px; border:1px solid #ddd; background:#fff; font-size:15px; outline:none; }
@@ -336,35 +522,36 @@ export default function Home() {
         .price { color:#111; font-weight:800; }
         .stock { color:#666; font-size:12px; }
 
-        /* ===== Cart styles EXACT as your snippet ===== */
-        .cart { margin-top: 30px; padding: 15px; border: 1px solid #d1d5db; border-radius: 8px; background: #f9fafb; }
-        .total { font-weight: bold; margin-top: 10px; }
-        .paystack-btn {
-          background: #08a05c; /* Paystack official green */
-          color: white;
-          padding: 10px 20px;
-          border-radius: 6px;
-          margin-top: 15px;
-          font-size: 16px;
-          border: none;
-          cursor: pointer;
-        }
-        .paystack-btn:hover { background: #05944f; }
-
         .footer { border-top:1px solid #eaeaea; padding:18px 0 12px; background:#fafafa; }
         .footerGrid { display:grid; grid-template-columns:1fr; gap:16px; padding:14px 12px; }
-        @media (min-width: 900px) { .footerGrid { grid-template-columns: 2fr 1fr 1fr; } }
-        .footTitle { font-weight:800; color:#111; margin-bottom:6px; }
-        .footText { color:#555; }
-        .footList { margin: 6px 0 0; color:#555; padding-left:18px; }
-
-        /* Floating WhatsApp */
-        .waFab {
-          position: fixed; bottom: 22px; right: 22px; background: #25d366; border-radius: 50%;
-          width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 100;
+        @media (min-width: 900px) {
+          .footerGrid { grid-template-columns: 2fr 1.2fr 1fr; }
         }
-        .waIcon { width: 26px; height: 26px; }
+        .footTitle { font-weight:800; }
+        .footText { color:#666; }
+        .footList { margin:0; padding-left:18px; color:#444; }
+
+        /* Drawer / Cart */
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.25); z-index: 60; display:flex; justify-content:flex-end; }
+        .drawer { width:min(420px, 92vw); background:#fff; height:100%; box-shadow:-10px 0 30px rgba(0,0,0,.12); padding:14px; display:flex; flex-direction:column; gap:12px; }
+        .drawer__top { display:flex; align-items:center; justify-content:space-between; }
+        .empty { color:#777; border:1px dashed #ddd; padding:12px; border-radius:12px; text-align:center; }
+        .lines { display:flex; flex-direction:column; gap:10px; overflow:auto; }
+        .line { display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #eee; padding-bottom:10px; }
+        .line__name { font-weight:800; }
+        .line__price { color:#666; font-size:14px; }
+        .qty { display:flex; gap:8px; align-items:center; }
+        .qtyBtn { width:36px; height:32px; border:1px solid #e5e7eb; background:#f8fafc; border-radius:10px; font-size:18px; cursor:pointer; }
+        .qtyNum { min-width: 22px; text-align:center; }
+        .totals { margin-top:auto; display:flex; flex-direction:column; gap:10px; }
+        .row { display:flex; justify-content:space-between; font-weight:900; font-size:20px; }
+        .strong { font-weight:900; }
+        .input { width:100%; height:44px; padding:0 14px; border-radius:12px; border:1px solid #ddd; background:#fff; font-size:15px; outline:none; }
+        .btn--disabled { opacity:.5; cursor:not-allowed; }
+
+        /* WhatsApp FAB */
+        .waFab { position: fixed; right: 16px; bottom: 16px; width: 58px; height: 58px; border-radius: 9999px; background: #25d366; display:flex; align-items:center; justify-content:center; box-shadow: 0 10px 30px rgba(0,0,0,.25); z-index: 70; }
+        .waIcon { width: 30px; height: 30px; }
       `}</style>
     </div>
   );
