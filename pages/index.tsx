@@ -1,6 +1,6 @@
 // pages/index.tsx
-import Head from "next/head";
 import { useEffect, useMemo, useState } from "react";
+import Head from "next/head";
 
 type Product = {
   id: string;
@@ -18,6 +18,7 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [showCart, setShowCart] = useState(false);
   const [cartMap, setCartMap] = useState<Record<string, number>>({});
+  const [customerEmail, setCustomerEmail] = useState("");
 
   // ---- Load products.json ----
   useEffect(() => {
@@ -99,7 +100,7 @@ export default function Home() {
   const currency = (n: number) =>
     `KES ${Math.round(n).toLocaleString("en-KE")}`;
 
-  // ---- Paystack handler ----
+  // ---- Paystack handler (uses customerEmail) ----
   const handlePaystack = () => {
     const PaystackPop =
       typeof window !== "undefined"
@@ -110,14 +111,15 @@ export default function Home() {
       alert("Couldn't start Paystack. Please refresh and try again.");
       return;
     }
-
-    // ✅ Using your live public key directly as requested
-    const publicKey = "pk_live_10bc141ee6ae2ae48edcd102c06540ffe1cb3ae6";
+    if (!customerEmail) {
+      alert("Please enter your email to continue.");
+      return;
+    }
 
     const handler = PaystackPop.setup({
-      key: publicKey,
-      email: "customer@mastermindelectricals.com",
-      amount: Math.round(cartTotal) * 100, // kobo
+      key: "pk_live_10bc141ee6ae2ae48edcd102c06540ffe1cb3ae6", // LIVE public key
+      email: customerEmail,
+      amount: Math.round(cartTotal) * 100, // amount in kobo (KES x 100)
       currency: "KES",
       callback: function (response: any) {
         alert("Payment complete! Reference: " + response.reference);
@@ -142,7 +144,7 @@ export default function Home() {
         />
         <link rel="icon" href="/favicon.ico" />
         {/* Paystack script */}
-        <script src="https://js.paystack.co/v1/inline.js" async />
+        <script src="https://js.paystack.co/v1/inline.js" async></script>
       </Head>
 
       {/* ===== Top Bar ===== */}
@@ -171,8 +173,8 @@ export default function Home() {
             Quality Electronics, Lighting & Gas — Fast Delivery
           </h1>
           <p className="lead">
-            Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay via
-            M-Pesa (Paystack). Pickup or same-day delivery.
+            Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay with
+            Paystack. Pickup or same-day delivery.
           </p>
         </div>
 
@@ -208,7 +210,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right: SERVICES with M-Pesa logo and Gas mini-cards */}
+          {/* Right: SERVICES with M-Pesa logo image + Gas mini-cards */}
           <div className="infoCard">
             <div className="infoCard__bubble" aria-hidden />
             <div className="eyebrow">SERVICES</div>
@@ -309,7 +311,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== Footer (info block) ===== */}
+      {/* ===== Footer ===== */}
       <footer className="footer">
         <div className="container footerGrid">
           <div>
@@ -343,7 +345,7 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* ===== Cart Drawer (Paystack, no M-Pesa phone field) ===== */}
+      {/* ===== Cart Drawer ===== */}
       {showCart && (
         <div className="overlay" onClick={() => setShowCart(false)}>
           <aside
@@ -419,14 +421,25 @@ export default function Home() {
                 <span className="strong">{currency(cartTotal)}</span>
               </div>
 
+              {/* Customer email for Paystack */}
+              <input
+                type="email"
+                placeholder="Enter your email"
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+                className="input"
+                style={{ marginTop: 6 }}
+                required
+              />
+
               <button
-                disabled={cartLines.length === 0}
+                disabled={cartLines.length === 0 || !customerEmail}
                 className={`btn ${
-                  cartLines.length ? "btn--paystack" : "btn--disabled"
+                  cartLines.length && customerEmail ? "btn--paystack" : "btn--disabled"
                 }`}
                 onClick={handlePaystack}
               >
-                Pay with M-Pesa (Paystack)
+                Pay with Paystack
               </button>
             </div>
           </aside>
@@ -452,6 +465,7 @@ export default function Home() {
         .topbar__inner { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 12px; }
         .brand { font-weight: 800; letter-spacing: .3px; display:flex; align-items:center; gap:8px; }
         .brandIcon { width: 22px; height: 22px; border-radius: 4px; }
+
         .cartBtn { background:#f4d03f; color:#111; border:none; padding:8px 12px; border-radius:12px; font-weight:800; cursor:pointer; white-space:nowrap; }
 
         .hero { position: relative; background:#fff; border:1px solid #eee; border-radius:16px; padding:16px; overflow:hidden; }
@@ -465,7 +479,9 @@ export default function Home() {
         .center { text-align:center; }
 
         .twoCol { display:grid; grid-template-columns:1fr; gap:12px; margin-top:12px; }
-        @media (min-width: 900px) { .twoCol { grid-template-columns: 1fr 1fr; } }
+        @media (min-width: 900px) {
+          .twoCol { grid-template-columns: 1fr 1fr; }
+        }
 
         .shopCard { position:relative; background:#111; color:#fff; border-radius:16px; padding:16px; overflow:hidden; text-align:center; }
         .shopCard__bubble { position:absolute; right:-50px; bottom:-70px; width:180px; height:180px; background:#f4d03f; opacity:.25; border-radius:9999px; }
@@ -485,7 +501,7 @@ export default function Home() {
         .cylinders { display:flex; justify-content:center; gap:14px; flex-wrap:wrap; }
         .cylCard { background:#fff; border:1px solid #eee; border-radius:12px; padding:12px; width:min(220px, 46%); display:flex; flex-direction:column; align-items:center; gap:8px; }
         .cylImg { height:74px; width:auto; object-fit:contain; }
-        .cylImg--tight { margin-bottom:-8px; }
+        .cylImg--tight { margin-bottom:-8px; } /* drop 6KG closer to its button */
 
         .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:12px; font-weight:800; text-decoration:none; cursor:pointer; }
         .btn--accent { background:#f4d03f; color:#111; padding:10px 14px; border:none; }
@@ -494,6 +510,7 @@ export default function Home() {
         .btn--ghost { background:#fff; color:#111; border:1px solid #ddd; padding:8px 12px; border-radius:10px; }
         .btn--disabled { background:#eee; color:#888; pointer-events:none; }
         .btn--paystack { background:#3bb75e; color:#fff; border:none; padding:12px 16px; border-radius:12px; font-weight:800; }
+        .small { padding:8px 14px; }
 
         .search { width:100%; height:44px; padding:0 14px; border-radius:12px; border:1px solid #ddd; background:#fff; font-size:15px; outline:none; }
 
@@ -507,7 +524,9 @@ export default function Home() {
 
         .footer { border-top:1px solid #eaeaea; padding:18px 0 12px; background:#fafafa; }
         .footerGrid { display:grid; grid-template-columns:1fr; gap:16px; padding:14px 12px; }
-        @media (min-width: 900px) { .footerGrid { grid-template-columns: 2fr 1fr 1fr; } }
+        @media (min-width: 900px) {
+          .footerGrid { grid-template-columns: 2fr 1fr 1fr; }
+        }
         .footTitle { font-weight:800; color:#111; margin-bottom:6px; }
         .footText { color:#555; }
         .footList { margin: 6px 0 0; color:#555; padding-left:18px; }
@@ -528,6 +547,7 @@ export default function Home() {
         .totals { margin-top:12px; display:grid; gap:8px; }
         .row { display:flex; justify-content:space-between; }
         .strong { font-weight:800; }
+        .input { width:100%; height:42px; border-radius:10px; border:1px solid #ddd; padding:0 12px; outline:none; background:#fff; }
 
         /* Floating WhatsApp */
         .waFab {
