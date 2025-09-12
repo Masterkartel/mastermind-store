@@ -26,7 +26,9 @@ const POSSIBLE_KEYS = ["orders", "mm_orders", "mastermind_orders", "cart_orders"
 /** -------- Helpers -------- */
 const pad = (n: number) => String(n).padStart(2, "0");
 const formatDateTime = (d: Date) =>
-  `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
 const createdFromId = (id: string): string | undefined => {
   const ts = Number(id?.replace(/^\D+/, ""));
@@ -67,8 +69,7 @@ const resolveItemImage = (it: { [k: string]: any }) => {
 /** -------- Pills (lighter shades) -------- */
 const HeaderPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
-  // even softer shades
-  const bg = paid ? "#bbf7d0" : "#fde2e2"; // light green / very light red
+  const bg = paid ? "#bbf7d0" : "#fde2e2";
   const fg = paid ? "#065f46" : "#7f1d1d";
   const text = paid ? "COMPLETED" : "FAILED";
   return (
@@ -90,7 +91,7 @@ const HeaderPill = ({ reference }: { reference?: string }) => {
 
 const StatusPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
-  const bg = paid ? "#a7f3d0" : "#fecaca"; // light green / light red
+  const bg = paid ? "#a7f3d0" : "#fecaca";
   const fg = paid ? "#064e3b" : "#7f1d1d";
   const text = paid ? "PAID" : "FAILED";
   return (
@@ -114,7 +115,7 @@ const StatusPill = ({ reference }: { reference?: string }) => {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [copiedForRef, setCopiedForRef] = useState<string | null>(null); // <-- tiny "Copied!" badge
+  const [copiedForRef, setCopiedForRef] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -152,7 +153,6 @@ export default function OrdersPage() {
       }
     } catch {}
 
-    // collapsed by default
     const initialExpanded: Record<string, boolean> = {};
     normalized.forEach((o) => (initialExpanded[o.id] = false));
 
@@ -259,7 +259,7 @@ export default function OrdersPage() {
                     overflow: "hidden",
                   }}
                 >
-                  {/* Header row (tap to toggle) */}
+                  {/* Header row */}
                   <button
                     onClick={() => toggle(order.id)}
                     style={{ all: "unset", cursor: "pointer", width: "100%" }}
@@ -275,7 +275,6 @@ export default function OrdersPage() {
                         borderBottom: "1px solid #f0f0f0",
                       }}
                     >
-                      {/* Left: order id + date */}
                       <div style={{ display: "flex", flexDirection: "column" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ color: "#666" }}>Order</span>
@@ -288,7 +287,6 @@ export default function OrdersPage() {
                         ) : null}
                       </div>
 
-                      {/* Right: pill + total */}
                       <div
                         style={{
                           display: "flex",
@@ -305,10 +303,9 @@ export default function OrdersPage() {
                     </div>
                   </button>
 
-                  {/* Body (collapsible) */}
+                  {/* Body */}
                   {isOpen && (
                     <div style={{ padding: 14, display: "grid", gap: 10 }}>
-                      {/* Items */}
                       {order.items.map((it, i) => {
                         const qty = Number(it.quantity ?? it.qty ?? 1);
                         const price = Number(it.price) || 0;
@@ -376,43 +373,6 @@ export default function OrdersPage() {
                         >
                           {order.reference || "—"}
                         </span>
-                        {order.reference ? (
-                          <>
-                            <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(order.reference!);
-                                setCopiedForRef(order.reference!);
-                                setTimeout(() => setCopiedForRef(null), 1200);
-                              }}
-                              style={{
-                                background: "#fde68a",
-                                color: "#111",
-                                fontWeight: 800,
-                                border: "none",
-                                padding: "6px 10px",
-                                borderRadius: 10,
-                                cursor: "pointer",
-                              }}
-                              aria-label="Copy reference"
-                            >
-                              Copy
-                            </button>
-                            {copiedForRef === order.reference && (
-                              <span
-                                style={{
-                                  fontSize: 12,
-                                  fontWeight: 700,
-                                  color: "#065f46",
-                                  background: "#d1fae5",
-                                  padding: "4px 8px",
-                                  borderRadius: 8,
-                                }}
-                              >
-                                Copied!
-                              </span>
-                            )}
-                          </>
-                        ) : null}
                       </div>
 
                       {/* Status */}
@@ -421,7 +381,7 @@ export default function OrdersPage() {
                         <StatusPill reference={order.reference} />
                       </div>
 
-                      {/* Total — amount sits close to the label */}
+                      {/* Total */}
                       <div
                         style={{
                           display: "flex",
