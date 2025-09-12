@@ -1,137 +1,138 @@
 // pages/orders.tsx
 import { useEffect, useState } from "react";
 
+/** -------- Types -------- */
 type OrderItem = {
   name: string;
   price: number;
-  quantity?: number;   // might come as quantity or qty
+  quantity?: number; // we accept quantity or qty (legacy)
   qty?: number;
   image?: string;
 };
 
 type Order = {
   id: string;
-  reference?: string;  // when paid, this exists (same as order number in your flow)
-  createdAt?: string;  // human-friendly date/time string
+  reference?: string;     // exists when paid (in your flow same as order number)
+  createdAt?: string;     // human friendly date/time
   total: number;
   items: OrderItem[];
 };
 
-// --- shared key (make sure index.tsx uses the same one) ---
-const LS_ORDERS_KEY = "orders";
+/** -------- Storage keys (we read all, then migrate to "orders") -------- */
+const CANONICAL_KEY = "orders";
+const POSSIBLE_KEYS = ["orders", "mm_orders", "mastermind_orders", "cart_orders"];
 
-// DD/MM/YYYY, HH:MM (24h)
-const formatDateTime = (d: Date) => {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const day = pad(d.getDate());
-  const month = pad(d.getMonth() + 1);
-  const year = d.getFullYear();
-  const hours = pad(d.getHours());
-  const mins = pad(d.getMinutes());
-  return `${day}/${month}/${year}, ${hours}:${mins}`;
-};
+/** -------- Helpers -------- */
+const pad = (n: number) => String(n).padStart(2, "0");
+const formatDateTime = (d: Date) =>
+  `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
-// Try to parse a timestamp from ids like "T1698660489556561"
+// Try derive time from ids like "T1698660489556561"
 const createdFromId = (id: string): string | undefined => {
-  const ts = Number(id?.slice(1));
+  const ts = Number(id?.replace(/^\D+/, "")); // strip non-digits at start
   if (!Number.isFinite(ts)) return;
   const d = new Date(ts);
-  if (isNaN(d.getTime())) return;
-  return formatDateTime(d);
+  return isNaN(d.getTime()) ? undefined : formatDateTime(d);
 };
 
-export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [hydrated, setHydrated] = useState(false);
+/** -------- Pills -------- */
+const HeaderPill = ({ reference }: { reference?: string }) => {
+  const paid = !!reference;
+  return (
+    <span
+      style={{
+        background: paid ? "#22c55e" : "#cbd5e1", // green / gray
+        color: paid ? "#fff" : "#111",
+        fontSize: 12,
+        fontWeight: 800,
+        padding: "4px 10px",
+        borderRadius: 999,
+      }}
+    >
+      {paid ? "COMPLETED" : "PENDING"}
+    </span>
+  );
+};
 
-  // Load and normalize orders (add createdAt if missing)
+const StatusPill = ({ reference }: { reference?: string }) => {
+  const paid = !!reference;
+  return (
+    <span
+      style={{
+        background: paid ? "#22c55e" : "#ef4444", // green / red
+        color: "#fff",
+        fontSize: 12,
+        fontWeight: 800,
+        padding: "4px 10px",
+        borderRadius: 999,
+      }}
+    >
+      {paid ? "PAID" : "FAILED"}
+    </span>
+  );
+};
+
+/** -------- Page -------- */
+export default function OrdersPage() {
+  const [orders, setOrders] = useState<Order[] | null>(null); // null until hydrated
+
+  // Load orders from any known key, normalize, then migrate to CANONICAL_KEY
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    let parsed: unknown = [];
-    try {
-      const raw = localStorage.getItem(LS_ORDERS_KEY);
-      parsed = raw ? JSON.parse(raw) : [];
-    } catch {
-      parsed = [];
+    // read & merge
+    const merged: Order[] = [];
+    for (const key of POSSIBLE_KEYS) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) merged.push(...arr);
+      } catch {
+        /* ignore */
+      }
     }
 
-    let changed = false;
-    const normalized: Order[] = (Array.isArray(parsed) ? parsed : [])
+    // normalize
+    const normalized: Order[] = (merged || [])
       .filter((o) => o && typeof (o as any).id === "string")
       .map((o: any) => {
-        const withCreated =
-          o.createdAt ||
-          createdFromId(o.id) ||
-          formatDateTime(new Date());
-
-        if (!o.createdAt) changed = true;
-
-        // ensure items is an array
+        const created =
+          o.createdAt || createdFromId(o.id) || formatDateTime(new Date());
         const items: OrderItem[] = Array.isArray(o.items) ? o.items : [];
-
-        return { ...o, createdAt: withCreated, items };
+        return { ...o, createdAt: created, items };
       });
 
-    if (changed) {
-      try {
-        localStorage.setItem(LS_ORDERS_KEY, JSON.stringify(normalized));
-      } catch {}
+    // sort newest first (by id numeric if possible, else leave)
+    normalized.sort((a, b) => {
+      const na = Number(a.id.replace(/^\D+/, ""));
+      const nb = Number(b.id.replace(/^\D+/, ""));
+      if (Number.isFinite(na) && Number.isFinite(nb)) return nb - na;
+      return 0;
+    });
+
+    // migrate to the single canonical key
+    try {
+      localStorage.setItem(CANONICAL_KEY, JSON.stringify(normalized));
+      // clean other keys (optional—but helps keep it tidy)
+      for (const key of POSSIBLE_KEYS) {
+        if (key !== CANONICAL_KEY) localStorage.removeItem(key);
+      }
+    } catch {
+      /* ignore */
     }
 
     setOrders(normalized);
-    setHydrated(true);
   }, []);
 
-  // Pills
-  const HeaderPill = ({ reference }: { reference?: string }) => {
-    const paid = !!reference;
-    const bg = paid ? "#3bb75e" : "#bfc4cc"; // green / grey
-    const text = paid ? "COMPLETED" : "PENDING";
-    return (
-      <span
-        style={{
-          background: bg,
-          color: paid ? "#fff" : "#111",
-          fontSize: 12,
-          fontWeight: 800,
-          padding: "4px 10px",
-          borderRadius: 999,
-        }}
-      >
-        {text}
-      </span>
-    );
-  };
-
-  const StatusPill = ({ reference }: { reference?: string }) => {
-    const paid = !!reference;
-    const bg = paid ? "#3bb75e" : "#e85d5d"; // green / red
-    const text = paid ? "PAID" : "FAILED";
-    return (
-      <span
-        style={{
-          background: bg,
-          color: "#fff",
-          fontSize: 12,
-          fontWeight: 800,
-          padding: "4px 10px",
-          borderRadius: 999,
-        }}
-      >
-        {text}
-      </span>
-    );
-  };
-
-  if (!hydrated) {
-    // avoid SSR flicker and “No orders yet” before localStorage loads
+  // Not hydrated yet
+  if (orders === null) {
     return <div style={{ background: "#f6f6f6", minHeight: "100vh" }} />;
   }
 
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
-      {/* Header bar (edge-to-edge black) */}
+      {/* Top bar (same look as before) */}
       <div
         style={{
           background: "#111",
