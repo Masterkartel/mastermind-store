@@ -18,6 +18,10 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [showCart, setShowCart] = useState(false);
   const [cartMap, setCartMap] = useState<Record<string, number>>({});
+
+  // checkout fields
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
 
   // ---- Load products.json ----
@@ -49,6 +53,7 @@ export default function Home() {
   // ---- Cart helpers ----
   const add = (id: string) =>
     setCartMap((m) => ({ ...m, [id]: (m[id] ?? 0) + 1 }));
+
   const sub = (id: string) =>
     setCartMap((m) => {
       const q = (m[id] ?? 0) - 1;
@@ -57,12 +62,14 @@ export default function Home() {
       else next[id] = q;
       return next;
     });
+
   const remove = (id: string) =>
     setCartMap((m) => {
       const n = { ...m };
       delete n[id];
       return n;
     });
+
   const clear = () => setCartMap({});
 
   const cartLines: CartLine[] = useMemo(() => {
@@ -77,6 +84,7 @@ export default function Home() {
     () => Object.values(cartMap).reduce((a, b) => a + b, 0),
     [cartMap]
   );
+
   const cartTotal = useMemo(
     () =>
       cartLines.reduce(
@@ -110,10 +118,25 @@ export default function Home() {
       email: customerEmail,
       amount: Math.round(cartTotal) * 100, // kobo (KES × 100)
       currency: "KES",
+      metadata: {
+        custom_fields: [
+          { display_name: "Name", variable_name: "customer_name", value: customerName || "-" },
+          { display_name: "Phone", variable_name: "customer_phone", value: customerPhone || "-" },
+          {
+            display_name: "Items",
+            variable_name: "items",
+            value: cartLines
+              .map((l) => `${l.product.name}×${l.qty}`)
+              .join(", "),
+          },
+        ],
+      },
       callback: function (response: any) {
         alert("Payment complete! Reference: " + response.reference);
         clear();
         setShowCart(false);
+        // optional: redirect to orders page with ref
+        // window.location.href = `/orders?ref=${response.reference}`;
       },
       onClose: function () {
         alert("Transaction was not completed, window closed.");
@@ -122,6 +145,17 @@ export default function Home() {
 
     handler.openIframe();
   };
+
+  // ---- Search filter ----
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) => {
+      const hay =
+        `${p.name} ${p.sku ?? ""} ${p.id}`.toLowerCase().replace(/\s+/g, " ");
+      return hay.includes(q);
+    });
+  }, [products, query]);
 
   return (
     <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
@@ -136,7 +170,7 @@ export default function Home() {
         <script src="https://js.paystack.co/v1/inline.js" async></script>
       </Head>
 
-      {/* ===== Top Bar ===== */}
+      {/* ===== Top Bar (full-width black) ===== */}
       <header className="topbar">
         <div className="topbar__inner">
           <div className="brand">
@@ -144,9 +178,7 @@ export default function Home() {
             Mastermind Electricals & Electronics
           </div>
           <div className="topbar__actions">
-            <a href="/orders" className="pillBtn">
-              📑 My Orders
-            </a>
+            <a href="/orders" className="pillBtn">📑 My Orders</a>
             <button
               onClick={() => setShowCart(true)}
               className="pillBtn"
@@ -163,9 +195,7 @@ export default function Home() {
         <div className="hero">
           <div className="hero__bubble" aria-hidden />
           <div className="eyebrow">TRUSTED IN SOTIK</div>
-          <h1 className="h1">
-            Quality Electronics, Lighting & Gas — Fast Delivery
-          </h1>
+          <h1 className="h1">Quality Electronics, Lighting & Gas — Fast Delivery</h1>
           <p className="lead">
             Shop TVs, woofers, LED bulbs, and 6kg/13kg gas refills. Pay with
             Paystack. Pickup or same-day delivery.
@@ -192,13 +222,8 @@ export default function Home() {
               >
                 View on Maps
               </a>
-              <a href="tel:+254715151010" className="btn btn--light">
-                📞 0715151010
-              </a>
-              <a
-                href="mailto:sales@mastermindelectricals.com"
-                className="btn btn--light"
-              >
+              <a href="tel:+254715151010" className="btn btn--light">📞 0715151010</a>
+              <a href="mailto:sales@mastermindelectricals.com" className="btn btn--light">
                 ✉️ sales@mastermindelectricals.com
               </a>
             </div>
@@ -210,36 +235,20 @@ export default function Home() {
             <div className="eyebrow">SERVICES</div>
 
             <div className="servicesHeader">
-              <img
-                src="/mpesa.png"
-                alt="M-Pesa"
-                className="mpesaLogo"
-                loading="lazy"
-              />
+              <img src="/mpesa.png" alt="M-Pesa" className="mpesaLogo" loading="lazy" />
               <span className="amp">&nbsp;&amp;&nbsp;</span>
               <span className="servicesText">Gas Refill</span>
             </div>
 
-            {/* Gas semi-cards, centered */}
             <div className="cylinders">
               <div className="cylCard">
-                <img
-                  src="/gas-6kg.png"
-                  alt="6KG Gas"
-                  className="cylImg cylImg--tight"
-                  loading="lazy"
-                />
+                <img src="/gas-6kg.png" alt="6KG Gas" className="cylImg cylImg--tight" loading="lazy" />
                 <button className="btn btn--ghost" onClick={() => add("gas-6kg")}>
                   6KG — KES 1,110
                 </button>
               </div>
               <div className="cylCard">
-                <img
-                  src="/gas-13kg.png"
-                  alt="13KG Gas"
-                  className="cylImg"
-                  loading="lazy"
-                />
+                <img src="/gas-13kg.png" alt="13KG Gas" className="cylImg" loading="lazy" />
                 <button className="btn btn--ghost" onClick={() => add("gas-13kg")}>
                   13KG — KES 2,355
                 </button>
@@ -262,19 +271,7 @@ export default function Home() {
       {/* ===== Product Grid ===== */}
       <section className="container" style={{ paddingBottom: 24 }}>
         <div className="productGrid">
-          {useMemo(() => {
-            const q = query.trim().toLowerCase();
-            const list = !q
-              ? products
-              : products.filter((p) => {
-                  const hay =
-                    `${p.name} ${p.sku ?? ""} ${p.id}`
-                      .toLowerCase()
-                      .replace(/\s+/g, " ");
-                  return hay.includes(q);
-                });
-            return list;
-          }, [products, query]).map((p) => {
+          {filtered.map((p) => {
             const price = Number(p.price) || 0;
             const stock = Number(p.stock) || 0;
             return (
@@ -296,16 +293,11 @@ export default function Home() {
                 </div>
                 <div className="sku">{p.sku || ""}</div>
                 <div className="name">{p.name}</div>
-                <div className="price">
-                  KES {Math.round(price).toLocaleString("en-KE")}
-                </div>
+                <div className="price">KES {Math.round(price).toLocaleString("en-KE")}</div>
                 <div className="stock">Stock: {stock}</div>
 
                 {stock > 0 ? (
-                  <button
-                    className="btn btn--accent small"
-                    onClick={() => add(p.id)}
-                  >
+                  <button className="btn btn--accent small" onClick={() => add(p.id)}>
                     Add to Cart
                   </button>
                 ) : (
@@ -322,9 +314,7 @@ export default function Home() {
         <div className="container footerGrid">
           <div>
             <div className="footTitle">Mastermind Electricals & Electronics</div>
-            <div className="footText">
-              Genuine stock • Fair prices • Friendly support.
-            </div>
+            <div className="footText">Genuine stock • Fair prices • Friendly support.</div>
           </div>
           <div>
             <div className="footTitle">Contact</div>
@@ -354,27 +344,16 @@ export default function Home() {
       {/* ===== Cart Drawer ===== */}
       {showCart && (
         <div className="overlay" onClick={() => setShowCart(false)}>
-          <aside
-            className="drawer"
-            onClick={(e) => e.stopPropagation()}
-            aria-label="Cart"
-          >
+          <aside className="drawer" onClick={(e) => e.stopPropagation()} aria-label="Cart">
             <div className="drawer__top">
               <div className="h4">Your Cart</div>
               <div style={{ display: "flex", gap: 8 }}>
                 {cartCount > 1 && (
-                  <button
-                    className="btn btn--light small"
-                    onClick={clear}
-                    aria-label="Remove all items"
-                  >
+                  <button className="btn btn--light small" onClick={clear} aria-label="Remove all">
                     Remove all
                   </button>
                 )}
-                <button
-                  className="btn btn--dark small"
-                  onClick={() => setShowCart(false)}
-                >
+                <button className="btn btn--dark small" onClick={() => setShowCart(false)}>
                   Close
                 </button>
               </div>
@@ -394,24 +373,17 @@ export default function Home() {
                           {currency(price)} × {l.qty}
                         </div>
                       </div>
+
+                      {/* controls on the right: −  +  ✕  (NO qty number between) */}
                       <div className="qty">
-                        <button
-                          className="qtyBtn"
-                          onClick={() => sub(l.product.id)}
-                          aria-label="Decrease"
-                        >
+                        <button className="qtyBtn" onClick={() => sub(l.product.id)} aria-label="Decrease">
                           −
                         </button>
-                        <div className="qtyNum">{l.qty}</div>
-                        <button
-                          className="qtyBtn"
-                          onClick={() => add(l.product.id)}
-                          aria-label="Increase"
-                        >
+                        <button className="qtyBtn" onClick={() => add(l.product.id)} aria-label="Increase">
                           +
                         </button>
                         <button
-                          className="qtyBtn"
+                          className="qtyBtn qtyBtn--danger"
                           onClick={() => remove(l.product.id)}
                           aria-label="Remove"
                         >
@@ -425,35 +397,46 @@ export default function Home() {
             )}
 
             <div className="totals">
-              <div className="row">
+              <div className="row" style={{ marginBottom: 6 }}>
                 <span>Total</span>
                 <span className="strong">{currency(cartTotal)}</span>
               </div>
 
-              {/* Customer email for Paystack */}
-              <input
-                type="email"
-                placeholder="Enter your email"
-                value={customerEmail}
-                onChange={(e) => setCustomerEmail(e.target.value)}
-                className="input"
-                style={{ marginTop: 6 }}
-                required
-              />
+              {/* Customer details */}
+              <div className="fields">
+                <input
+                  type="text"
+                  placeholder="Your name"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="input"
+                />
+                <input
+                  type="tel"
+                  placeholder="Phone (M-Pesa)"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  className="input"
+                />
+                <input
+                  type="email"
+                  placeholder="Email (required)"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  className="input"
+                  required
+                />
+              </div>
 
               <button
                 disabled={cartLines.length === 0 || !customerEmail}
-                className={`btn ${
-                  cartLines.length && customerEmail ? "btn--paystack" : "btn--disabled"
-                }`}
+                className={`btn ${cartLines.length && customerEmail ? "btn--paystack" : "btn--disabled"}`}
                 onClick={handlePaystack}
               >
                 Pay with M-Pesa (Paystack)
               </button>
 
-              <div className="note">
-                You’ll be redirected to complete payment securely via Paystack.
-              </div>
+              <div className="note">You’ll be redirected to complete payment securely via Paystack.</div>
             </div>
           </aside>
         </div>
@@ -520,7 +503,8 @@ export default function Home() {
         .btn--dark { background:#111; color:#fff; padding:10px 16px; border:none; }
         .btn--ghost { background:#fff; color:#111; border:1px solid #ddd; padding:8px 12px; border-radius:10px; }
         .btn--disabled { background:#eee; color:#888; pointer-events:none; }
-        .btn--paystack { background:#3bb75e; color:#fff; border:none; padding:12px 16px; border-radius:12px; font-weight:800; }
+        .btn--paystack { background:#21c77a; color:#fff; border:none; padding:12px 16px; border-radius:12px; font-weight:800; }
+        .btn--paystack:hover { filter: brightness(0.95); }
         .small { padding:8px 14px; }
 
         .search { width:100%; height:44px; padding:0 14px; border-radius:12px; border:1px solid #ddd; background:#fff; font-size:15px; outline:none; }
@@ -535,33 +519,40 @@ export default function Home() {
 
         .footer { border-top:1px solid #eaeaea; padding:18px 0 12px; background:#fafafa; }
         .footerGrid { display:grid; grid-template-columns:1fr; gap:16px; padding:14px 12px; }
-        @media (min-width: 900px) { .footerGrid { grid-template-columns: 2fr 1fr 1fr; } }
+        @media (min-width: 900px) { .footerGrid { grid-template-columns: repeat(3, 1fr); } }
         .footTitle { font-weight:800; margin-bottom:6px; }
-        .footText { color:#555; }
-        .footList { list-style:none; padding:0; margin:0; color:#555; display:grid; gap:6px; }
+        .footText, .footList { color:#666; }
+        .footList { margin:0; padding-left:16px; }
 
-        /* Drawer */
-        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: grid; place-items: center; padding: 10px; z-index: 70; }
-        .drawer { width: min(560px, 100%); background:#fff; border-radius:16px; border:1px solid #eee; max-height: 90vh; overflow: hidden; display: grid; grid-template-rows: auto 1fr auto; }
-        .drawer__top { display:flex; align-items:center; justify-content:space-between; padding:14px 14px 10px; border-bottom:1px dashed #eee; }
-        .empty { padding: 14px; color:#666; }
-        .lines { padding: 4px 14px 10px; display: grid; gap: 10px; overflow: auto; }
-        .line { display:flex; align-items:center; justify-content:space-between; border-bottom:1px dashed #eee; padding: 10px 0; }
+        /* Cart overlay & drawer */
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 60; display:flex; justify-content:flex-end; }
+        .drawer {
+          width: min(520px, 100%); background:#fff; height: auto; max-height: 88vh;
+          margin: 6vh 8px 6vh 8px; border-radius: 16px; border:1px solid #eee;
+          display:flex; flex-direction:column; overflow:hidden;
+        }
+        .drawer__top { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid #f0f0f0; position:sticky; top:0; background:#fff; z-index:1; }
+        .lines { padding: 8px 14px; overflow:auto; }
+        .line { display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px dashed #eee; gap:10px; }
         .line__name { font-weight:800; }
-        .line__price { color:#666; font-size:12px; margin-top:4px; }
-        .qty { display:flex; align-items:center; gap:8px; }
-        .qtyBtn { height:36px; width:36px; border-radius:10px; border:1px solid #eee; background:#f6f7f8; cursor:pointer; font-weight:800; }
-        .qtyNum { min-width: 20px; text-align:center; }
+        .line__price { color:#7b8794; font-size:13px; }
+        .qty { display:flex; gap:10px; align-items:center; }
+        .qtyBtn {
+          background:#f4f6f8; border:1px solid #e6eaee; border-radius:10px; width:42px; height:36px;
+          display:flex; align-items:center; justify-content:center; font-size:18px; cursor:pointer;
+        }
+        .qtyBtn--danger { background:#fde8ea; border-color:#fad1d7; color:#c81e1e; }
 
-        .totals { padding: 10px 14px 16px; border-top:1px dashed #eee; display:grid; gap:10px; }
-        .row { display:flex; align-items:center; justify-content:space-between; font-weight:800; }
+        .totals { padding: 10px 14px 16px; border-top:1px solid #f0f0f0; }
+        .row { display:flex; align-items:center; justify-content:space-between; font-weight:800; font-size:20px; margin-bottom:8px; }
         .strong { font-weight:800; }
-        .input { width:100%; height:44px; border:1px solid #ddd; border-radius:12px; padding:0 12px; }
-        .note { color:#6b7280; font-size:12px; line-height:1.3; }
+        .fields { display:grid; gap:8px; margin:8px 0 10px; }
+        .input { height:42px; border:1px solid #e2e8f0; border-radius:10px; padding:0 12px; outline:none; }
+        .note { color:#7b8794; font-size:12px; margin-top:8px; }
 
         /* WhatsApp FAB */
-        .waFab { position: fixed; right: 16px; bottom: 16px; width: 56px; height: 56px; border-radius: 9999px; background: #25D366; display:grid; place-items:center; box-shadow: 0 10px 25px rgba(0,0,0,.18); z-index:60; }
-        .waIcon { width: 28px; height: 28px; filter: brightness(0) invert(1); }
+        .waFab { position: fixed; right: 16px; bottom: 16px; width: 56px; height: 56px; background: #25D366; border-radius: 9999px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,.15); z-index:70; }
+        .waIcon { width: 28px; height: 28px; }
       `}</style>
     </div>
   );
