@@ -13,8 +13,8 @@ type OrderItem = {
 
 type Order = {
   id: string;
-  reference?: string;   // exists when paid
-  createdAt?: string;   // human-friendly date/time
+  reference?: string;
+  createdAt?: string;
   total: number;
   items: OrderItem[];
 };
@@ -30,29 +30,11 @@ const formatDateTime = (d: Date) =>
     d.getHours()
   )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
-// Turn anything we might already have in storage into the exact format above
-const normalizeCreatedAt = (value: unknown, id: string): string => {
-  // If ISO-like string -> parse and format
-  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
-    const d = new Date(value);
-    if (!isNaN(d.getTime())) return formatDateTime(d);
-  }
-  // If already close to target but missing seconds -> add :00
-  if (typeof value === "string" && /^\d{2}\/\d{2}\/\d{4}, \d{2}:\d{2}$/.test(value)) {
-    return `${value}:00`;
-  }
-  // If already in target format, keep it
-  if (typeof value === "string" && /^\d{2}\/\d{2}\/\d{4}, \d{2}:\d{2}:\d{2}$/.test(value)) {
-    return value;
-  }
-  // Try deriving from the order id if it encodes a timestamp
+const createdFromId = (id: string): string | undefined => {
   const ts = Number(id?.replace(/^\D+/, ""));
-  if (Number.isFinite(ts)) {
-    const d = new Date(ts);
-    if (!isNaN(d.getTime())) return formatDateTime(d);
-  }
-  // Fallback to "now"
-  return formatDateTime(new Date());
+  if (!Number.isFinite(ts)) return;
+  const d = new Date(ts);
+  return isNaN(d.getTime()) ? undefined : formatDateTime(d);
 };
 
 const PLACEHOLDER = "https://via.placeholder.com/56x56.png?text=%20";
@@ -63,11 +45,9 @@ const slugify = (s: string) =>
     .replace(/(^-|-$)/g, "");
 
 const resolveItemImage = (it: OrderItem) => {
-  // 1) direct fields
   const direct = it.image || it.img || it.imageUrl || it.photo || it.picture;
   if (typeof direct === "string" && direct.trim()) return direct.trim();
 
-  // 2) localStorage map (optional): { "<item name>": "url" }
   if (typeof window !== "undefined") {
     try {
       const raw = localStorage.getItem("productImages");
@@ -80,25 +60,23 @@ const resolveItemImage = (it: OrderItem) => {
     } catch {}
   }
 
-  // 3) public images by slug
   const slug = slugify(it.name);
   if (slug) return `/images/${slug}.webp`;
 
-  // 4) final fallback
   return PLACEHOLDER;
 };
 
-/** -------- Pills (extra-light shades) -------- */
+/** -------- Pills (pastel shades) -------- */
 const HeaderPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
-  const bg = paid ? "#ECFDF5" : "#FEE2E2"; // very light green / very light red
-  const fg = paid ? "#065F46" : "#7F1D1D";
-  const text = paid ? "COMPLETED" : "FAILED";
+  const bg = paid ? "#dcfce7" : "#e5e7eb"; // pastel green / pastel gray
+  const color = paid ? "#166534" : "#374151"; // dark green / slate
+  const text = paid ? "COMPLETED" : "PENDING";
   return (
     <span
       style={{
         background: bg,
-        color: fg,
+        color,
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
@@ -113,14 +91,14 @@ const HeaderPill = ({ reference }: { reference?: string }) => {
 
 const StatusPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
-  const bg = paid ? "#DCFCE7" : "#FEE2E2"; // light green / light red
-  const fg = paid ? "#166534" : "#7F1D1D";
+  const bg = paid ? "#dcfce7" : "#fee2e2"; // pastel green / pastel red
+  const color = paid ? "#166534" : "#991b1b"; // dark green / dark red
   const text = paid ? "PAID" : "FAILED";
   return (
     <span
       style={{
         background: bg,
-        color: fg,
+        color,
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
@@ -136,7 +114,7 @@ const StatusPill = ({ reference }: { reference?: string }) => {
 /** -------- Page -------- */
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[] | null>(null);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({}); // per-order toggle
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -151,17 +129,15 @@ export default function OrdersPage() {
       } catch {}
     }
 
-    let changed = false;
     const normalized: Order[] = (merged || [])
       .filter((o) => o && typeof (o as any).id === "string")
       .map((o: any) => {
-        const created = normalizeCreatedAt(o.createdAt, o.id);
-        if (o.createdAt !== created) changed = true;
+        const created =
+          o.createdAt || createdFromId(o.id) || formatDateTime(new Date());
         const items: OrderItem[] = Array.isArray(o.items) ? o.items : [];
         return { ...o, createdAt: created, items };
       });
 
-    // newest first (if ids are timestamp-like)
     normalized.sort((a, b) => {
       const na = Number(a.id.replace(/^\D+/, ""));
       const nb = Number(b.id.replace(/^\D+/, ""));
@@ -169,7 +145,6 @@ export default function OrdersPage() {
       return 0;
     });
 
-    // Persist back (also migrate to canonical key)
     try {
       localStorage.setItem(CANONICAL_KEY, JSON.stringify(normalized));
       for (const key of POSSIBLE_KEYS) {
@@ -177,7 +152,6 @@ export default function OrdersPage() {
       }
     } catch {}
 
-    // default collapsed
     const initialExpanded: Record<string, boolean> = {};
     normalized.forEach((o) => (initialExpanded[o.id] = false));
 
@@ -284,7 +258,7 @@ export default function OrdersPage() {
                     overflow: "hidden",
                   }}
                 >
-                  {/* Header row (tap to toggle) */}
+                  {/* Header row */}
                   <button
                     onClick={() => toggle(order.id)}
                     style={{ all: "unset", cursor: "pointer", width: "100%" }}
@@ -300,7 +274,6 @@ export default function OrdersPage() {
                         borderBottom: "1px solid #f0f0f0",
                       }}
                     >
-                      {/* Left: order id + date */}
                       <div style={{ display: "flex", flexDirection: "column" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ color: "#666" }}>Order</span>
@@ -313,7 +286,6 @@ export default function OrdersPage() {
                         ) : null}
                       </div>
 
-                      {/* Right: pill + total */}
                       <div
                         style={{
                           display: "flex",
@@ -376,7 +348,6 @@ export default function OrdersPage() {
                         );
                       })}
 
-                      {/* Reference */}
                       <div
                         style={{
                           display: "flex",
@@ -389,8 +360,8 @@ export default function OrdersPage() {
                         <span style={{ color: "#777" }}>Reference</span>
                         <span
                           style={{
-                            background: "#F8FAFC",
-                            border: "1px solid #E2E8F0",
+                            background: "#f5f6f8",
+                            border: "1px solid #eee",
                             borderRadius: 10,
                             padding: "6px 10px",
                             fontFamily:
@@ -402,11 +373,12 @@ export default function OrdersPage() {
                         </span>
                         {order.reference ? (
                           <button
-                            onClick={() =>
-                              navigator.clipboard.writeText(order.reference!)
-                            }
+                            onClick={() => {
+                              navigator.clipboard.writeText(order.reference!);
+                              alert("Copied!");
+                            }}
                             style={{
-                              background: "#FDE68A",
+                              background: "#fde68a",
                               color: "#111",
                               fontWeight: 800,
                               border: "none",
@@ -420,18 +392,16 @@ export default function OrdersPage() {
                         ) : null}
                       </div>
 
-                      {/* Status */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ color: "#777" }}>Status</span>
                         <StatusPill reference={order.reference} />
                       </div>
 
-                      {/* Total — amount sits close to the label */}
                       <div
                         style={{
-                          display: "flex",
+                          display: "grid",
+                          gridTemplateColumns: "1fr auto",
                           alignItems: "center",
-                          gap: 8, // keep it tight
                           marginTop: 2,
                         }}
                       >
@@ -450,4 +420,4 @@ export default function OrdersPage() {
       </div>
     </div>
   );
-      }
+}
