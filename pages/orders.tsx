@@ -16,12 +16,11 @@ type Order = {
   items: OrderItem[];
 };
 
-const GREEN = "#4fd18b";      // (header pill) keep as before
-const GREY  = "#bfc4cc";
-const RED   = "#e85d5d";
+const GREEN = "#4fd18b";      // header pill (completed)
+const GREY  = "#bfc4cc";      // header pill (pending)
 const COPY  = "#f4d03f";
 
-// Lighter colors for STATUS row (only)
+// Lighter colors for STATUS row (requested)
 const STATUS_BG_GREEN = "#e9fbf2";
 const STATUS_TXT_GREEN = "#0b7a43";
 const STATUS_BG_RED = "#fdeaea";
@@ -39,16 +38,32 @@ const fmtDateTime = (v?: string) => {
   return `${dd}/${mm}/${yy}, ${hh}:${mi}:${ss}`;
 };
 
+// Fallback image guesses from item name
+const guessImageFromName = (name?: string): string | undefined => {
+  if (!name) return undefined;
+  const n = name.toLowerCase();
+
+  if (n.includes("torch")) return "/torch.png";
+  if (n.includes("6kg") || n.includes("6 kg")) return "/6kg.png";
+  if (n.includes("13kg") || n.includes("13 kg")) return "/13kg.png";
+  if (n.includes("bulb")) return "/bulb.png";
+  if (n.includes("tv") || n.includes("television")) return "/tv.png";
+  if (n.includes("woofer") || n.includes("speaker")) return "/woofer.png";
+
+  return undefined; // fallback to placeholder later
+};
+
 // Ensure relative /public paths render anywhere
 const resolveImg = (src?: string) => {
-  if (!src) return "https://via.placeholder.com/56x56.png?text=%20";
+  const fallback = "https://via.placeholder.com/56x56.png?text=%20";
+  if (!src) return fallback;
   if (/^https?:\/\//i.test(src)) return src;
   if (typeof window !== "undefined") {
     const base = window.location.origin;
     if (src.startsWith("/")) return base + src;
     return base + "/" + src.replace(/^\.?\//, "");
   }
-  return src;
+  return src || fallback;
 };
 
 const HeaderPill = ({ reference }: { reference?: string }) => {
@@ -209,9 +224,17 @@ export default function OrdersPage() {
                       cursor: "pointer",
                     }}
                   >
-                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                      <span style={{ color: "#666" }}>Order</span>
-                      <span style={{ fontWeight: 800 }}>#{order.id}</span>
+                    <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+                        <span style={{ color: "#666" }}>Order</span>
+                        <span style={{ fontWeight: 800 }}>#{order.id}</span>
+                      </div>
+                      {/* DATE now under order number on small screens */}
+                      <div style={{ width: "100%" }}>
+                        <span style={{ color: "#999", fontSize: 12 }}>
+                          {order.createdAt}
+                        </span>
+                      </div>
                     </div>
                     <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                       <HeaderPill reference={order.reference} />
@@ -224,13 +247,15 @@ export default function OrdersPage() {
                   {/* Expanded body */}
                   {isOpen && (
                     <div style={{ padding: 14, display: "grid", gap: 10 }}>
-                      {/* Item(s) */}
+                      {/* Items */}
                       {order.items.map((it, i) => {
                         const price = Number(it.price) || 0;
-                        // default qty to 1 if empty/0 to avoid "× 0" or NaN
-                        const qty = Number(
-                          (it.quantity ?? 1) === 0 ? 1 : it.quantity ?? 1
-                        ) || 1;
+                        const qty =
+                          Number((it.quantity ?? 1) === 0 ? 1 : it.quantity ?? 1) ||
+                          1;
+                        const chosen =
+                          it.image || guessImageFromName(it.name) || undefined;
+                        const imgSrc = resolveImg(chosen);
                         const lineTotal = Math.round(price * qty);
                         return (
                           <div
@@ -243,7 +268,7 @@ export default function OrdersPage() {
                             }}
                           >
                             <img
-                              src={resolveImg(it.image)}
+                              src={imgSrc}
                               alt={it.name}
                               style={{
                                 width: 56,
@@ -263,11 +288,6 @@ export default function OrdersPage() {
                                   KES {lineTotal}
                                 </span>
                               </div>
-                              {order.createdAt && (
-                                <div style={{ color: "#999", fontSize: 12, marginTop: 2 }}>
-                                  {order.createdAt}
-                                </div>
-                              )}
                             </div>
                           </div>
                         );
