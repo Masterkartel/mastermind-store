@@ -5,127 +5,95 @@ type OrderItem = {
   name: string;
   price: number;
   quantity: number;
-  image?: string;      // primary
-  // some carts might have used other keys — we’ll probe them in getItemImage()
-  // img?: string;
-  // thumbnail?: string;
+  image?: string;
 };
 
 type Order = {
   id: string;
-  reference?: string;   // exists when paid
-  createdAt?: string;   // human date string
+  reference?: string;
+  createdAt?: string;
   total: number;
   items: OrderItem[];
 };
 
 const formatDateTime = (d: Date) => {
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
-
-// --- UI pills (same look, slightly lightened) ---
-const HeaderPill = ({ reference }: { reference?: string }) => {
-  const paid = !!reference;
-  return (
-    <span
-      style={{
-        background: paid ? "#36c06a" : "#dde1e7",
-        color: paid ? "#0b4d27" : "#3b3f46",
-        fontSize: 12,
-        fontWeight: 800,
-        padding: "4px 10px",
-        borderRadius: 999,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {paid ? "COMPLETED" : "PENDING"}
-    </span>
-  );
-};
-
-const StatusPill = ({ reference }: { reference?: string }) => {
-  const paid = !!reference;
-  return (
-    <span
-      style={{
-        background: paid ? "#dff7e8" : "#fde2e2",
-        color: paid ? "#117a39" : "#b02a2a",
-        fontSize: 12,
-        fontWeight: 800,
-        padding: "4px 10px",
-        borderRadius: 999,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {paid ? "PAID" : "FAILED"}
-    </span>
-  );
-};
-
-// Robust image resolver: prefer stored URL, then try a public asset guess, then final placeholder
-const getItemImage = (it: OrderItem): string => {
-  const anyIt = it as any;
-  const first =
-    it.image ||
-    anyIt?.img ||
-    anyIt?.thumbnail ||
-    "";
-
-  if (first) return first;
-
-  // Try to derive a filename in /public/products (you can adjust folder/name rules to your catalog)
-  const slug = it.name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-  const guessed = `/products/${slug}.webp`;
-  // We can’t pre-check existence without a request; provide it and let browser try.
-  return guessed || "https://placehold.co/56x56/png";
+  const day = pad(d.getDate());
+  const month = pad(d.getMonth() + 1);
+  const year = d.getFullYear();
+  const hours = pad(d.getHours());
+  const mins = pad(d.getMinutes());
+  const secs = pad(d.getSeconds());
+  return `${day}/${month}/${year}, ${hours}:${mins}:${secs}`;
 };
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({}); // per-order open/closed
+  const [expanded, setExpanded] = useState<string | null>(null);
 
-  // Load & normalize orders; start all COLLAPSED every refresh
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const raw = localStorage.getItem("orders");
     let parsed: Order[] = [];
     try {
-      parsed = JSON.parse(localStorage.getItem("orders") || "[]");
+      parsed = raw ? JSON.parse(raw) : [];
     } catch {
       parsed = [];
     }
 
-    // ensure createdAt exists
-    let changed = false;
     const normalized = parsed.map((o) => {
       if (!o.createdAt) {
-        changed = true;
         return { ...o, createdAt: formatDateTime(new Date()) };
       }
-      return o;
+      return { ...o, createdAt: formatDateTime(new Date(o.createdAt)) };
     });
-    if (changed) {
-      try {
-        localStorage.setItem("orders", JSON.stringify(normalized));
-      } catch {}
-    }
-    setOrders(normalized);
 
-    // default collapsed (no persistence)
-    const initial: Record<string, boolean> = {};
-    normalized.forEach((o) => (initial[o.id] = false));
-    setExpanded(initial);
+    setOrders(normalized);
   }, []);
 
-  const toggle = (id: string) =>
-    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+  const HeaderPill = ({ reference }: { reference?: string }) => {
+    const paid = !!reference;
+    const bg = paid ? "#4fd18b" : "#bfc4cc"; // lighter green / grey
+    const text = paid ? "COMPLETED" : "PENDING";
+    return (
+      <span
+        style={{
+          background: bg,
+          color: "#fff",
+          fontSize: 12,
+          fontWeight: 800,
+          padding: "4px 10px",
+          borderRadius: 999,
+        }}
+      >
+        {text}
+      </span>
+    );
+  };
+
+  const StatusPill = ({ reference }: { reference?: string }) => {
+    const paid = !!reference;
+    const bg = paid ? "#4fd18b" : "#e85d5d"; // lighter green / red
+    const text = paid ? "PAID" : "FAILED";
+    return (
+      <span
+        style={{
+          background: bg,
+          color: "#fff",
+          fontSize: 12,
+          fontWeight: 800,
+          padding: "4px 10px",
+          borderRadius: 999,
+        }}
+      >
+        {text}
+      </span>
+    );
+  };
 
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
-      {/* Header bar */}
+      {/* Header */}
       <div
         style={{
           background: "#111",
@@ -142,7 +110,6 @@ export default function OrdersPage() {
             margin: "0 auto",
             display: "grid",
             gridTemplateColumns: "1fr auto",
-            gap: 8,
             alignItems: "center",
           }}
         >
@@ -176,9 +143,6 @@ export default function OrdersPage() {
               fontWeight: 800,
               padding: "8px 14px",
               borderRadius: 12,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
             }}
           >
             ← Back to Shop
@@ -186,7 +150,7 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* Orders list */}
+      {/* Orders */}
       <div style={{ maxWidth: 1200, margin: "12px auto", padding: "0 12px" }}>
         {orders.length === 0 ? (
           <div
@@ -204,7 +168,7 @@ export default function OrdersPage() {
         ) : (
           <div style={{ display: "grid", gap: 12 }}>
             {orders.map((order) => {
-              const isOpen = !!expanded[order.id];
+              const isOpen = expanded === order.id;
               return (
                 <div
                   key={order.id}
@@ -215,46 +179,39 @@ export default function OrdersPage() {
                     overflow: "hidden",
                   }}
                 >
-                  {/* Header row (tap to toggle) */}
-                  <button
-                    onClick={() => toggle(order.id)}
-                    style={{ all: "unset", width: "100%", cursor: "pointer" }}
-                    aria-expanded={isOpen}
-                    aria-controls={`order-body-${order.id}`}
+                  {/* Header row */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr auto",
+                      alignItems: "center",
+                      padding: "12px 14px",
+                      cursor: "pointer",
+                    }}
+                    onClick={() =>
+                      setExpanded(isOpen ? null : order.id)
+                    }
                   >
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr auto",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "12px 14px",
-                        borderBottom: "1px solid #f0f0f0",
-                      }}
-                    >
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <span style={{ color: "#666" }}>Order</span>
-                          <span style={{ fontWeight: 800 }}>#{order.id}</span>
-                        </div>
-                        {order.createdAt ? (
-                          <span style={{ color: "#999", fontSize: 12 }}>{order.createdAt}</span>
-                        ) : null}
-                      </div>
-
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <HeaderPill reference={order.reference} />
-                        <span style={{ fontWeight: 800 }}>
-                          KES {Math.round(order.total).toLocaleString("en-KE")}
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      <span style={{ color: "#666" }}>Order</span>
+                      <span style={{ fontWeight: 800 }}>#{order.id}</span>
+                      {order.createdAt && (
+                        <span style={{ color: "#999", fontSize: 12 }}>
+                          {order.createdAt}
                         </span>
-                      </div>
+                      )}
                     </div>
-                  </button>
+                    <div style={{ display: "flex", gap: 10 }}>
+                      <HeaderPill reference={order.reference} />
+                      <span style={{ fontWeight: 800 }}>
+                        KES {Math.round(order.total).toLocaleString("en-KE")}
+                      </span>
+                    </div>
+                  </div>
 
-                  {/* Collapsible body */}
+                  {/* Expanded body */}
                   {isOpen && (
-                    <div id={`order-body-${order.id}`} style={{ padding: 14, display: "grid", gap: 10 }}>
-                      {/* items */}
+                    <div style={{ padding: 14, display: "grid", gap: 10 }}>
                       {order.items.map((it, i) => (
                         <div
                           key={i}
@@ -266,7 +223,10 @@ export default function OrdersPage() {
                           }}
                         >
                           <img
-                            src={getItemImage(it)}
+                            src={
+                              it.image ||
+                              "https://via.placeholder.com/56x56.png?text=%20"
+                            }
                             alt={it.name}
                             style={{
                               width: 56,
@@ -276,8 +236,6 @@ export default function OrdersPage() {
                               background: "#f4f4f4",
                               border: "1px solid #eee",
                             }}
-                            // eager load to avoid missing thumbnails
-                            loading="eager"
                           />
                           <div>
                             <div style={{ fontWeight: 800 }}>{it.name}</div>
@@ -315,9 +273,11 @@ export default function OrdersPage() {
                         >
                           {order.reference || "—"}
                         </span>
-                        {order.reference ? (
+                        {order.reference && (
                           <button
-                            onClick={() => navigator.clipboard.writeText(order.reference!)}
+                            onClick={() =>
+                              navigator.clipboard.writeText(order.reference!)
+                            }
                             style={{
                               background: "#f4d03f",
                               color: "#111",
@@ -330,28 +290,28 @@ export default function OrdersPage() {
                           >
                             Copy
                           </button>
-                        ) : null}
+                        )}
                       </div>
 
-                      {/* Status */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ color: "#777" }}>Status</span>
-                        <StatusPill reference={order.reference} />
-                      </div>
-
-                      {/* Total */}
+                      {/* Status + Total */}
                       <div
                         style={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr auto",
+                          display: "flex",
                           alignItems: "center",
+                          justifyContent: "space-between",
                           marginTop: 2,
                         }}
                       >
-                        <span style={{ color: "#777" }}>Total</span>
-                        <span style={{ fontWeight: 800 }}>
-                          KES {Math.round(order.total).toLocaleString("en-KE")}
-                        </span>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <span style={{ color: "#777" }}>Status</span>
+                          <StatusPill reference={order.reference} />
+                        </div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <span style={{ color: "#777" }}>Total</span>
+                          <span style={{ fontWeight: 800 }}>
+                            KES {Math.round(order.total).toLocaleString("en-KE")}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   )}
