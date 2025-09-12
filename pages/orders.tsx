@@ -13,7 +13,7 @@ type OrderItem = {
 
 type Order = {
   id: string;
-  reference?: string;   // exists when paid (same as order number in your flow)
+  reference?: string;   // exists when paid
   createdAt?: string;   // human-friendly date/time
   total: number;
   items: OrderItem[];
@@ -30,11 +30,29 @@ const formatDateTime = (d: Date) =>
     d.getHours()
   )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
-const createdFromId = (id: string): string | undefined => {
+// Turn anything we might already have in storage into the exact format above
+const normalizeCreatedAt = (value: unknown, id: string): string => {
+  // If ISO-like string -> parse and format
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+    const d = new Date(value);
+    if (!isNaN(d.getTime())) return formatDateTime(d);
+  }
+  // If already close to target but missing seconds -> add :00
+  if (typeof value === "string" && /^\d{2}\/\d{2}\/\d{4}, \d{2}:\d{2}$/.test(value)) {
+    return `${value}:00`;
+  }
+  // If already in target format, keep it
+  if (typeof value === "string" && /^\d{2}\/\d{2}\/\d{4}, \d{2}:\d{2}:\d{2}$/.test(value)) {
+    return value;
+  }
+  // Try deriving from the order id if it encodes a timestamp
   const ts = Number(id?.replace(/^\D+/, ""));
-  if (!Number.isFinite(ts)) return;
-  const d = new Date(ts);
-  return isNaN(d.getTime()) ? undefined : formatDateTime(d);
+  if (Number.isFinite(ts)) {
+    const d = new Date(ts);
+    if (!isNaN(d.getTime())) return formatDateTime(d);
+  }
+  // Fallback to "now"
+  return formatDateTime(new Date());
 };
 
 const PLACEHOLDER = "https://via.placeholder.com/56x56.png?text=%20";
@@ -73,9 +91,8 @@ const resolveItemImage = (it: OrderItem) => {
 /** -------- Pills (extra-light shades) -------- */
 const HeaderPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
-  // COMPLETED (very light green) / FAILED (very light red) — header now mirrors status
-  const bg = paid ? "#ECFDF5" : "#FEE2E2"; // emerald-50 / red-100
-  const fg = paid ? "#065F46" : "#7F1D1D"; // emerald-800 / red-900
+  const bg = paid ? "#ECFDF5" : "#FEE2E2"; // very light green / very light red
+  const fg = paid ? "#065F46" : "#7F1D1D";
   const text = paid ? "COMPLETED" : "FAILED";
   return (
     <span
@@ -96,9 +113,8 @@ const HeaderPill = ({ reference }: { reference?: string }) => {
 
 const StatusPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
-  // PAID (light green) / FAILED (light red)
-  const bg = paid ? "#DCFCE7" : "#FEE2E2"; // green-100 / red-100
-  const fg = paid ? "#166534" : "#7F1D1D"; // green-800 / red-900
+  const bg = paid ? "#DCFCE7" : "#FEE2E2"; // light green / light red
+  const fg = paid ? "#166534" : "#7F1D1D";
   const text = paid ? "PAID" : "FAILED";
   return (
     <span
@@ -122,7 +138,6 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({}); // per-order toggle
 
-  // Load orders, normalize, migrate to canonical key
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -136,11 +151,12 @@ export default function OrdersPage() {
       } catch {}
     }
 
+    let changed = false;
     const normalized: Order[] = (merged || [])
       .filter((o) => o && typeof (o as any).id === "string")
       .map((o: any) => {
-        const created =
-          o.createdAt || createdFromId(o.id) || formatDateTime(new Date());
+        const created = normalizeCreatedAt(o.createdAt, o.id);
+        if (o.createdAt !== created) changed = true;
         const items: OrderItem[] = Array.isArray(o.items) ? o.items : [];
         return { ...o, createdAt: created, items };
       });
@@ -153,6 +169,7 @@ export default function OrdersPage() {
       return 0;
     });
 
+    // Persist back (also migrate to canonical key)
     try {
       localStorage.setItem(CANONICAL_KEY, JSON.stringify(normalized));
       for (const key of POSSIBLE_KEYS) {
@@ -160,7 +177,7 @@ export default function OrdersPage() {
       }
     } catch {}
 
-    // default: collapsed on first load (open on tap)
+    // default collapsed
     const initialExpanded: Record<string, boolean> = {};
     normalized.forEach((o) => (initialExpanded[o.id] = false));
 
@@ -177,7 +194,7 @@ export default function OrdersPage() {
 
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
-      {/* Header bar (edge-to-edge black) */}
+      {/* Header bar */}
       <div
         style={{
           background: "#111",
@@ -283,7 +300,7 @@ export default function OrdersPage() {
                         borderBottom: "1px solid #f0f0f0",
                       }}
                     >
-                      {/* Left: order id + date BELOW */}
+                      {/* Left: order id + date */}
                       <div style={{ display: "flex", flexDirection: "column" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ color: "#666" }}>Order</span>
@@ -296,7 +313,7 @@ export default function OrdersPage() {
                         ) : null}
                       </div>
 
-                      {/* Right: pill + total (compact) */}
+                      {/* Right: pill + total */}
                       <div
                         style={{
                           display: "flex",
@@ -372,8 +389,8 @@ export default function OrdersPage() {
                         <span style={{ color: "#777" }}>Reference</span>
                         <span
                           style={{
-                            background: "#F8FAFC", // slate-50
-                            border: "1px solid #E2E8F0", // slate-200
+                            background: "#F8FAFC",
+                            border: "1px solid #E2E8F0",
                             borderRadius: 10,
                             padding: "6px 10px",
                             fontFamily:
@@ -389,7 +406,7 @@ export default function OrdersPage() {
                               navigator.clipboard.writeText(order.reference!)
                             }
                             style={{
-                              background: "#FDE68A", // amber-200
+                              background: "#FDE68A",
                               color: "#111",
                               fontWeight: 800,
                               border: "none",
@@ -409,12 +426,12 @@ export default function OrdersPage() {
                         <StatusPill reference={order.reference} />
                       </div>
 
-                      {/* Total */}
+                      {/* Total — amount sits close to the label */}
                       <div
                         style={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr auto",
+                          display: "flex",
                           alignItems: "center",
+                          gap: 8, // keep it tight
                           marginTop: 2,
                         }}
                       >
@@ -433,4 +450,4 @@ export default function OrdersPage() {
       </div>
     </div>
   );
-}
+      }
