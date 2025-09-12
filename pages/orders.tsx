@@ -1,155 +1,151 @@
-// pages/orders.tsx
-import Head from "next/head";
 import { useEffect, useMemo, useState } from "react";
-
-type PaymentStatus = "PENDING" | "PAID" | "FAILED";
-type OrderStatus = "PENDING" | "COMPLETED" | "FAILED";
+import Head from "next/head";
 
 type OrderItem = {
   id: string;
   name: string;
-  qty: number;
   price: number;
+  qty: number;
   img?: string;
 };
 
 type Order = {
-  id: string;
-  reference: string;
-  createdAt?: string;
+  id: string;               // display id (e.g. T... or timestamp id)
+  reference: string;        // Paystack reference
+  createdAt?: string;       // ISO string
   total: number;
   items: OrderItem[];
-  paymentStatus: PaymentStatus; // inner pill
-  status: OrderStatus;          // summary pill
+  // Status at the “header” level
+  status: "PENDING" | "COMPLETED" | "FAILED";
+  // Payment status line
+  paymentStatus: "PENDING" | "PAID" | "FAILED";
 };
 
-const LS_KEY = "mm_orders";
+const load = (): Order[] => {
+  try {
+    const raw = localStorage.getItem("mm_orders");
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
 
-// --- normalize any legacy orders in localStorage ---
-function normalizeOrder(raw: any): Order {
-  const paymentRaw = String(raw?.paymentStatus ?? "PENDING").toUpperCase();
-  const payment: PaymentStatus =
-    paymentRaw === "PAID" ? "PAID" : paymentRaw === "FAILED" ? "FAILED" : "PENDING";
+const persist = (orders: Order[]) => {
+  try {
+    localStorage.setItem("mm_orders", JSON.stringify(orders));
+  } catch {}
+};
 
-  // derive summary status from payment
-  const status: OrderStatus =
-    payment === "PAID" ? "COMPLETED" : payment === "FAILED" ? "FAILED" : "PENDING";
+const currency = (n: number) => `KES ${Math.round(n).toLocaleString("en-KE")}`;
 
-  return {
-    id: String(raw?.id ?? ""),
-    reference: String(raw?.reference ?? ""),
-    createdAt: raw?.createdAt ? String(raw.createdAt) : undefined,
-    total: Number(raw?.total ?? 0),
-    items: Array.isArray(raw?.items)
-      ? raw.items.map((it: any) => ({
-          id: String(it?.id ?? ""),
-          name: String(it?.name ?? ""),
-          qty: Number(it?.qty ?? 1),
-          price: Number(it?.price ?? 0),
-          img: it?.img ? String(it.img) : undefined,
-        }))
-      : [],
-    paymentStatus: payment,
-    status,
-  };
-}
+const Pill = ({ text, tone }: { text: string; tone: "green" | "red" | "gray" }) => (
+  <span
+    className={`pill pill--${tone}`}
+    role="status"
+    aria-label={`${text} status`}
+  >
+    {text}
+  </span>
+);
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [busy, setBusy] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
 
-  // load + normalize once
+  // Load once
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(LS_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      const normalized = Array.isArray(parsed) ? (parsed.map(normalizeOrder) as Order[]) : [];
-      setOrders(normalized);
-      localStorage.setItem(LS_KEY, JSON.stringify(normalized)); // persist back, so it stays fixed
-    } catch {}
+    const o = load();
+    setOrders(o);
   }, []);
 
-  const fmt = (n: number) => `KES ${Math.round(n).toLocaleString("en-KE")}`;
-  const fmtDateTime = (iso?: string) => {
-    if (!iso) return "";
-    try {
-      const d = new Date(iso);
-      const date = d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
-      const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-      return `${date}, ${time}`;
-    } catch {
-      return "";
-    }
+  // Auto-verify any PENDING orders once after mount (and if orders list changes later)
+  useEffect(() => {
+    const pending = orders.filter((o) => o.paymentStatus === "PENDING");
+    if (!pending.length) return;
+
+    let cancelled = false;
+
+    (async () => {
+      // Verify one by one to keep it simple
+      for (const ord of pending) {
+        try {
+          const res = await fetch(
+            `/api/paystack-verify?reference=${encodeURIComponent(ord.reference)}`
+          );
+
+          // If function errored or non-200, just skip without alert
+          if (!res.ok) continue;
+
+          // Our function returns: { status: "success" | "failed" | "pending", raw: ... }
+          const data: any = await res.json().catch(() => ({}));
+          const s: string = (data?.status || "").toLowerCase();
+
+          let newPayment: Order["paymentStatus"] = ord.paymentStatus;
+          let newStatus: Order["status"] = ord.status;
+
+          if (s === "success") {
+            newPayment = "PAID";
+            newStatus = "COMPLETED";
+          } else if (s === "failed") {
+            newPayment = "FAILED";
+            newStatus = "FAILED";
+          } else {
+            // keep pending
+          }
+
+          if (newPayment !== ord.paymentStatus || newStatus !== ord.status) {
+            const next: Order[] = orders.map((o) =>
+              o.id === ord.id
+                ? {
+                    ...o,
+                    paymentStatus: newPayment,
+                    status: newStatus,
+                  }
+                : o
+            );
+            if (!cancelled) {
+              setOrders(next);
+              persist(next);
+            }
+          }
+        } catch {
+          // swallow – we’ll stay pending and user can refresh later
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orders]);
+
+  const view = useMemo(() => orders.slice().reverse(), [orders]);
+
+  const statusPill = (o: Order) => {
+    if (o.status === "COMPLETED") return <Pill text="COMPLETED" tone="green" />;
+    if (o.status === "FAILED") return <Pill text="FAILED" tone="red" />;
+    return <Pill text="PENDING" tone="gray" />;
   };
 
-  const persist = (next: Order[]) => {
-    setOrders(next);
-    try {
-      localStorage.setItem(LS_KEY, JSON.stringify(next));
-    } catch {}
+  const payPill = (o: Order) => {
+    if (o.paymentStatus === "PAID") return <Pill text="PAID" tone="green" />;
+    if (o.paymentStatus === "FAILED") return <Pill text="FAILED" tone="red" />;
+    return <Pill text="PENDING" tone="gray" />;
+    // If you prefer “PAID/FAILED” only here and keep “COMPLETED/FAILED/PENDING” up top, this matches that.
   };
-
-  // verify endpoint (kept, but button only shows while PENDING)
-  async function reverify(ord: Order) {
-    try {
-      setBusy(ord.reference);
-      const res = await fetch(`/api/paystack-verify?reference=${encodeURIComponent(ord.reference)}`, {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      });
-      if (!res.ok) throw new Error("verify failed");
-      const data = await res.json();
-
-      const statusRaw = (data?.status || "").toString().toLowerCase();
-      const payment: PaymentStatus =
-        statusRaw === "success" ? "PAID" : statusRaw === "failed" ? "FAILED" : "PENDING";
-      const summary: OrderStatus =
-        payment === "PAID" ? "COMPLETED" : payment === "FAILED" ? "FAILED" : "PENDING";
-
-      const updated: Order[] = orders.map((o) =>
-        o.id === ord.id ? { ...o, paymentStatus: payment, status: summary } : o
-      );
-      persist(updated);
-    } catch {
-      alert("Could not verify right now. Try again later.");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  const ordered = useMemo(
-    () =>
-      [...orders].sort((a, b) => {
-        const ta = Number(a.id.replace(/\D/g, "")) || 0;
-        const tb = Number(b.id.replace(/\D/g, "")) || 0;
-        return tb - ta;
-      }),
-    [orders]
-  );
-
-  const toggle = (id: string) => setExpanded((m) => ({ ...m, [id]: !m[id] }));
-  const copy = (t: string) => navigator.clipboard?.writeText(t).then(() => alert("Copied!"));
-
-  const pillClass = (kind: "green" | "red" | "grey") =>
-    `pill ${kind === "green" ? "pill--green" : kind === "red" ? "pill--red" : "pill--grey"}`;
-
-  const statusToPill = (s: OrderStatus) =>
-    s === "COMPLETED" ? pillClass("green") : s === "FAILED" ? pillClass("red") : pillClass("grey");
-  const payToPill = (p: PaymentStatus) =>
-    p === "PAID" ? pillClass("green") : p === "FAILED" ? pillClass("red") : pillClass("grey");
 
   return (
-    <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#f7f7f7" }}>
+    <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
       <Head>
         <title>My Orders • Mastermind</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <header className="topbar">
-        <div className="topbar__inner">
+      <header className="bar">
+        <div className="bar__inner">
           <div className="brand">
             <img src="/favicon.ico" alt="" className="brandIcon" aria-hidden />
             My Orders
@@ -158,114 +154,143 @@ export default function OrdersPage() {
         </div>
       </header>
 
-      <main className="wrap">
-        {ordered.map((o) => {
-          const isOpen = !!expanded[o.id];
-          return (
-            <article key={o.id} className="orderCard">
-              <button className="summary" onClick={() => toggle(o.id)} aria-expanded={isOpen}>
-                <div className="sumLeft">
-                  <div className="orderId"><span className="muted">Order&nbsp;</span><strong>#{o.id}</strong></div>
-                  {o.createdAt && <div className="date">{fmtDateTime(o.createdAt)}</div>}
-                </div>
-                <div className="sumRight">
-                  <span className={statusToPill(o.status)}>{o.status}</span>
-                  <span className="amount">{fmt(o.total)}</span>
-                </div>
-              </button>
+      <main className="container" style={{ padding: "12px 12px 24px" }}>
+        {view.length === 0 ? (
+          <div className="emptyCard">No orders yet.</div>
+        ) : (
+          view.map((o) => {
+            const open = openId === o.id;
+            const created = o.createdAt
+              ? new Date(o.createdAt)
+              : null;
 
-              {isOpen && (
-                <div className="details">
-                  {o.items.map((it) => (
-                    <div key={it.id} className="line">
-                      <div className="thumb">{it.img ? <img src={it.img} alt="" /> : <div className="ph" />}</div>
-                      <div className="info">
-                        <div className="name">{it.name}</div>
-                        <div className="muted">
-                          {fmt(it.price)} × {it.qty} = <strong>{fmt(it.price * it.qty)}</strong>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  <div className="meta">
-                    <div className="row">
-                      <div className="lab">Reference</div>
-                      <div className="val">
-                        <span className="ref">{o.reference}</span>
-                        <button className="copy" onClick={() => copy(o.reference)}>Copy</button>
-                      </div>
-                    </div>
-
-                    <div className="row">
-                      <div className="lab">Status</div>
-                      <div className="val">
-                        <span className={payToPill(o.paymentStatus)}>{o.paymentStatus}</span>
-                        {o.paymentStatus === "PENDING" && (
-                          <button
-                            className="reverify"
-                            onClick={() => reverify(o)}
-                            disabled={busy === o.reference}
-                            title="Verify with Paystack"
-                          >
-                            {busy === o.reference ? "Checking..." : "Re-verify"}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="row">
-                      <div className="lab">Total</div>
-                      <div className="val strong">{fmt(o.total)}</div>
-                    </div>
+            return (
+              <article
+                key={o.id}
+                className="orderCard"
+                onClick={() => setOpenId(open ? null : o.id)}
+              >
+                {/* Header row */}
+                <div className="orderCard__top">
+                  <div className="orderId">
+                    Order <span className="mono">#{o.id}</span>
+                  </div>
+                  <div className="topRight">
+                    {statusPill(o)}
+                    <div className="amount">{currency(o.total)}</div>
                   </div>
                 </div>
-              )}
-            </article>
-          );
-        })}
+
+                {/* Datetime */}
+                {created && (
+                  <div className="dt">
+                    {created.toLocaleDateString()}{" "}
+                    {created.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </div>
+                )}
+
+                {/* Collapsible details */}
+                {open && (
+                  <div className="details" onClick={(e) => e.stopPropagation()}>
+                    {/* First item preview (with image) */}
+                    {o.items[0] && (
+                      <div className="line">
+                        <div className="thumb">
+                          {o.items[0].img ? (
+                            <img
+                              src={o.items[0].img}
+                              alt={o.items[0].name}
+                              className="thumbImg"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="thumbPh" />
+                          )}
+                        </div>
+                        <div className="lineText">
+                          <div className="name">{o.items[0].name}</div>
+                          <div className="muted">
+                            {currency(o.items[0].price)} × {o.items[0].qty} ={" "}
+                            <strong>{currency(o.items[0].price * o.items[0].qty)}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Reference */}
+                    <div className="row">
+                      <div className="label">Reference</div>
+                      <div className="refWrap">
+                        <code className="ref mono">{o.reference}</code>
+                        <button
+                          className="copyBtn"
+                          onClick={() => {
+                            navigator.clipboard?.writeText(o.reference);
+                          }}
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Payment Status */}
+                    <div className="row">
+                      <div className="label">Status</div>
+                      <div>{payPill(o)}</div>
+                    </div>
+
+                    {/* Total */}
+                    <div className="row">
+                      <div className="label">Total</div>
+                      <div className="totalVal">{currency(o.total)}</div>
+                    </div>
+                  </div>
+                )}
+              </article>
+            );
+          })
+        )}
       </main>
 
       <style jsx>{`
-        .wrap { max-width: 900px; margin: 16px auto; padding: 0 12px 24px; }
-        .topbar { position: sticky; top:0; z-index:40; background:#111; color:#fff; border-bottom:1px solid rgba(255,255,255,.08); }
-        .topbar__inner { max-width:1100px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; padding:10px 16px; }
-        .brand { font-weight:800; display:flex; gap:8px; align-items:center; }
-        .brandIcon { width:22px; height:22px; border-radius:4px; }
-        .backBtn { background:#fff; color:#111; text-decoration:none; padding:8px 12px; border-radius:12px; border:1px solid #eee; font-weight:800; }
+        .container { max-width: 900px; margin: 0 auto; }
 
-        .orderCard { background:#fff; border:1px solid #eee; border-radius:16px; margin-bottom:14px; overflow:hidden; box-shadow:0 1px 0 rgba(0,0,0,.03); }
-        .summary { width:100%; background:#fff; border:none; padding:12px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; }
-        .summary:hover { background:#fcfcfc; }
-        .sumLeft { display:flex; flex-direction:column; gap:4px; text-align:left; }
-        .orderId { font-size:14px; }
-        .date { font-size:12px; color:#888; }
-        .sumRight { display:flex; align-items:center; gap:10px; }
+        .bar { background:#111; color:#fff; position:sticky; top:0; z-index:50; }
+        .bar__inner { max-width: 900px; margin: 0 auto; display:flex; align-items:center; justify-content:space-between; padding:10px 12px; }
+        .brand { font-weight:800; display:flex; align-items:center; gap:8px; }
+        .brandIcon { width:22px; height:22px; border-radius:4px; }
+        .backBtn { background:#fff; color:#111; padding:8px 12px; border-radius:12px; text-decoration:none; font-weight:800; }
+
+        .orderCard { background:#fff; border:1px solid #eee; border-radius:16px; padding:12px; margin:12px 0; box-shadow:0 1px 0 rgba(0,0,0,.03); cursor:pointer; }
+        .orderCard__top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+        .orderId { font-weight:800; }
+        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+        .topRight { display:flex; align-items:center; gap:8px; }
         .amount { font-weight:800; }
 
-        .details { border-top:1px dashed #eee; padding:12px; display:grid; gap:12px; }
-        .line { display:grid; grid-template-columns:48px 1fr; gap:10px; align-items:center; }
-        .thumb { width:48px; height:48px; border-radius:10px; overflow:hidden; background:#f3f3f3; display:flex; align-items:center; justify-content:center; }
-        .thumb img { width:100%; height:100%; object-fit:cover; }
-        .ph { width:100%; height:100%; background:linear-gradient(90deg,#eee,#f6f6f6,#eee); }
+        .dt { color:#888; margin:6px 0 10px; }
 
-        .info .name { font-weight:800; }
+        .details { border-top:1px dashed #eee; padding-top:10px; cursor:default; }
+        .line { display:flex; gap:10px; align-items:center; }
+        .thumb { width:56px; height:56px; border-radius:12px; background:#f3f3f3; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+        .thumbImg { width:100%; height:100%; object-fit:contain; }
+        .thumbPh { width:100%; height:100%; background:#f0f0f0; border-radius:12px; }
+        .lineText .name { font-weight:800; }
         .muted { color:#777; }
 
-        .meta { display:grid; gap:10px; }
-        .row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
-        .lab { color:#777; }
-        .val { display:flex; align-items:center; gap:8px; }
-        .val.strong, .strong { font-weight:800; }
-        .ref { background:#f5f5f5; border:1px solid #eee; padding:6px 10px; border-radius:10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+        .row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:10px; }
+        .label { color:#666; min-width:96px; }
 
-        .copy { background:#ffd24d; border:1px solid #f2c944; padding:6px 10px; border-radius:12px; font-weight:800; cursor:pointer; }
-        .reverify { background:#fff; border:1px solid #ddd; padding:6px 10px; border-radius:12px; font-weight:800; cursor:pointer; }
+        .refWrap { display:flex; align-items:center; gap:8px; }
+        .ref { background:#f6f6f6; padding:6px 10px; border-radius:10px; display:inline-block; }
+        .copyBtn { background:#ffd24d; border:none; padding:6px 10px; border-radius:10px; font-weight:800; cursor:pointer; }
 
-        .pill { padding:4px 10px; border-radius:9999px; font-weight:800; font-size:12px; border:1px solid transparent; }
-        .pill--green { background:#e8f7ee; color:#0a7a39; border-color:#bdebd1; }
-        .pill--red { background:#fdeaea; color:#b42525; border-color:#f3c1c1; }
-        .pill--grey { background:#f1f1f1; color:#555; border-color:#e3e3e3; }
+        .totalVal { font-weight:800; }
+
+        .pill { display:inline-flex; align-items:center; justify-content:center; padding:4px 10px; border-radius:9999px; font-size:12px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; }
+        .pill--green { background:#e7f6ec; color:#167e3d; }
+        .pill--red { background:#fdecec; color:#b42318; }
+        .pill--gray { background:#eee; color:#555; }
       `}</style>
     </div>
   );
