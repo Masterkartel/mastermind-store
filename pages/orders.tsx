@@ -16,14 +16,15 @@ type Order = {
   items: OrderItem[];
 };
 
-const GREEN = "#4fd18b";
-const GREY = "#bfc4cc";
 const COPY = "#f4d03f";
 
+// soft shades (match Status row)
 const STATUS_BG_GREEN = "#e9fbf2";
 const STATUS_TXT_GREEN = "#0b7a43";
 const STATUS_BG_RED = "#fdeaea";
 const STATUS_TXT_RED = "#a33a3a";
+const STATUS_BG_GREY = "#f1f3f5";
+const STATUS_TXT_GREY = "#495057";
 
 const fmtDateTime = (v?: string) => {
   const d = v ? new Date(v) : new Date();
@@ -33,7 +34,7 @@ const fmtDateTime = (v?: string) => {
   )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 };
 
-// Guess image by name (local /public assets)
+// Guess image by name (files stored under /public)
 const guessImageFromName = (name?: string): string | undefined => {
   if (!name) return undefined;
   const n = name.toLowerCase();
@@ -46,59 +47,67 @@ const guessImageFromName = (name?: string): string | undefined => {
   return undefined;
 };
 
-// Turn relative path into absolute (so Cloudflare/Next edge paths still work)
+// Ensure absolute URL for local files (prevents edge routing issues)
 const resolveImg = (src?: string) => {
-  const ph = "https://via.placeholder.com/56x56.png?text=%20";
-  if (!src) return ph;
-  if (/^https?:\/\//i.test(src)) return src;
-  if (typeof window !== "undefined") {
-    const base = window.location.origin.replace(/\/$/, "");
-    if (src.startsWith("/")) return base + src;
-    return `${base}/${src.replace(/^\.?\//, "")}`;
-  }
-  return src;
+  if (!src) return undefined;
+  if (/^(https?:|data:|blob:)/i.test(src)) return src;
+  if (src.startsWith("//")) return window.location.protocol + src;
+  const base = (typeof window !== "undefined" && window.location.origin) || "";
+  if (src.startsWith("/")) return base + src;
+  return `${base}/${src.replace(/^\.?\//, "")}`;
 };
 
 const HeaderPill = ({ reference }: { reference?: string }) => {
+  // New rule: if status row = FAILED, header also shows FAILED (red).
+  // We treat “no reference” as FAILED for header now.
   const paid = !!reference;
+  const failed = !reference;
+
+  const bg = paid ? STATUS_BG_GREEN : failed ? STATUS_BG_RED : STATUS_BG_GREY;
+  const fg = paid ? STATUS_TXT_GREEN : failed ? STATUS_TXT_RED : STATUS_TXT_GREY;
+  const text = paid ? "COMPLETED" : failed ? "FAILED" : "PENDING";
+
   return (
     <span
       style={{
-        background: paid ? GREEN : GREY,
-        color: "#fff",
+        background: bg,
+        color: fg,
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
         borderRadius: 999,
       }}
     >
-      {paid ? "COMPLETED" : "PENDING"}
+      {text}
     </span>
   );
 };
 
 const StatusPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
+  const bg = paid ? STATUS_BG_GREEN : STATUS_BG_RED;
+  const fg = paid ? STATUS_TXT_GREEN : STATUS_TXT_RED;
+  const text = paid ? "PAID" : "FAILED";
   return (
     <span
       style={{
-        background: paid ? STATUS_BG_GREEN : STATUS_BG_RED,
-        color: paid ? STATUS_TXT_GREEN : STATUS_TXT_RED,
+        background: bg,
+        color: fg,
         fontSize: 12,
         fontWeight: 800,
         padding: "4px 10px",
         borderRadius: 999,
       }}
     >
-      {paid ? "PAID" : "FAILED"}
+      {text}
     </span>
   );
 };
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [openId, setOpenId] = useState<string | null>(null); // start collapsed
-  const [copiedFor, setCopiedFor] = useState<string | null>(null); // shows "Copied" chip
+  const [openId, setOpenId] = useState<string | null>(null); // collapsed by default
+  const [copiedFor, setCopiedFor] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -250,18 +259,22 @@ export default function OrdersPage() {
                         const qty =
                           Number((it.quantity ?? 1) === 0 ? 1 : it.quantity ?? 1) ||
                           1;
-                        const picked = it.image || guessImageFromName(it.name);
-                        const imgSrc = resolveImg(picked);
-                        const localFallback = resolveImg(
+                        const chosen =
+                          it.image ||
+                          guessImageFromName(it.name) ||
+                          "/torch.png";
+                        const initial = resolveImg(chosen);
+                        const namedFallback = resolveImg(
                           guessImageFromName(it.name) || "/torch.png"
                         );
                         const remoteFallback =
                           "https://via.placeholder.com/56x56.png?text=%20";
 
                         const lineTotal = Math.round(price * qty);
+
                         return (
                           <div
-                            key={i}
+                            key={`${i}-${chosen}`}
                             style={{
                               display: "grid",
                               gridTemplateColumns: "auto 1fr",
@@ -270,7 +283,8 @@ export default function OrdersPage() {
                             }}
                           >
                             <img
-                              src={imgSrc}
+                              key={initial} // force refresh when source changes
+                              src={initial || remoteFallback}
                               alt={it.name}
                               style={{
                                 width: 56,
@@ -286,9 +300,8 @@ export default function OrdersPage() {
                               referrerPolicy="no-referrer"
                               onError={(e) => {
                                 const el = e.currentTarget as HTMLImageElement;
-                                // Try named local fallback, then a remote placeholder with cache-buster
-                                if (el.src !== localFallback) {
-                                  el.src = localFallback;
+                                if (el.src !== namedFallback && namedFallback) {
+                                  el.src = namedFallback;
                                 } else if (!el.src.includes("placeholder.com")) {
                                   el.src = `${remoteFallback}?v=${Date.now()}`;
                                 }
@@ -343,7 +356,7 @@ export default function OrdersPage() {
                                   setCopiedFor(order.id);
                                   window.setTimeout(() => setCopiedFor(null), 1500);
                                 } catch {
-                                  // silent; nothing else to change on UI
+                                  /* no-op */
                                 }
                               }}
                               style={{
@@ -363,8 +376,8 @@ export default function OrdersPage() {
                                 style={{
                                   fontSize: 12,
                                   fontWeight: 700,
-                                  color: "#0b7a43",
-                                  background: "#e9fbf2",
+                                  color: STATUS_TXT_GREEN,
+                                  background: STATUS_BG_GREEN,
                                   padding: "4px 8px",
                                   borderRadius: 999,
                                 }}
@@ -382,7 +395,7 @@ export default function OrdersPage() {
                         <StatusPill reference={order.reference} />
                       </div>
 
-                      {/* Total (next to label) */}
+                      {/* Total */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ color: "#777" }}>Total</span>
                         <span style={{ fontWeight: 800 }}>
