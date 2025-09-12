@@ -1,47 +1,60 @@
 // functions/api/paystack-verify.ts
-// Works on Cloudflare Pages Functions. No extra typings to avoid build errors.
-// Set PAYSTACK_SECRET_KEY in Cloudflare > Project > Settings > Environment Variables.
-export const onRequestGet = async (ctx: any) => {
+export const onRequestGet: PagesFunction = async (context) => {
   try {
-    const url = new URL(ctx.request.url);
+    const url = new URL(context.request.url);
     const reference = url.searchParams.get("reference");
     if (!reference) {
-      return new Response(JSON.stringify({ ok: false, error: "Missing reference" }), {
+      return new Response(JSON.stringify({ error: "Missing reference" }), {
         status: 400,
-        headers: { "content-type": "application/json" },
+        headers: { "Content-Type": "application/json" },
       });
     }
 
-    const secret = ctx.env?.PAYSTACK_SECRET_KEY;
+    const secret = context.env.PAYSTACK_SECRET_KEY as string | undefined;
     if (!secret) {
-      return new Response(JSON.stringify({ ok: false, error: "Server misconfigured: PAYSTACK_SECRET_KEY missing" }), {
+      return new Response(JSON.stringify({ error: "Server misconfig: missing PAYSTACK_SECRET_KEY" }), {
         status: 500,
-        headers: { "content-type": "application/json" },
+        headers: { "Content-Type": "application/json" },
       });
     }
 
+    // Verify with Paystack
     const resp = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
       headers: {
         Authorization: `Bearer ${secret}`,
-        "Content-Type": "application/json",
+        Accept: "application/json",
       },
     });
 
-    const data = await resp.json();
-    // Normalized shape for the frontend
-    const status = data?.data?.status; // "success" | "failed" | "abandoned" | etc.
-    const amount = data?.data?.amount; // in kobo
-    const currency = data?.data?.currency; // "KES"
-    const verified = status === "success";
+    const body = await resp.json().catch(() => ({}));
 
-    return new Response(JSON.stringify({ ok: true, verified, status, amount, currency, raw: data?.data || null }), {
+    // Paystack returns different shapes:
+    // { status: true, data: { status: 'success' | 'failed' | 'abandoned' } }
+    // OR an error with status=false and message
+    let normalized: "success" | "failed" | "pending" = "pending";
+
+    const okFlag = body?.status === true;
+    const psStatus: string | undefined = body?.data?.status || body?.status;
+
+    if (okFlag && (psStatus === "success" || psStatus === "failed")) {
+      normalized = psStatus === "success" ? "success" : "failed";
+    } else if (psStatus === "success") {
+      normalized = "success";
+    } else if (psStatus === "failed") {
+      normalized = "failed";
+    } else {
+      // keep pending for abandoned/ongoing/not-found
+      normalized = "pending";
+    }
+
+    return new Response(JSON.stringify({ status: normalized, raw: body }), {
       status: 200,
-      headers: { "content-type": "application/json" },
+      headers: { "Content-Type": "application/json" },
     });
   } catch (e: any) {
-    return new Response(JSON.stringify({ ok: false, error: e?.message || "Verify failed" }), {
+    return new Response(JSON.stringify({ error: "Verify exception", detail: String(e?.message || e) }), {
       status: 500,
-      headers: { "content-type": "application/json" },
+      headers: { "Content-Type": "application/json" },
     });
   }
 };
