@@ -19,13 +19,11 @@ type Order = {
   id: string;
   total: number;
   reference?: string;      // exists when paid
-  createdAt?: string;      // human-friendly date/time
-  paidAt?: string;         // optional (from gateway)
+  createdAt?: string;      // ISO if available
+  paidAt?: string;         // ISO if available
   items: OrderItem[];
-  // display is computed here
 };
 
-/** ---------------- Storage keys ---------------- */
 const CANONICAL_KEY = "orders";
 const POSSIBLE_KEYS = ["orders", "mm_orders", "mastermind_orders", "cart_orders"];
 
@@ -61,11 +59,8 @@ const slugify = (s: string) =>
     .replace(/(^-|-$)/g, "");
 
 const resolveItemImage = (it: OrderItem) => {
-  // 1) direct fields
   const direct = it.image || it.img || it.imageUrl || it.photo || it.picture;
   if (typeof direct === "string" && direct.trim()) return direct.trim();
-
-  // 2) localStorage map (optional): { "<item name>": "url" }
   if (typeof window !== "undefined") {
     try {
       const raw = localStorage.getItem("productImages");
@@ -77,17 +72,13 @@ const resolveItemImage = (it: OrderItem) => {
       }
     } catch {}
   }
-
-  // 3) public images by slug
   const slug = slugify(it.name);
-  if (slug) return `/products/${slug}.jpg`; // your convention
-
-  // 4) final fallback
+  if (slug) return `/products/${slug}.jpg`;
   return PLACEHOLDER;
 };
 
-/** ---------------- Pills (very light shades) ---------------- */
-const pill = (bg: string, text: string, color: string) => ({
+/** ---------------- Pills ---------------- */
+const pill = (bg: string, color: string) => ({
   background: bg,
   color,
   fontSize: 12,
@@ -96,17 +87,17 @@ const pill = (bg: string, text: string, color: string) => ({
   borderRadius: 999,
   whiteSpace: "nowrap" as const,
 });
-const SUCCESS_BG = "#E8F8EF";  // very light green
-const SUCCESS_TX = "#16A34A";  // same calibre as Copied!
-const FAIL_BG = "#FDEBEC";     // very light red
+const SUCCESS_BG = "#E8F8EF";
+const SUCCESS_TX = "#16A34A";
+const FAIL_BG = "#FDEBEC";
 const FAIL_TX = "#B91C1C";
-const PEND_BG = "#EEF2F6";     // very light grey/blue
+const PEND_BG = "#EEF2F6";
 const PEND_TX = "#334155";
 
 const HeaderPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
   return (
-    <span style={paid ? pill(SUCCESS_BG, "Successful", SUCCESS_TX) : pill(PEND_BG, "Pending", PEND_TX)}>
+    <span style={paid ? pill(SUCCESS_BG, SUCCESS_TX) : pill(PEND_BG, PEND_TX)}>
       {paid ? "Successful" : "Pending"}
     </span>
   );
@@ -115,19 +106,19 @@ const HeaderPill = ({ reference }: { reference?: string }) => {
 const StatusPill = ({ reference }: { reference?: string }) => {
   const paid = !!reference;
   return (
-    <span style={paid ? pill(SUCCESS_BG, "Paid", SUCCESS_TX) : pill(FAIL_BG, "Failed", FAIL_TX)}>
+    <span style={paid ? pill(SUCCESS_BG, SUCCESS_TX) : pill(FAIL_BG, FAIL_TX)}>
       {paid ? "Paid" : "Failed"}
     </span>
   );
 };
 
-/** ---------------- Page ---------------- */
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<(Order & { display?: string; _ts?: number })[] | null>(null);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({}); // per-order toggle
-  const [copied, setCopied] = useState<string | null>(null); // order.id for the 1.2s "Copied!"
+  const [orders, setOrders] = useState<
+    (Order & { display?: string; _ts?: number })[] | null
+  >(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [copied, setCopied] = useState<string | null>(null);
 
-  // Load orders, normalize, migrate to canonical key, sort newest → oldest
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -141,45 +132,52 @@ export default function OrdersPage() {
       } catch {}
     }
 
+    const now = Date.now();
+    const monthAhead = now + 30 * 24 * 60 * 60 * 1000;
+
     const normalized = (merged || [])
       .filter((o) => o && typeof (o as any).id === "string")
       .map((o: any) => {
-        // prefer paidAt for display if present, else createdAt, else derive from id
-        const rawDisplay =
-          o.paidAt || o.createdAt || createdFromId(o.id) || new Date().toISOString();
-
-        // ✅ FIX: wrap the ?? chain before using || 0 (Cloudflare build complained)
-        const ts =
+        // Only use true timestamps for sorting; NEVER the pretty display string.
+        const idTs = Number(String(o.id).replace(/^\D+/, ""));
+        let ts =
           (parseToMs(o.paidAt) ??
             parseToMs(o.createdAt) ??
-            parseToMs(rawDisplay) ??
-            Number(String(o.id).replace(/^\D+/, ""))) || 0;
+            (Number.isFinite(idTs) ? idTs : undefined)) || now;
+
+        // Clamp impossible future dates (e.g., year 2952)
+        if (ts > monthAhead) ts = Number.isFinite(idTs) ? idTs : now;
+        if (!Number.isFinite(ts) || ts < 0) ts = now;
+
+        // Compute a clean ISO for rendering
+        const displayISO =
+          o.paidAt || o.createdAt || (Number.isFinite(idTs) ? new Date(idTs).toISOString() : new Date(ts).toISOString());
 
         return {
           ...o,
-          display: rawDisplay,
+          display: displayISO,
           _ts: ts,
           items: Array.isArray(o.items) ? o.items : [],
         } as Order & { display: string; _ts: number };
       });
 
-    // newest first
+    // newest → oldest by numeric timestamp
     normalized.sort((a, b) => (b._ts ?? 0) - (a._ts ?? 0));
 
     try {
       localStorage.setItem(CANONICAL_KEY, JSON.stringify(normalized));
-      for (const key of POSSIBLE_KEYS) if (key !== CANONICAL_KEY) localStorage.removeItem(key);
+      for (const key of POSSIBLE_KEYS)
+        if (key !== CANONICAL_KEY) localStorage.removeItem(key);
     } catch {}
 
-    // default collapsed on load
     const initialExpanded: Record<string, boolean> = {};
     normalized.forEach((o) => (initialExpanded[o.id] = false));
-
     setOrders(normalized);
     setExpanded(initialExpanded);
   }, []);
 
-  const toggle = (id: string) => setExpanded((e) => ({ ...e, [id]: !e[id] }));
+  const toggle = (id: string) =>
+    setExpanded((e) => ({ ...e, [id]: !e[id] }));
 
   const handleCopy = (text: string, orderId: string) => {
     navigator.clipboard.writeText(text);
@@ -193,7 +191,7 @@ export default function OrdersPage() {
 
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
-      {/* Header bar (edge-to-edge black) */}
+      {/* Header bar */}
       <div
         style={{
           background: "#111",
@@ -283,7 +281,7 @@ export default function OrdersPage() {
                     overflow: "hidden",
                   }}
                 >
-                  {/* Header row (tap to toggle) */}
+                  {/* Header row */}
                   <button
                     onClick={() => toggle(order.id)}
                     style={{ all: "unset", cursor: "pointer", width: "100%" }}
@@ -299,7 +297,6 @@ export default function OrdersPage() {
                         borderBottom: "1px solid #f0f0f0",
                       }}
                     >
-                      {/* Left: order id + date BELOW so pill never gets pushed off */}
                       <div style={{ display: "flex", flexDirection: "column" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ color: "#666" }}>Order</span>
@@ -312,7 +309,6 @@ export default function OrdersPage() {
                         ) : null}
                       </div>
 
-                      {/* Right: pill + total */}
                       <div
                         style={{
                           display: "flex",
@@ -332,7 +328,6 @@ export default function OrdersPage() {
                   {/* Body */}
                   {isOpen && (
                     <div style={{ padding: 14, display: "grid", gap: 10 }}>
-                      {/* items */}
                       {order.items.map((it, i) => {
                         const qty = Number(it.quantity ?? it.qty ?? 1);
                         const price = Number(it.price) || 0;
@@ -462,4 +457,4 @@ export default function OrdersPage() {
       </div>
     </div>
   );
-}
+              }
