@@ -1,56 +1,73 @@
 // pages/orders.tsx
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
-/** ---------- Types ---------- */
+/** -------- Types -------- */
 type OrderItem = {
   name: string;
   price: number;
-  quantity?: number;
+  quantity?: number; // allow quantity or qty (legacy)
   qty?: number;
   image?: string;
-  img?: string;
-  imageUrl?: string;
-  photo?: string;
-  picture?: string;
   [key: string]: any;
 };
 
 type Order = {
   id: string;
-  reference?: string;
-  createdAt?: string;   // display date
-  paidAt?: string;      // if present, we’ll prefer this for the header date
+  reference?: string;     // exists when paid (same as order number in your flow)
+  createdAt?: string;     // human-friendly date/time
   total: number;
   items: OrderItem[];
 };
 
-/** ---------- Storage keys ---------- */
+/** -------- Storage keys -------- */
 const CANONICAL_KEY = "orders";
 const POSSIBLE_KEYS = ["orders", "mm_orders", "mastermind_orders", "cart_orders"];
 
-/** ---------- Helpers ---------- */
+/** -------- Helpers -------- */
 const pad = (n: number) => String(n).padStart(2, "0");
 const formatDateTime = (d: Date) =>
   `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-
-const formatMaybeDate = (s?: string): string | undefined => {
-  if (!s) return undefined;
-  if (/\d{4}-\d{2}-\d{2}T/.test(s)) {
-    const d = new Date(s);
-    if (!isNaN(d.getTime())) return formatDateTime(d);
-  }
-  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?/.test(s)) {
-    const d = new Date(s.replace(" ", "T"));
-    if (!isNaN(d.getTime())) return formatDateTime(d);
-  }
-  return s;
-};
 
 const createdFromId = (id: string): string | undefined => {
   const ts = Number(id?.replace(/^\D+/, ""));
   if (!Number.isFinite(ts)) return;
   const d = new Date(ts);
   return isNaN(d.getTime()) ? undefined : formatDateTime(d);
+};
+
+// Try to pretty-print an already-present date string into our desired format if it parses.
+const formatMaybeDate = (value?: string): string | undefined => {
+  if (!value) return;
+  const ms = Date.parse(value);
+  if (!Number.isNaN(ms)) return formatDateTime(new Date(ms));
+  return;
+};
+
+// parse many date shapes into ms for sorting
+const parseToMs = (value?: string): number | undefined => {
+  if (!value) return undefined;
+
+  // ISO / “YYYY-MM-DDTHH:mm:ssZ”
+  const iso = Date.parse(value);
+  if (!Number.isNaN(iso)) return iso;
+
+  // “DD/MM/YYYY, HH:MM[:SS]”
+  const m = value.match(
+    /^(\d{2})\/(\d{2})\/(\d{4}),\s*(\d{2}):(\d{2})(?::(\d{2}))?$/
+  );
+  if (m) {
+    const [, dd, mm, yyyy, HH, MM, SS] = m;
+    const d = new Date(
+      Number(yyyy),
+      Number(mm) - 1,
+      Number(dd),
+      Number(HH),
+      Number(MM),
+      Number(SS || "0")
+    );
+    if (!Number.isNaN(d.getTime())) return d.getTime();
+  }
+  return undefined;
 };
 
 const PLACEHOLDER = "https://via.placeholder.com/56x56.png?text=%20";
@@ -61,9 +78,11 @@ const slugify = (s: string) =>
     .replace(/(^-|-$)/g, "");
 
 const resolveItemImage = (it: OrderItem) => {
+  // 1) direct fields
   const direct = it.image || it.img || it.imageUrl || it.photo || it.picture;
   if (typeof direct === "string" && direct.trim()) return direct.trim();
 
+  // 2) localStorage map (optional): { "<item name>": "url" }
   if (typeof window !== "undefined") {
     try {
       const raw = localStorage.getItem("productImages");
@@ -76,159 +95,158 @@ const resolveItemImage = (it: OrderItem) => {
     } catch {}
   }
 
+  // 3) public images by slug (you’ve been uploading like /public/images/<slug>.webp)
   const slug = slugify(it.name);
   if (slug) return `/images/${slug}.webp`;
 
+  // 4) final fallback
   return PLACEHOLDER;
 };
 
-/** ---------- Pill styles (unchanged) ---------- */
-const shades = {
-  greenBg: "#E6F7ED",
-  greenText: "#0E7C66",
-  redBg: "#FDECEC",
-  redText: "#8A1C1C",
-  grayBg: "#EEF2F6",
-  grayText: "#475569",
-};
+/** -------- Colors (ultra-light pills + readable text) -------- */
+const GREEN_BG = "rgba(16,185,129,0.15)"; // light emerald
+const GREEN_TX = "#065f46";
+const RED_BG   = "rgba(239,68,68,0.14)";  // light red
+const RED_TX   = "#7f1d1d";
+const GRAY_BG  = "rgba(100,116,139,0.14)"; // light slate
+const GRAY_TX  = "#334155";
 
-const Pill = ({ bg, color, children }: { bg: string; color: string; children: React.ReactNode }) => (
-  <span
-    style={{
-      background: bg,
-      color,
-      fontSize: 12,
-      fontWeight: 800,
-      padding: "6px 12px",
-      borderRadius: 999,
-      whiteSpace: "nowrap",
-    }}
-  >
-    {children}
-  </span>
-);
-
-/** ---------- Tiny toast (kept; used elsewhere if needed) ---------- */
-const useToast = () => {
-  const [msg, setMsg] = useState<string | null>(null);
-  const t = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const show = (m: string) => {
-    if (t.current) clearTimeout(t.current);
-    setMsg(m);
-    t.current = setTimeout(() => setMsg(null), 1200);
-  };
-  const node = (
-    <div
-      aria-live="polite"
+/** -------- Pills -------- */
+const HeaderPill = ({ reference }: { reference?: string }) => {
+  const paid = !!reference;
+  const bg = paid ? GREEN_BG : GRAY_BG;
+  const tx = paid ? GREEN_TX : GRAY_TX;
+  // If you ever need FAILED mirror in header: when !reference it will show Pending via GRAY
+  return (
+    <span
       style={{
-        position: "fixed",
-        bottom: 16,
-        left: "50%",
-        transform: "translateX(-50%)",
-        background: "#111",
-        color: "#fff",
-        borderRadius: 999,
-        padding: "8px 14px",
-        fontWeight: 700,
+        background: bg,
+        color: tx,
         fontSize: 12,
-        opacity: msg ? 0.95 : 0,
-        transition: "opacity .2s ease",
-        pointerEvents: "none",
-        zIndex: 50,
+        fontWeight: 800,
+        padding: "6px 12px",
+        borderRadius: 999,
+        whiteSpace: "nowrap",
       }}
     >
-      {msg}
-    </div>
+      {paid ? "Successful" : "Pending"}
+    </span>
   );
-  return { show, node };
 };
 
-/** ---------- Page ---------- */
+const StatusPill = ({ reference }: { reference?: string }) => {
+  const paid = !!reference;
+  const bg = paid ? GREEN_BG : RED_BG;
+  const tx = paid ? GREEN_TX : RED_TX;
+  return (
+    <span
+      style={{
+        background: bg,
+        color: tx,
+        fontSize: 12,
+        fontWeight: 800,
+        padding: "6px 12px",
+        borderRadius: 999,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {paid ? "Paid" : "Failed"}
+    </span>
+  );
+};
+
+/** -------- Page -------- */
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[] | null>(null);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const { node: toast } = useToast(); // toast kept but not used for Copy now
-  const [copied, setCopied] = useState<Record<string, boolean>>({}); // inline “Copied!” per order
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({}); // per-order toggle
+  const [copiedRef, setCopiedRef] = useState<string | null>(null); // ephemeral "Copied!" bubble
 
-  const loadOrders = useMemo(
-    () =>
-      function load() {
-        if (typeof window === "undefined") return [] as Order[];
-        const merged: Order[] = [];
-        for (const key of POSSIBLE_KEYS) {
-          try {
-            const raw = localStorage.getItem(key);
-            if (!raw) continue;
-            const arr = JSON.parse(raw);
-            if (Array.isArray(arr)) merged.push(...arr);
-          } catch {}
-        }
+  // Load orders, normalize, migrate to canonical key, and sort newest first with date sanity
+  useEffect(() => {
+    if (typeof window === "undefined") return;
 
-        const normalized: Order[] = (merged || [])
-          .filter((o) => o && typeof (o as any).id === "string")
-          .map((o: any) => {
-            // prefer paidAt if present, else createdAt, else derive
-            const base = o.paidAt || o.createdAt || createdFromId(o.id) || formatDateTime(new Date());
-            const displayDate = formatMaybeDate(base) || base;
-            const items: OrderItem[] = Array.isArray(o.items) ? o.items : [];
-            return { ...o, createdAt: displayDate, items };
-          });
+    const loadOrders = (): Order[] => {
+      const merged: Order[] = [];
+      for (const key of POSSIBLE_KEYS) {
+        try {
+          const raw = localStorage.getItem(key);
+          if (!raw) continue;
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) merged.push(...arr);
+        } catch {}
+      }
 
-        normalized.sort((a, b) => {
-          const na = Number(a.id.replace(/^\D+/, ""));
-          const nb = Number(b.id.replace(/^\D+/, ""));
-          if (Number.isFinite(na) && Number.isFinite(nb)) return nb - na;
-          return 0;
+      const now = Date.now();
+      const currentYear = new Date().getFullYear();
+
+      const normalized: (Order & { _ts: number })[] = (merged || [])
+        .filter((o) => o && typeof (o as any).id === "string")
+        .map((o: any) => {
+          // Choose best display date
+          const rawBest = o.paidAt || o.createdAt || createdFromId(o.id);
+          let display =
+            formatMaybeDate(rawBest) || rawBest || formatDateTime(new Date());
+
+          // Compute timestamp for sorting
+          let ts =
+            parseToMs(o.paidAt) ??
+            parseToMs(o.createdAt) ??
+            parseToMs(display) ??
+            Number(o.id.replace(/^\D+/, "")) ||
+            undefined;
+
+          // Guard against silly years (e.g., 2952)
+          if (ts) {
+            const y = new Date(ts).getFullYear();
+            if (y < 2000 || y > currentYear + 1) {
+              const fallback = Number(o.id.replace(/^\D+/, ""));
+              ts = Number.isFinite(fallback) ? fallback : now;
+              display = formatDateTime(new Date(ts));
+            }
+          } else {
+            ts = now;
+            display = formatDateTime(new Date(ts));
+          }
+
+          const items: OrderItem[] = Array.isArray(o.items) ? o.items : [];
+          return { ...o, createdAt: display, items, _ts: ts };
         });
 
-        try {
-          localStorage.setItem(CANONICAL_KEY, JSON.stringify(normalized));
-          for (const key of POSSIBLE_KEYS) {
-            if (key !== CANONICAL_KEY) localStorage.removeItem(key);
-          }
-        } catch {}
+      // Sort newest first
+      normalized.sort((a, b) => b._ts - a._ts);
 
-        return normalized;
-      },
-    []
-  );
+      // Persist canonical key & clean others
+      try {
+        localStorage.setItem(CANONICAL_KEY, JSON.stringify(normalized));
+        for (const key of POSSIBLE_KEYS) {
+          if (key !== CANONICAL_KEY) localStorage.removeItem(key);
+        }
+      } catch {}
 
-  useEffect(() => {
-    const first = loadOrders();
-    setOrders(first);
-
-    const collapsed: Record<string, boolean> = {};
-    first.forEach((o) => (collapsed[o.id] = false));
-    setExpanded(collapsed);
-
-    const t1 = setTimeout(() => setOrders(loadOrders()), 600);
-    const t2 = setTimeout(() => setOrders(loadOrders()), 1500);
-
-    const onStorage = (e: StorageEvent) => {
-      if (e.key && !POSSIBLE_KEYS.includes(e.key) && e.key !== CANONICAL_KEY) return;
-      setOrders(loadOrders());
+      return normalized as Order[];
     };
-    const onFocusLike = () => setOrders(loadOrders());
 
-    window.addEventListener("storage", onStorage);
-    document.addEventListener("visibilitychange", onFocusLike);
-    window.addEventListener("focus", onFocusLike);
+    const data = loadOrders();
 
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      window.removeEventListener("storage", onStorage);
-      document.removeEventListener("visibilitychange", onFocusLike);
-      window.removeEventListener("focus", onFocusLike);
-    };
-  }, [loadOrders]);
+    // default on load: all collapsed
+    const initialExpanded: Record<string, boolean> = {};
+    data.forEach((o) => (initialExpanded[o.id] = false));
+
+    setOrders(data);
+    setExpanded(initialExpanded);
+  }, []);
 
   const toggle = (id: string) =>
     setExpanded((e) => ({ ...e, [id]: !e[id] }));
 
-  const markCopied = (id: string) => {
-    setCopied((m) => ({ ...m, [id]: true }));
-    setTimeout(() => setCopied((m) => ({ ...m, [id]: false })), 1200);
+  const copyRef = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedRef(text);
+      setTimeout(() => setCopiedRef(null), 1200);
+    } catch {
+      // fallback: do nothing (we purposely avoid alert())
+    }
   };
 
   if (orders === null) {
@@ -343,7 +361,7 @@ export default function OrdersPage() {
                         borderBottom: "1px solid #f0f0f0",
                       }}
                     >
-                      {/* Left: order id + date */}
+                      {/* Left: order id + date BELOW so pill never gets pushed off */}
                       <div style={{ display: "flex", flexDirection: "column" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ color: "#666" }}>Order</span>
@@ -365,11 +383,7 @@ export default function OrdersPage() {
                           flexWrap: "nowrap",
                         }}
                       >
-                        {order.reference ? (
-                          <Pill bg={shades.greenBg} color={shades.greenText}>Successful</Pill>
-                        ) : (
-                          <Pill bg={shades.grayBg} color={shades.grayText}>Pending</Pill>
-                        )}
+                        <HeaderPill reference={order.reference} />
                         <span style={{ fontWeight: 800, whiteSpace: "nowrap" }}>
                           KES {Math.round(order.total).toLocaleString("en-KE")}
                         </span>
@@ -423,7 +437,7 @@ export default function OrdersPage() {
                         );
                       })}
 
-                      {/* Reference + Copy + inline Copied! */}
+                      {/* Reference */}
                       <div
                         style={{
                           display: "flex",
@@ -448,15 +462,12 @@ export default function OrdersPage() {
                           {order.reference || "—"}
                         </span>
                         {order.reference ? (
-                          <>
+                          <div style={{ position: "relative", display: "inline-block" }}>
                             <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(order.reference!);
-                                markCopied(order.id);
-                              }}
+                              onClick={() => copyRef(order.reference!)}
                               style={{
-                                background: "#F6F0FD",
-                                color: "#6B21A8",
+                                background: "rgba(168,85,247,0.12)", // soft purple bg
+                                color: "#6b21a8",
                                 fontWeight: 800,
                                 border: "none",
                                 padding: "6px 10px",
@@ -466,32 +477,33 @@ export default function OrdersPage() {
                             >
                               Copy
                             </button>
-                            {copied[order.id] && (
+                            {copiedRef === order.reference && (
                               <span
                                 style={{
+                                  position: "absolute",
+                                  left: "100%",
+                                  marginLeft: 8,
+                                  top: "50%",
+                                  transform: "translateY(-50%)",
                                   fontSize: 12,
-                                  fontWeight: 800,
-                                  color: "#0E7C66",
-                                  background: "#E6F7ED",
-                                  padding: "4px 10px",
-                                  borderRadius: 999,
+                                  background: "rgba(0,0,0,0.06)",
+                                  color: "#111",
+                                  borderRadius: 8,
+                                  padding: "4px 8px",
+                                  pointerEvents: "none",
                                 }}
                               >
                                 Copied!
                               </span>
                             )}
-                          </>
+                          </div>
                         ) : null}
                       </div>
 
                       {/* Status */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ color: "#777" }}>Status</span>
-                        {order.reference ? (
-                          <Pill bg={shades.greenBg} color={shades.greenText}>Paid</Pill>
-                        ) : (
-                          <Pill bg={shades.redBg} color={shades.redText}>Failed</Pill>
-                        )}
+                        <StatusPill reference={order.reference} />
                       </div>
 
                       {/* Total */}
@@ -516,8 +528,6 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
-
-      {toast}
     </div>
   );
 }
