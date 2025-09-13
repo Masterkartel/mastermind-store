@@ -1,11 +1,11 @@
 # dependencies
-node_modules
+node_modules/
 
 # Next.js build output
-.next
+.next/
 
 # Vercel/Cloudflare output
-.vercel
+.vercel/
 
 # logs
 npm-debug.log*
