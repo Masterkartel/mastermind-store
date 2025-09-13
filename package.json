@@ -6,6 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+
+    "cf:build": "next build && npx @cloudflare/next-on-pages",
+    "cf:preview": "npx wrangler pages dev .vercel/output/static --compatibility-date=2024-09-01",
+
     "img:backfill": "node scripts/backfill-img.js",
     "img:list-missing": "node scripts/list-missing-img.js",
     "img:print-uploads": "node scripts/print-uploads.js"
