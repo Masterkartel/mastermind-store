@@ -4111,14 +4111,16 @@
     "name": "ZY ELECTRICAL 2 Way CCU",
     "sku": "1 pc",
     "price": 850,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/zy-electrical-2-way-ccu.jpg"
   },
   {
     "id": "zy-electrical-4-way-ccu",
     "name": "ZY ELECTRICAL 4 Way CCU",
     "sku": "1 pc",
     "price": 1380,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/zy-electrical-4-way-ccu.jpg"
   },
   {
   "id": "gas-6kg",
