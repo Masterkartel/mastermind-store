@@ -338,10 +338,21 @@ export default function OrdersPage() {
                           alignItems: "center",
                           gap: 10,
                           flexWrap: "nowrap",
+                          minWidth: 0, // ← allow truncation of long amount
                         }}
                       >
                         <HeaderPill status={status} />
-                        <span style={{ fontWeight: 800, whiteSpace: "nowrap" }}>
+                        <span
+                          style={{
+                            fontWeight: 800,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            maxWidth: "40vw", // ← cap width on phones
+                            display: "inline-block",
+                          }}
+                          title={`KES ${Math.round(order.total).toLocaleString("en-KE")}`}
+                        >
                           KES {Math.round(order.total).toLocaleString("en-KE")}
                         </span>
                       </div>
