@@ -31,7 +31,6 @@ const formatDateTime = (d: Date) =>
     d.getHours()
   )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
-/** If id contains digits (epoch ms), use it to form a display */
 const createdFromId = (id: string): string | undefined => {
   const m = id.match(/\d+/);
   if (!m) return;
@@ -68,7 +67,7 @@ const resolveItemImage = (it: OrderItem) => {
   return PLACEHOLDER;
 };
 
-/* ---------- Pills (as-is) ---------- */
+/* ---------- Pills ---------- */
 const Pill = ({ bg, text, label }: { bg: string; text: string; label: string }) => (
   <span
     style={{
@@ -101,10 +100,9 @@ const StatusPill = ({ status }: { status: "SUCCESS" | "FAILED" | "PENDING" }) =>
   return <Pill bg="rgba(148,163,184,0.18)" text="#334155" label="Pending" />;
 };
 
-/* ---------- Time helpers (sorting + reliable display) ---------- */
+/* ---------- Time helpers ---------- */
 const toMsSafe = (v?: string): number | undefined => {
   if (!v || typeof v !== "string") return;
-  // Accept only ISO-ish strings to avoid parsing “09/12/2025” wrongly.
   const isoLike =
     /\d{4}-\d{2}-\d{2}T/.test(v) || /\d{4}-\d{2}-\d{2}\s/.test(v) || /Z$/.test(v);
   if (!isoLike) return;
@@ -152,36 +150,27 @@ export default function OrdersPage() {
       .filter((o) => o && typeof (o as any).id === "string")
       .map((o: any) => {
         const items: OrderItem[] = Array.isArray(o.items) ? o.items : [];
-
-        // Compute a reliable timestamp (id → paidAt ISO → createdAt ISO)
         const ts =
           idMs(o.id) ??
           toMsSafe(o.paidAt) ??
           toMsSafe(o.createdAt);
-
-        // Always show DD/MM/YYYY using the reliable ts if available,
-        // otherwise fall back to: existing createdAt → derived from id → now
         let display =
           (ts !== undefined ? formatDateTime(new Date(ts)) : undefined) ||
           o.createdAt ||
           createdFromId(o.id) ||
           formatDateTime(new Date());
-
         return { ...o, createdAt: display, items };
       });
 
-    // Sort: realistic dates first; inside each bucket newest → oldest
     normalized.sort((a, b) => {
       const aBad = isUnrealisticDisplayDate(a.createdAt);
       const bBad = isUnrealisticDisplayDate(b.createdAt);
       if (aBad !== bBad) return aBad ? 1 : -1;
-
       const aTs = idMs(a.id) ?? toMsSafe(a.paidAt) ?? toMsSafe(a.createdAt) ?? 0;
       const bTs = idMs(b.id) ?? toMsSafe(b.paidAt) ?? toMsSafe(b.createdAt) ?? 0;
       return bTs - aTs;
     });
 
-    // Save canonical + remove old keys
     try {
       localStorage.setItem(CANONICAL_KEY, JSON.stringify(normalized));
       for (const key of POSSIBLE_KEYS) {
@@ -189,7 +178,6 @@ export default function OrdersPage() {
       }
     } catch {}
 
-    // ALWAYS collapsed on refresh
     const collapsed: Record<string, boolean> = {};
     normalized.forEach((o) => (collapsed[o.id] = false));
 
@@ -338,20 +326,20 @@ export default function OrdersPage() {
                           alignItems: "center",
                           gap: 10,
                           flexWrap: "nowrap",
-                          minWidth: 0, // ← allow truncation of long amount
                         }}
                       >
                         <HeaderPill status={status} />
                         <span
+                          title={`KES ${Math.round(order.total).toLocaleString("en-KE")}`}
                           style={{
                             fontWeight: 800,
                             whiteSpace: "nowrap",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
-                            maxWidth: "40vw", // ← cap width on phones
+                            maxWidth: 100,
                             display: "inline-block",
+                            textAlign: "right",
                           }}
-                          title={`KES ${Math.round(order.total).toLocaleString("en-KE")}`}
                         >
                           KES {Math.round(order.total).toLocaleString("en-KE")}
                         </span>
@@ -489,7 +477,18 @@ export default function OrdersPage() {
                         }}
                       >
                         <span style={{ color: "#777" }}>Total</span>
-                        <span style={{ fontWeight: 800 }}>
+                        <span
+                          title={`KES ${Math.round(order.total).toLocaleString("en-KE")}`}
+                          style={{
+                            fontWeight: 800,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            maxWidth: 120,
+                            display: "inline-block",
+                            textAlign: "right",
+                          }}
+                        >
                           KES {Math.round(order.total).toLocaleString("en-KE")}
                         </span>
                       </div>
