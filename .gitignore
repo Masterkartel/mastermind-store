@@ -1,1 +1,13 @@
+# dependencies
 node_modules
+
+# Next.js build output
+.next
+
+# Vercel/Cloudflare output
+.vercel
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
