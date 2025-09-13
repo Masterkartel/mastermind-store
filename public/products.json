@@ -4098,7 +4098,7 @@
   "price": 1110,
   "sku": "refill",
   "stock": 999,
-  "img": ""
+  "img": "/products/gas-6kg.png"
 },
 {
   "id": "gas-13kg",
@@ -4106,6 +4106,6 @@
   "price": 2355,
   "sku": "refill",
   "stock": 999,
-  "img": ""
+  "img": "/products/gas-13kg.png"
 }
 ]
