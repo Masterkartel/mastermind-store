@@ -3,10 +3,10 @@ import { useEffect, useState } from "react";
 type Order = {
   id: string;
   amount: number;
-  status: string;
+  status: string;            // "successful" | "failed" | "paid" | "pending"
   createdAt?: string;
   paidAt?: string;
-  display?: string;
+  display?: string;          // derived date string we show
   items?: {
     name: string;
     price: number;
@@ -43,47 +43,47 @@ export default function OrdersPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
-    const raw = localStorage.getItem("orders");
-    if (raw) {
-      try {
-        const parsed: Order[] = JSON.parse(raw);
+    const raw = typeof window !== "undefined" ? localStorage.getItem("orders") : null;
+    if (!raw) return;
 
-        const normalized = parsed.map((o) => {
-          const display =
-            o.createdAt ||
-            o.paidAt ||
-            (o.id ? new Date(parseInt(o.id.replace(/^\D+/, ""))).toISOString() : undefined);
+    try {
+      const parsed: Order[] = JSON.parse(raw);
 
-          let ts =
-            parseToMs(o.paidAt) ??
+      const normalized = parsed.map((o) => {
+        const display =
+          o.createdAt ||
+          o.paidAt ||
+          (o.id ? new Date(parseInt(o.id.replace(/^\D+/, ""))).toISOString() : undefined);
+
+        // ✅ FIX: wrap the nullish-coalescing chain before using `|| 0`
+        const ts =
+          (parseToMs(o.paidAt) ??
             parseToMs(o.createdAt) ??
             parseToMs(display) ??
-            Number(o.id.replace(/^\D+/, "")) ||
-            0;
+            Number(o.id.replace(/^\D+/, ""))) || 0;
 
-          return { ...o, display, _ts: ts };
-        });
+        return { ...o, display, _ts: ts };
+      });
 
-        // ✅ sort newest → oldest
-        normalized.sort((a, b) => {
-          const ta = a._ts ?? 0;
-          const tb = b._ts ?? 0;
-          if (tb > ta) return 1;
-          if (tb < ta) return -1;
-          return 0;
-        });
+      // newest → oldest
+      normalized.sort((a, b) => {
+        const ta = a._ts ?? 0;
+        const tb = b._ts ?? 0;
+        if (tb > ta) return 1;
+        if (tb < ta) return -1;
+        return 0;
+      });
 
-        setOrders(normalized);
-      } catch (e) {
-        console.error("Failed to parse orders", e);
-      }
+      setOrders(normalized);
+    } catch (e) {
+      console.error("Failed to parse orders", e);
     }
   }, []);
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 1200); // 1.2s
+    setTimeout(() => setCopiedId(null), 1200); // 1.2s silent badge
   };
 
   return (
@@ -108,6 +108,7 @@ export default function OrdersPage() {
               </div>
               <div className="text-sm text-gray-500">{formatDate(order.display)}</div>
             </div>
+
             <div className="flex items-center space-x-2">
               <span
                 className={`px-2 py-1 rounded-full text-sm ${
