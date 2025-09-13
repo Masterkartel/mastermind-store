@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "img:backfill": "node scripts/backfill-img.js",
+    "img:list-missing": "node scripts/list-missing-img.js",
+    "img:print-uploads": "node scripts/print-uploads.js"
   },
   "dependencies": {
     "@types/node": "^20.0.0",
