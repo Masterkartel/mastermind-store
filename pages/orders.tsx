@@ -1,7 +1,7 @@
 // pages/orders.tsx
 import { useEffect, useState } from "react";
 
-/** -------- Types -------- */
+/* ---------- Types ---------- */
 type OrderItem = {
   name: string;
   price: number;
@@ -15,23 +15,23 @@ type Order = {
   id: string;
   reference?: string;
   createdAt?: string; // human display
-  paidAt?: string;    // ISO when present
+  paidAt?: string;    // ISO timestamp if present
   total: number;
   items: OrderItem[];
 };
 
-/** -------- Storage keys -------- */
+/* ---------- LocalStorage keys ---------- */
 const CANONICAL_KEY = "orders";
 const POSSIBLE_KEYS = ["orders", "mm_orders", "mastermind_orders", "cart_orders"];
-const EXPANDED_KEY = "orders_expanded_state";
 
-/** -------- Helpers (display only) -------- */
+/* ---------- Display helpers ---------- */
 const pad = (n: number) => String(n).padStart(2, "0");
 const formatDateTime = (d: Date) =>
   `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(
     d.getHours()
   )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
+/** If id contains digits (epoch ms), use it to form a display */
 const createdFromId = (id: string): string | undefined => {
   const m = id.match(/\d+/);
   if (!m) return;
@@ -49,7 +49,8 @@ const slugify = (s: string) =>
     .replace(/(^-|-$)/g, "");
 
 const resolveItemImage = (it: OrderItem) => {
-  const direct = it.image || (it as any).img || (it as any).imageUrl || (it as any).photo || (it as any).picture;
+  const direct =
+    it.image || (it as any).img || (it as any).imageUrl || (it as any).photo || (it as any).picture;
   if (typeof direct === "string" && direct.trim()) return direct.trim();
 
   if (typeof window !== "undefined") {
@@ -67,7 +68,7 @@ const resolveItemImage = (it: OrderItem) => {
   return PLACEHOLDER;
 };
 
-/** -------- Pills (unchanged) -------- */
+/* ---------- Pills (as-is) ---------- */
 const Pill = ({ bg, text, label }: { bg: string; text: string; label: string }) => (
   <span
     style={{
@@ -100,9 +101,10 @@ const StatusPill = ({ status }: { status: "SUCCESS" | "FAILED" | "PENDING" }) =>
   return <Pill bg="rgba(148,163,184,0.18)" text="#334155" label="Pending" />;
 };
 
-/** -------- Time helpers for SORT only -------- */
+/* ---------- Time helpers (sorting + reliable display) ---------- */
 const toMsSafe = (v?: string): number | undefined => {
   if (!v || typeof v !== "string") return;
+  // Accept only ISO-ish strings to avoid parsing “09/12/2025” wrongly.
   const isoLike =
     /\d{4}-\d{2}-\d{2}T/.test(v) || /\d{4}-\d{2}-\d{2}\s/.test(v) || /Z$/.test(v);
   if (!isoLike) return;
@@ -117,25 +119,22 @@ const idMs = (id: string): number | undefined => {
   return Number.isFinite(n) ? n : undefined;
 };
 
-/** Mark display dates that are obviously wrong so they go to the bottom */
 const isUnrealisticDisplayDate = (display?: string): boolean => {
   if (!display) return false;
-  const yearMatch = display.match(/(\d{4})/);
-  if (!yearMatch) return false;
-  const year = Number(yearMatch[1]);
+  const m = display.match(/(\d{4})/);
+  if (!m) return false;
+  const year = Number(m[1]);
   const now = new Date();
   const max = now.getFullYear() + 1;
-  if (year < 2000 || year > max) return true;
-  return false;
+  return year < 2000 || year > max;
 };
 
-/** -------- Page -------- */
+/* ---------- Page ---------- */
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [copiedFor, setCopiedFor] = useState<string | null>(null);
 
-  // Load orders, normalize, migrate, sort
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -152,33 +151,37 @@ export default function OrdersPage() {
     const normalized: Order[] = (merged || [])
       .filter((o) => o && typeof (o as any).id === "string")
       .map((o: any) => {
-        const createdDisplay =
-          o.createdAt || createdFromId(o.id) || formatDateTime(new Date());
         const items: OrderItem[] = Array.isArray(o.items) ? o.items : [];
-        return { ...o, createdAt: createdDisplay, items };
+
+        // Compute a reliable timestamp (id → paidAt ISO → createdAt ISO)
+        const ts =
+          idMs(o.id) ??
+          toMsSafe(o.paidAt) ??
+          toMsSafe(o.createdAt);
+
+        // Always show DD/MM/YYYY using the reliable ts if available,
+        // otherwise fall back to: existing createdAt → derived from id → now
+        let display =
+          (ts !== undefined ? formatDateTime(new Date(ts)) : undefined) ||
+          o.createdAt ||
+          createdFromId(o.id) ||
+          formatDateTime(new Date());
+
+        return { ...o, createdAt: display, items };
       });
 
-    // Sort rules:
-    // 1) realistic dates first; unrealistic display dates sink
-    // 2) within realistic: sort by id ms -> paidAt ISO -> createdAt ISO (desc)
+    // Sort: realistic dates first; inside each bucket newest → oldest
     normalized.sort((a, b) => {
       const aBad = isUnrealisticDisplayDate(a.createdAt);
       const bBad = isUnrealisticDisplayDate(b.createdAt);
-      if (aBad !== bBad) return aBad ? 1 : -1; // push bad below
+      if (aBad !== bBad) return aBad ? 1 : -1;
 
-      const aId = idMs(a.id);
-      const bId = idMs(b.id);
-      const aPaid = toMsSafe(a.paidAt);
-      const bPaid = toMsSafe(b.paidAt);
-      const aCreated = toMsSafe(a.createdAt);
-      const bCreated = toMsSafe(b.createdAt);
-
-      const aTs = aId ?? aPaid ?? aCreated ?? 0;
-      const bTs = bId ?? bPaid ?? bCreated ?? 0;
+      const aTs = idMs(a.id) ?? toMsSafe(a.paidAt) ?? toMsSafe(a.createdAt) ?? 0;
+      const bTs = idMs(b.id) ?? toMsSafe(b.paidAt) ?? toMsSafe(b.createdAt) ?? 0;
       return bTs - aTs;
     });
 
-    // Save canonical
+    // Save canonical + remove old keys
     try {
       localStorage.setItem(CANONICAL_KEY, JSON.stringify(normalized));
       for (const key of POSSIBLE_KEYS) {
@@ -186,30 +189,16 @@ export default function OrdersPage() {
       }
     } catch {}
 
-    // Load expanded state (default ALL collapsed)
-    let stored: Record<string, boolean> = {};
-    try {
-      const raw = localStorage.getItem(EXPANDED_KEY);
-      if (raw) stored = JSON.parse(raw) || {};
-    } catch {}
-    const initial: Record<string, boolean> = {};
-    normalized.forEach((o) => {
-      initial[o.id] = stored[o.id] ?? false; // collapsed by default
-    });
+    // ALWAYS collapsed on refresh
+    const collapsed: Record<string, boolean> = {};
+    normalized.forEach((o) => (collapsed[o.id] = false));
 
     setOrders(normalized);
-    setExpanded(initial);
+    setExpanded(collapsed);
   }, []);
 
-  const saveExpanded = (next: Record<string, boolean>) => {
-    setExpanded(next);
-    try {
-      localStorage.setItem(EXPANDED_KEY, JSON.stringify(next));
-    } catch {}
-  };
-
   const toggle = (id: string) => {
-    saveExpanded({ ...expanded, [id]: !expanded[id] });
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   const statusFrom = (o: Order): "SUCCESS" | "FAILED" | "PENDING" => {
@@ -223,7 +212,7 @@ export default function OrdersPage() {
 
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
-      {/* Header bar (unchanged) */}
+      {/* Header */}
       <div
         style={{
           background: "#111",
@@ -284,7 +273,7 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* Orders list */}
+      {/* List */}
       <div style={{ maxWidth: 1200, margin: "12px auto", padding: "0 12px" }}>
         {orders.length === 0 ? (
           <div
@@ -304,6 +293,7 @@ export default function OrdersPage() {
             {orders.map((order) => {
               const isOpen = !!expanded[order.id];
               const status = statusFrom(order);
+
               return (
                 <div
                   key={order.id}
@@ -314,7 +304,7 @@ export default function OrdersPage() {
                     overflow: "hidden",
                   }}
                 >
-                  {/* Header row (tap to toggle) */}
+                  {/* Header row (toggle) */}
                   <button
                     onClick={() => toggle(order.id)}
                     style={{ all: "unset", cursor: "pointer", width: "100%" }}
@@ -330,7 +320,6 @@ export default function OrdersPage() {
                         borderBottom: "1px solid #f0f0f0",
                       }}
                     >
-                      {/* Left: order id + date BELOW */}
                       <div style={{ display: "flex", flexDirection: "column" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ color: "#666" }}>Order</span>
@@ -343,7 +332,6 @@ export default function OrdersPage() {
                         ) : null}
                       </div>
 
-                      {/* Right: pill + total */}
                       <div
                         style={{
                           display: "flex",
@@ -406,7 +394,7 @@ export default function OrdersPage() {
                         );
                       })}
 
-                      {/* Reference */}
+                      {/* Reference + copy */}
                       <div
                         style={{
                           display: "flex",
@@ -474,7 +462,7 @@ export default function OrdersPage() {
                         ) : null}
                       </div>
 
-                      {/* Status */}
+                      {/* Status pill */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ color: "#777" }}>Status</span>
                         <StatusPill status={status} />
