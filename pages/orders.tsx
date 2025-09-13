@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 type OrderItem = {
   name: string;
   price: number;
-  quantity?: number; // accept quantity or qty
+  quantity?: number;
   qty?: number;
   image?: string;
   img?: string;
@@ -17,8 +17,8 @@ type OrderItem = {
 
 type Order = {
   id: string;
-  reference?: string;   // exists when paid (same as order number in your flow)
-  createdAt?: string;   // human-friendly date/time
+  reference?: string;
+  createdAt?: string;
   total: number;
   items: OrderItem[];
 };
@@ -31,6 +31,22 @@ const POSSIBLE_KEYS = ["orders", "mm_orders", "mastermind_orders", "cart_orders"
 const pad = (n: number) => String(n).padStart(2, "0");
 const formatDateTime = (d: Date) =>
   `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+
+// If createdAt is ISO-like, format it; otherwise keep as-is
+const formatMaybeDate = (s?: string): string | undefined => {
+  if (!s) return undefined;
+  // quick ISO-ish check
+  if (/\d{4}-\d{2}-\d{2}T/.test(s)) {
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) return formatDateTime(d);
+  }
+  // some backends send "YYYY-MM-DD HH:mm:ss"
+  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?/.test(s)) {
+    const d = new Date(s.replace(" ", "T"));
+    if (!isNaN(d.getTime())) return formatDateTime(d);
+  }
+  return s;
+};
 
 const createdFromId = (id: string): string | undefined => {
   const ts = Number(id?.replace(/^\D+/, ""));
@@ -47,11 +63,9 @@ const slugify = (s: string) =>
     .replace(/(^-|-$)/g, "");
 
 const resolveItemImage = (it: OrderItem) => {
-  // 1) direct fields
   const direct = it.image || it.img || it.imageUrl || it.photo || it.picture;
   if (typeof direct === "string" && direct.trim()) return direct.trim();
 
-  // 2) localStorage map (optional): { "<item name>": "url" }
   if (typeof window !== "undefined") {
     try {
       const raw = localStorage.getItem("productImages");
@@ -64,21 +78,19 @@ const resolveItemImage = (it: OrderItem) => {
     } catch {}
   }
 
-  // 3) public images by slug
   const slug = slugify(it.name);
   if (slug) return `/images/${slug}.webp`;
 
-  // 4) final fallback
   return PLACEHOLDER;
 };
 
-/** ---------- Pill styles (very light, readable) ---------- */
+/** ---------- Pill styles ---------- */
 const shades = {
-  greenBg: "#E6F7ED", // very light green
+  greenBg: "#E6F7ED",
   greenText: "#0E7C66",
-  redBg: "#FDECEC",   // very light red
+  redBg: "#FDECEC",
   redText: "#8A1C1C",
-  grayBg: "#EEF2F6",  // very light gray
+  grayBg: "#EEF2F6",
   grayText: "#475569",
 };
 
@@ -97,17 +109,6 @@ const Pill = ({ bg, color, children }: { bg: string; color: string; children: Re
     {children}
   </span>
 );
-
-const HeaderPill = ({ reference, failed }: { reference?: string; failed?: boolean }) => {
-  if (failed) return <Pill bg={shades.redBg} color={shades.redText}>Successful</Pill>; // text will be replaced below
-  if (!!reference) return <Pill bg={shades.greenBg} color={shades.greenText}>Successful</Pill>;
-  return <Pill bg={shades.grayBg} color={shades.grayText}>Pending</Pill>;
-};
-
-const StatusPill = ({ reference }: { reference?: string }) => {
-  if (!!reference) return <Pill bg={shades.greenBg} color={shades.greenText}>Paid</Pill>;
-  return <Pill bg={shades.redBg} color={shades.redText}>Failed</Pill>;
-};
 
 /** ---------- Tiny toast (silent “Copied!”) ---------- */
 const useToast = () => {
@@ -147,7 +148,7 @@ const useToast = () => {
 /** ---------- Page ---------- */
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[] | null>(null);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({}); // collapsed by default
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const { show, node: toast } = useToast();
 
   const loadOrders = useMemo(
@@ -167,8 +168,9 @@ export default function OrdersPage() {
         const normalized: Order[] = (merged || [])
           .filter((o) => o && typeof (o as any).id === "string")
           .map((o: any) => {
-            const created =
+            const createdRaw =
               o.createdAt || createdFromId(o.id) || formatDateTime(new Date());
+            const created = formatMaybeDate(createdRaw) || createdRaw;
             const items: OrderItem[] = Array.isArray(o.items) ? o.items : [];
             return { ...o, createdAt: created, items };
           });
@@ -192,12 +194,10 @@ export default function OrdersPage() {
     []
   );
 
-  // initial load + gentle delayed reloads (capture late writes after redirect)
   useEffect(() => {
     const first = loadOrders();
     setOrders(first);
 
-    // default: all collapsed on page load
     const collapsed: Record<string, boolean> = {};
     first.forEach((o) => (collapsed[o.id] = false));
     setExpanded(collapsed);
@@ -313,7 +313,6 @@ export default function OrdersPage() {
           <div style={{ display: "grid", gap: 12 }}>
             {orders.map((order) => {
               const isOpen = !!expanded[order.id];
-              const failed = !order.reference; // header shows Pending if no reference; when expanded status shows Failed
               return (
                 <div
                   key={order.id}
@@ -362,7 +361,6 @@ export default function OrdersPage() {
                           flexWrap: "nowrap",
                         }}
                       >
-                        {/* header pill logic: Successful if paid, Pending if not */}
                         {order.reference ? (
                           <Pill bg={shades.greenBg} color={shades.greenText}>Successful</Pill>
                         ) : (
@@ -449,10 +447,11 @@ export default function OrdersPage() {
                           <button
                             onClick={() => {
                               navigator.clipboard.writeText(order.reference!);
+                              // silent toast 1.2s
                               show("Copied!");
                             }}
                             style={{
-                              background: "#F6F0FD", // soft purple capsule (toast uses black)
+                              background: "#F6F0FD",
                               color: "#6B21A8",
                               fontWeight: 800,
                               border: "none",
@@ -469,10 +468,14 @@ export default function OrdersPage() {
                       {/* Status */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ color: "#777" }}>Status</span>
-                        <StatusPill reference={order.reference} />
+                        {order.reference ? (
+                          <Pill bg={shades.greenBg} color={shades.greenText}>Paid</Pill>
+                        ) : (
+                          <Pill bg={shades.redBg} color={shades.redText}>Failed</Pill>
+                        )}
                       </div>
 
-                      {/* Total (label + value right-aligned) */}
+                      {/* Total */}
                       <div
                         style={{
                           display: "grid",
@@ -498,4 +501,4 @@ export default function OrdersPage() {
       {toast}
     </div>
   );
-                      }
+                                }
