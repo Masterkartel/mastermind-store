@@ -1,36 +1,87 @@
 // pages/orders.tsx
 import { useEffect, useMemo, useState } from "react";
 
-/** -------- Types -------- */
+/** ------------ Types ------------ */
 type OrderItem = {
   name: string;
   price: number;
-  quantity?: number; // accept quantity or qty (legacy)
+  quantity?: number;
   qty?: number;
   image?: string;
-  // sometimes: img, imageUrl, photo, picture
-  [key: string]: any;
+  img?: string;
+  imageUrl?: string;
+  [k: string]: any;
 };
 
 type Order = {
   id: string;
-  reference?: string;     // exists when paid (same as order number in your flow)
-  createdAt?: string;     // human-friendly date/time (we fill if missing)
-  paidAt?: string;        // optional paid timestamp if present
+  reference?: string;          // exists when paid (same as order number in your flow)
+  createdAt?: string;          // human-friendly date/time
+  paidAt?: string;             // optional; if present we prefer for sorting
   total: number;
   items: OrderItem[];
+  _ts?: number;                // computed timestamp (ms) used for reliable sorting
 };
 
-/** -------- Storage keys -------- */
+/** ------------ Storage keys ------------ */
 const CANONICAL_KEY = "orders";
 const POSSIBLE_KEYS = ["orders", "mm_orders", "mastermind_orders", "cart_orders"];
 
-/** -------- Helpers -------- */
+/** ------------ Helpers ------------ */
 const pad = (n: number) => String(n).padStart(2, "0");
-const formatDateTime = (d: Date) =>
+const fmt = (d: Date) =>
   `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
+/** Parse a date/time string like:
+ *  "12/09/2025, 17:59" | "12/09/2025, 17:59:00" | ISO | anything Date can parse
+ *  Returns ms or undefined if invalid.
+ */
+const parseToMs = (v?: string): number | undefined => {
+  if (!v) return;
+  // If already ISO or generic, try Date
+  const d = new Date(v);
+  if (!isNaN(d.getTime())) return d.getTime();
+
+  // Try "DD/MM/YYYY, HH:MM[:SS]"
+  const m = v.match(
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?$/,
+  );
+  if (m) {
+    const [_, dd, mm, yyyy, HH, MM, SS] = m;
+    const dt = new Date(
+      Number(yyyy),
+      Number(mm) - 1,
+      Number(dd),
+      Number(HH),
+      Number(MM),
+      Number(SS || 0),
+    );
+    if (!isNaN(dt.getTime())) return dt.getTime();
+  }
+  return;
+};
+
+// Derive a sensible createdAt if missing by reading a number from the id
+const createdFromId = (id: string): string | undefined => {
+  const ts = Number(id?.replace(/^\D+/, ""));
+  if (!Number.isFinite(ts)) return;
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return;
+  return fmt(d);
+};
+
+// Clamp clearly bad future years (e.g., 2952) to "now"
+const clampWeirdFuture = (ms?: number): number | undefined => {
+  if (ms == null) return;
+  const d = new Date(ms);
+  const y = d.getFullYear();
+  const thisYear = new Date().getFullYear();
+  if (y > thisYear + 1) return Date.now();
+  return ms;
+};
+
 const PLACEHOLDER = "https://via.placeholder.com/56x56.png?text=%20";
+
 const slugify = (s: string) =>
   (s || "")
     .toLowerCase()
@@ -38,11 +89,10 @@ const slugify = (s: string) =>
     .replace(/(^-|-$)/g, "");
 
 const resolveItemImage = (it: OrderItem) => {
-  // 1) direct fields
   const direct = it.image || it.img || it.imageUrl || it.photo || it.picture;
   if (typeof direct === "string" && direct.trim()) return direct.trim();
 
-  // 2) localStorage map (optional): { "<item name>": "url" }
+  // Local map from product name to URL (if you ever save it)
   if (typeof window !== "undefined") {
     try {
       const raw = localStorage.getItem("productImages");
@@ -55,68 +105,55 @@ const resolveItemImage = (it: OrderItem) => {
     } catch {}
   }
 
-  // 3) public images by slug
+  // Fallback guess by slug — your catalog uses /products/<slug>.jpg
   const slug = slugify(it.name);
-  if (slug) return `/images/${slug}.webp`;
+  if (slug) return `/products/${slug}.jpg`;
 
-  // 4) final fallback
   return PLACEHOLDER;
 };
 
-const parseToMs = (v?: string) => {
-  if (!v) return undefined;
-  const d = new Date(v);
-  const ms = d.getTime();
-  return Number.isFinite(ms) ? ms : undefined;
-};
-
-/** -------- Pills (ultra-light shades & colored text) -------- */
+/** ------------ UI atoms ------------ */
 const Pill = ({
   bg,
-  fg,
-  children,
+  text,
+  textColor,
 }: {
   bg: string;
-  fg: string;
-  children: React.ReactNode;
+  textColor: string;
+  text: string;
 }) => (
   <span
     style={{
       background: bg,
-      color: fg,
+      color: textColor,
       fontSize: 12,
       fontWeight: 800,
-      padding: "6px 12px",
+      padding: "4px 10px",
       borderRadius: 999,
       whiteSpace: "nowrap",
     }}
   >
-    {children}
+    {text}
   </span>
 );
 
-const HeaderPill = ({ reference }: { reference?: string }) => {
-  const paid = !!reference;
-  // Very light shades
-  const bg = paid ? "rgba(16,185,129,0.12)" : "rgba(100,116,139,0.12)"; // green / gray
-  const fg = paid ? "#059669" : "#334155";
-  return <Pill bg={bg} fg={fg}>{paid ? "Successful" : "Pending"}</Pill>;
+// Extremely light “mobile-finance” style shades
+const shades = {
+  greenBg: "rgba(16, 185, 129, 0.15)",
+  greenFg: "#16a34a", // used for "Successful" / "Paid"
+  redBg: "rgba(239, 68, 68, 0.14)",
+  redFg: "#b91c1c",   // used for "Failed"
+  grayBg: "rgba(148, 163, 184, 0.18)",
+  grayFg: "#334155",  // used for "Pending"
 };
 
-const StatusPill = ({ reference }: { reference?: string }) => {
-  const paid = !!reference;
-  const bg = paid ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.12)"; // green / red
-  const fg = paid ? "#059669" : "#b91c1c";
-  return <Pill bg={bg} fg={fg}>{paid ? "Paid" : "Failed"}</Pill>;
-};
-
-/** -------- Page -------- */
+/** ------------ Page ------------ */
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[] | null>(null);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({}); // per-order toggle
-  const [copiedId, setCopiedId] = useState<string | null>(null); // for 1.2s inline toast
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [copiedId, setCopiedId] = useState<string | null>(null); // which order was just copied (to show tiny badge)
 
-  // Load orders, normalize, migrate to canonical key
+  // Load, normalize, compute `_ts`, sort (DESC)
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -126,85 +163,85 @@ export default function OrdersPage() {
         const raw = localStorage.getItem(key);
         if (!raw) continue;
         const arr = JSON.parse(raw);
-        if (Array.isArray(arr)) merged.push(...arr);
+        if (Array.isArray(arr)) merged.push(...(arr as Order[]));
       } catch {}
     }
 
-    const now = Date.now();
-    const currentYear = new Date().getFullYear();
-
-    const normalized: (Order & { _ts: number })[] = (merged || [])
+    const normalized: Order[] = (merged || [])
       .filter((o) => o && typeof (o as any).id === "string")
       .map((o: any) => {
-        // pick the best timestamp we can, then correct silly years
-        let display =
-          o.createdAt ||
-          o.paidAt ||
-          formatDateTime(new Date(now));
+        const display =
+          o.createdAt || createdFromId(o.id) || fmt(new Date());
 
-        // ---- FIX: choose timestamp with only ??, no mixing with || ----
-        const numericIdOrUndef = (): number | undefined => {
-          const n = Number(String(o.id).replace(/^\D+/, ""));
-          return Number.isFinite(n) ? n : undefined;
-        };
-
-        let ts =
+        // compute ms preference: paidAt > createdAt > display > numeric id
+        const msPref =
           parseToMs(o.paidAt) ??
           parseToMs(o.createdAt) ??
           parseToMs(display) ??
-          numericIdOrUndef();
+          (() => {
+            const n = Number(String(o.id || "").replace(/^\D+/, ""));
+            return Number.isFinite(n) ? n : undefined;
+          })();
 
-        // Guard against future/ancient years (e.g., 2952)
-        if (ts) {
-          const y = new Date(ts).getFullYear();
-          if (y < 2000 || y > currentYear + 1) {
-            const fallback = numericIdOrUndef();
-            ts = fallback ?? now;
-            display = formatDateTime(new Date(ts));
-          }
-        } else {
-          ts = now;
-          display = formatDateTime(new Date(ts));
-        }
-        // ----------------------------------------------------------------
+        const ts = clampWeirdFuture(msPref) ?? Date.now();
 
         const items: OrderItem[] = Array.isArray(o.items) ? o.items : [];
-        return { ...o, createdAt: display, items, _ts: ts as number };
+        return { ...o, createdAt: display, items, _ts: ts };
       });
 
-    // Sort newest first by computed timestamp
-    normalized.sort((a, b) => b._ts - a._ts);
+    // NEW: always sort newest first by computed `_ts`
+    normalized.sort((a, b) => (b._ts || 0) - (a._ts || 0));
 
-    // Save canonical & clear old keys
     try {
-      localStorage.setItem(
-        CANONICAL_KEY,
-        JSON.stringify(normalized.map(({ _ts, ...rest }) => rest))
-      );
+      localStorage.setItem(CANONICAL_KEY, JSON.stringify(normalized));
       for (const key of POSSIBLE_KEYS) {
         if (key !== CANONICAL_KEY) localStorage.removeItem(key);
       }
     } catch {}
 
-    // default: all **collapsed** (tap header to open)
-    const initialExpanded: Record<string, boolean> = {};
-    normalized.forEach((o) => (initialExpanded[o.id] = false));
+    // Default collapsed (auto-collapse on refresh)
+    const collapsed: Record<string, boolean> = {};
+    normalized.forEach((o) => (collapsed[o.id] = false));
 
-    setOrders(normalized.map(({ _ts, ...rest }) => rest));
-    setExpanded(initialExpanded);
+    setOrders(normalized);
+    setExpanded(collapsed);
   }, []);
 
   const toggle = (id: string) =>
     setExpanded((e) => ({ ...e, [id]: !e[id] }));
 
-  // ephemeral "Copied!" badge beside the button
-  useEffect(() => {
-    if (!copiedId) return;
-    const t = setTimeout(() => setCopiedId(null), 1200);
-    return () => clearTimeout(t);
-  }, [copiedId]);
+  const onCopy = async (text: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId((cur) => (cur === id ? null : cur)), 1200);
+    } catch {}
+  };
 
-  const empty = useMemo(() => orders !== null && orders.length === 0, [orders]);
+  const headerPill = (order: Order) => {
+    if (order.reference) {
+      return (
+        <Pill
+          bg={shades.greenBg}
+          textColor={shades.greenFg}
+          text="Successful"
+        />
+      );
+    }
+    // You asked: when FAILED in status row, also FAILED in header
+    return <Pill bg={shades.redBg} textColor={shades.redFg} text="Failed" />;
+  };
+
+  const statusPill = (order: Order) => {
+    if (order.reference) {
+      return <Pill bg={shades.greenBg} textColor={shades.greenFg} text="Paid" />;
+    }
+    return <Pill bg={shades.redBg} textColor={shades.redFg} text="Failed" />;
+  };
+
+  const money = (n: number) => `KES ${Math.round(n).toLocaleString("en-KE")}`;
+
+  const list = useMemo(() => orders ?? [], [orders]);
 
   if (orders === null) {
     return <div style={{ background: "#f6f6f6", minHeight: "100vh" }} />;
@@ -212,7 +249,7 @@ export default function OrdersPage() {
 
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
-      {/* Header bar (unchanged) */}
+      {/* Top bar */}
       <div
         style={{
           background: "#111",
@@ -275,7 +312,7 @@ export default function OrdersPage() {
 
       {/* Orders list */}
       <div style={{ maxWidth: 1200, margin: "12px auto", padding: "0 12px" }}>
-        {empty ? (
+        {list.length === 0 ? (
           <div
             style={{
               background: "#fff",
@@ -290,7 +327,7 @@ export default function OrdersPage() {
           </div>
         ) : (
           <div style={{ display: "grid", gap: 12 }}>
-            {orders.map((order) => {
+            {list.map((order) => {
               const isOpen = !!expanded[order.id];
               return (
                 <div
@@ -300,9 +337,10 @@ export default function OrdersPage() {
                     border: "1px solid #eee",
                     borderRadius: 16,
                     overflow: "hidden",
+                    position: "relative",
                   }}
                 >
-                  {/* Header row (tap to toggle) */}
+                  {/* Header (tap to toggle) */}
                   <button
                     onClick={() => toggle(order.id)}
                     style={{ all: "unset", cursor: "pointer", width: "100%" }}
@@ -340,16 +378,15 @@ export default function OrdersPage() {
                           flexWrap: "nowrap",
                         }}
                       >
-                        {/* Header shows Pending/Successful; Failed in header mirrors Failed status (no reference) */}
-                        <HeaderPill reference={order.reference} />
+                        {headerPill(order)}
                         <span style={{ fontWeight: 800, whiteSpace: "nowrap" }}>
-                          KES {Math.round(order.total).toLocaleString("en-KE")}
+                          {money(order.total)}
                         </span>
                       </div>
                     </div>
                   </button>
 
-                  {/* Body (collapsible) */}
+                  {/* Body */}
                   {isOpen && (
                     <div style={{ padding: 14, display: "grid", gap: 10 }}>
                       {order.items.map((it, i) => {
@@ -403,6 +440,7 @@ export default function OrdersPage() {
                           gap: 8,
                           flexWrap: "wrap",
                           marginTop: 4,
+                          position: "relative",
                         }}
                       >
                         <span style={{ color: "#777" }}>Reference</span>
@@ -420,51 +458,46 @@ export default function OrdersPage() {
                           {order.reference || "—"}
                         </span>
                         {order.reference ? (
-                          <span style={{ position: "relative", display: "inline-flex" }}>
-                            <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(order.reference!);
-                                setCopiedId(order.id);
-                              }}
-                              style={{
-                                background: "#ede9fe",
-                                color: "#6d28d9",
-                                fontWeight: 800,
-                                border: "none",
-                                padding: "6px 10px",
-                                borderRadius: 10,
-                                cursor: "pointer",
-                              }}
-                            >
-                              Copy
-                            </button>
+                          <button
+                            onClick={() => onCopy(order.reference!, order.id)}
+                            style={{
+                              background: "rgba(168, 85, 247, 0.15)",
+                              color: "#6d28d9",
+                              fontWeight: 800,
+                              border: "none",
+                              padding: "6px 10px",
+                              borderRadius: 10,
+                              cursor: "pointer",
+                              position: "relative",
+                            }}
+                          >
+                            Copy
+                            {/* tiny ephemeral badge */}
                             {copiedId === order.id && (
                               <span
                                 style={{
                                   position: "absolute",
-                                  right: -72,
-                                  top: "50%",
-                                  transform: "translateY(-50%)",
-                                  background: "rgba(16,185,129,0.12)",
-                                  color: "#059669",
-                                  fontWeight: 800,
+                                  top: -18,
+                                  right: -6,
+                                  background: "rgba(16,185,129,0.18)",
+                                  color: "#16a34a",
                                   borderRadius: 8,
-                                  padding: "4px 8px",
-                                  fontSize: 12,
-                                  pointerEvents: "none",
+                                  fontSize: 11,
+                                  fontWeight: 800,
+                                  padding: "2px 6px",
                                 }}
                               >
                                 Copied!
                               </span>
                             )}
-                          </span>
+                          </button>
                         ) : null}
                       </div>
 
                       {/* Status */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ color: "#777" }}>Status</span>
-                        <StatusPill reference={order.reference} />
+                        {statusPill(order)}
                       </div>
 
                       {/* Total */}
@@ -477,9 +510,7 @@ export default function OrdersPage() {
                         }}
                       >
                         <span style={{ color: "#777" }}>Total</span>
-                        <span style={{ fontWeight: 800 }}>
-                          KES {Math.round(order.total).toLocaleString("en-KE")}
-                        </span>
+                        <span style={{ fontWeight: 800 }}>{money(order.total)}</span>
                       </div>
                     </div>
                   )}
