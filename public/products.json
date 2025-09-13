@@ -44,4068 +44,4647 @@
     "name": "2 batt Torch",
     "sku": "1",
     "price": 150,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/2-batt-torch.jpg"
   },
   {
     "id": "2-4-g-wireless-mouse",
     "name": "2.4 G Wireless Mouse",
     "sku": "1",
     "price": 650,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/2-4-g-wireless-mouse.jpg"
   },
   {
     "id": "20w-led-bulkhead",
     "name": "20W LED bulkhead",
     "sku": "1",
     "price": 900,
-    "stock": 29
+    "stock": 29,
+    "img": "/products/20w-led-bulkhead.jpg"
   },
   {
     "id": "25w-pd-adapter-usb-c",
     "name": "25W PD Adapter USB-C",
     "sku": "1",
     "price": 850,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/25w-pd-adapter-usb-c.jpg"
   },
   {
     "id": "25w-pd-charger",
     "name": "25W PD Charger",
     "sku": "1 pc",
     "price": 950,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/25w-pd-charger.jpg"
   },
   {
     "id": "25w-sundabest",
     "name": "25W Sundabest",
     "sku": "1 pc",
     "price": 550,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/25w-sundabest.jpg"
   },
   {
     "id": "28w-sundabest",
     "name": "28W Sundabest",
     "sku": "1 pc",
     "price": 650,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/28w-sundabest.jpg"
   },
   {
     "id": "2ba-3-5-70mm",
     "name": "2BA 3.5×70mm",
     "sku": "1",
     "price": 5,
-    "stock": 285
+    "stock": 285,
+    "img": "/products/2ba-3-5-70mm.jpg"
   },
   {
     "id": "3-by-3-cable-silver",
     "name": "3 by 3 cable silver",
     "sku": "1",
     "price": 150,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/3-by-3-cable-silver.jpg"
   },
   {
     "id": "3-pin-xlr-speaker-connector-plug",
     "name": "3 pin XLR speaker connector plug",
     "sku": "1",
     "price": 200,
-    "stock": 15
+    "stock": 15,
+    "img": "/products/3-pin-xlr-speaker-connector-plug.jpg"
   },
   {
     "id": "4-4-4-metallic-adaptor",
     "name": "4*4*4 Metallic adaptor",
     "sku": "1",
     "price": 200,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/4-4-4-metallic-adaptor.jpg"
   },
   {
     "id": "45w-pd-adapter",
     "name": "45W PD Adapter",
     "sku": "1",
     "price": 950,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/45w-pd-adapter.jpg"
   },
   {
     "id": "45w-pd-charger",
     "name": "45W PD Charger",
     "sku": "1 pc",
     "price": 1250,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/45w-pd-charger.jpg"
   },
   {
     "id": "4ba-4-70mm",
     "name": "4BA 4×70mm",
     "sku": "1",
     "price": 5,
-    "stock": 68
+    "stock": 68,
+    "img": "/products/4ba-4-70mm.jpg"
   },
   {
     "id": "4mm-single-cable",
     "name": "4MM single cable",
     "sku": "1",
     "price": 100,
-    "stock": 174
+    "stock": 174,
+    "img": "/products/4mm-single-cable.jpg"
   },
   {
     "id": "4you-stainless-kettle",
     "name": "4you Stainless Kettle",
     "sku": "1",
     "price": 1350,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/4you-stainless-kettle.jpg"
   },
   {
     "id": "5w-bulbs",
     "name": "5W Bulbs",
     "sku": "1 pc",
     "price": 100,
-    "stock": 77
+    "stock": 77,
+    "img": "/products/5w-bulbs.jpg"
   },
   {
     "id": "6-mm-single-cable",
     "name": "6 MM Single Cable",
     "sku": "1",
     "price": 180,
-    "stock": 269
+    "stock": 269,
+    "img": "/products/6-mm-single-cable.jpg"
   },
   {
     "id": "6-35mm-male-audio-plug-connector",
     "name": "6.35mm male audio plug connector",
     "sku": "1",
     "price": 200,
-    "stock": 15
+    "stock": 15,
+    "img": "/products/6-35mm-male-audio-plug-connector.jpg"
   },
   {
     "id": "6-6-4-metallic-adaptor",
     "name": "6*6*4 Metallic adaptor",
     "sku": "1",
     "price": 300,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/6-6-4-metallic-adaptor.jpg"
   },
   {
     "id": "7w-bulbs",
     "name": "7W Bulbs",
     "sku": "1 pc",
     "price": 150,
-    "stock": 33
+    "stock": 33,
+    "img": "/products/7w-bulbs.jpg"
   },
   {
     "id": "9w-bulbs",
     "name": "9W Bulbs",
     "sku": "1 pc",
     "price": 200,
-    "stock": 20
+    "stock": 20,
+    "img": "/products/9w-bulbs.jpg"
   },
   {
     "id": "9x9",
     "name": "9x9",
     "sku": "1 pc",
     "price": 150,
-    "stock": 10
+    "stock": 10,
+    "img": "/products/9x9.jpg"
   },
   {
     "id": "adaptor-box",
     "name": "Adaptor Box",
     "sku": "1 pc",
     "price": 250,
-    "stock": 10
+    "stock": 10,
+    "img": "/products/adaptor-box.jpg"
   },
   {
     "id": "advance-64gb-flash",
     "name": "Advance 64GB Flash",
     "sku": "1 pc",
     "price": 1200,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/advance-64gb-flash.jpg"
   },
   {
     "id": "advance-flash-16gb",
     "name": "ADVANCE FLASH 16GB",
     "sku": "1",
     "price": 900,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/advance-flash-16gb.jpg"
   },
   {
     "id": "advance-flash-2gb",
     "name": "ADVANCE FLASH 2GB",
     "sku": "1",
     "price": 450,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/advance-flash-2gb.jpg"
   },
   {
     "id": "advance-flash-32gb",
     "name": "ADVANCE FLASH 32GB",
     "sku": "1",
     "price": 950,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/advance-flash-32gb.jpg"
   },
   {
     "id": "advance-flash-4gb",
     "name": "ADVANCE FLASH 4GB",
     "sku": "1",
     "price": 600,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/advance-flash-4gb.jpg"
   },
   {
     "id": "advance-flash-8gb",
     "name": "ADVANCE FLASH 8GB",
     "sku": "1",
     "price": 800,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/advance-flash-8gb.jpg"
   },
   {
     "id": "ailyons-2-1ch-elp2404k",
     "name": "AILYONS 2.1CH ELP2404K",
     "sku": "1 pc",
     "price": 4150,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/ailyons-2-1ch-elp2404k.jpg"
   },
   {
     "id": "ailyons-2-1ch-elp2405k",
     "name": "AILYONS 2.1CH ELP2405K",
     "sku": "1 pc",
     "price": 4150,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/ailyons-2-1ch-elp2405k.jpg"
   },
   {
     "id": "ailyons-2-1ch-elp2408k",
     "name": "AILYONS 2.1CH ELP2408K",
     "sku": "1 pc",
     "price": 3850,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/ailyons-2-1ch-elp2408k.jpg"
   },
   {
     "id": "ailyons-2-1ch-elp2409k",
     "name": "AILYONS 2.1CH ELP2409K",
     "sku": "1 pc",
     "price": 3850,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/ailyons-2-1ch-elp2409k.jpg"
   },
   {
     "id": "ailyons-2-1ch-elp2411k",
     "name": "AILYONS 2.1CH ELP2411K",
     "sku": "1 pc",
     "price": 4650,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/ailyons-2-1ch-elp2411k.jpg"
   },
   {
     "id": "ailyons-2-1ch-elp2503k",
     "name": "AILYONS 2.1CH ELP2503K",
     "sku": "1 pc",
     "price": 4650,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/ailyons-2-1ch-elp2503k.jpg"
   },
   {
     "id": "ailyons-2-1ch-elp2506k",
     "name": "AILYONS 2.1CH ELP2506K",
     "sku": "1 pc",
     "price": 4750,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/ailyons-2-1ch-elp2506k.jpg"
   },
   {
     "id": "ailyons-3-1ch-elp3611k",
     "name": "AILYONS 3.1CH ELP3611K",
     "sku": "1 pc",
     "price": 6750,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/ailyons-3-1ch-elp3611k.jpg"
   },
   {
     "id": "ailyons-3-1ch-elp3703k",
     "name": "AILYONS 3.1CH ELP3703K",
     "sku": "1 pc",
     "price": 8150,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/ailyons-3-1ch-elp3703k.jpg"
   },
   {
     "id": "ailyons-blender-tyb-201-a",
     "name": "AILYONS Blender TYB-201-A",
     "sku": "1",
     "price": 3450,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/ailyons-blender-tyb-201-a.jpg"
   },
   {
     "id": "ailyons-blender-tyb-201-a-2",
     "name": "AILYONS Blender TYB-201-A",
     "sku": "1 pc",
     "price": 2950,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/ailyons-blender-tyb-201-a-2.jpg"
   },
   {
     "id": "ailyons-elp2401k",
     "name": "AILYONS ELP2401K",
     "sku": "1 pc",
     "price": 3750,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/ailyons-elp2401k.jpg"
   },
   {
     "id": "ailyons-elp2403k",
     "name": "AILYONS ELP2403K",
     "sku": "1 pc",
     "price": 3850,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/ailyons-elp2403k.jpg"
   },
   {
     "id": "ailyons-elp2406k",
     "name": "AILYONS ELP2406K",
     "sku": "1",
     "price": 3850,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/ailyons-elp2406k.jpg"
   },
   {
     "id": "ailyons-elp2501k",
     "name": "AILYONS ELP2501K",
     "sku": "1",
     "price": 6150,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/ailyons-elp2501k.jpg"
   },
   {
     "id": "ailyons-elp3601k",
     "name": "AILYONS ELP3601K",
     "sku": "1",
     "price": 7350,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/ailyons-elp3601k.jpg"
   },
   {
     "id": "ailyons-elp3602k",
     "name": "AILYONS ELP3602K",
     "sku": "1",
     "price": 7950,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/ailyons-elp3602k.jpg"
   },
   {
     "id": "ailyons-elp3603k",
     "name": "AILYONS ELP3603K",
     "sku": "1",
     "price": 7350,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/ailyons-elp3603k.jpg"
   },
   {
     "id": "ailyons-elp3701k",
     "name": "AILYONS ELP3701K",
     "sku": "1",
     "price": 8150,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/ailyons-elp3701k.jpg"
   },
   {
     "id": "ailyons-elp3801k",
     "name": "AILYONS ELP3801K",
     "sku": "1",
     "price": 9250,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/ailyons-elp3801k.jpg"
   },
   {
     "id": "ailyons-fk-0301-g-kettle",
     "name": "AILYONS FK-0301-G Kettle",
     "sku": "1 pc",
     "price": 1350,
-    "stock": 7
+    "stock": 7,
+    "img": "/products/ailyons-fk-0301-g-kettle.jpg"
   },
   {
     "id": "ailyons-fk-0306-kettle",
     "name": "AILYONS FK-0306 Kettle",
     "sku": "1",
     "price": 1300,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/ailyons-fk-0306-kettle.jpg"
   },
   {
     "id": "ailyons-fk-0308-kettle",
     "name": "AILYONS FK-0308 Kettle",
     "sku": "1",
     "price": 1600,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/ailyons-fk-0308-kettle.jpg"
   },
   {
     "id": "ailyons-fk-0311-water-kettle",
     "name": "AILYONS FK-0311 WATER KETTLE",
     "sku": "1 pc",
     "price": 2150,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/ailyons-fk-0311-water-kettle.jpg"
   },
   {
     "id": "ailyons-fk-0316-kettle",
     "name": "AILYONS FK-0316 Kettle",
     "sku": "1 pc",
     "price": 2000,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/ailyons-fk-0316-kettle.jpg"
   },
   {
     "id": "ailyons-fk-0338-5-7-litres-kettle",
     "name": "AILYONS FK-0338 5.7 Litres Kettle",
     "sku": "1 pc",
     "price": 4150,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/ailyons-fk-0338-5-7-litres-kettle.jpg"
   },
   {
     "id": "ailyons-gs014-1-gas-stove-double-burner",
     "name": "AILYONS GS014-1 Gas Stove Double Burner",
     "sku": "1 pc",
     "price": 3850,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/ailyons-gs014-1-gas-stove-double-burner.jpg"
   },
   {
     "id": "ailyons-gs017-1-gas-stove-double-burner",
     "name": "AILYONS GS017-1 Gas Stove Double Burner",
     "sku": "1 pc",
     "price": 2850,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/ailyons-gs017-1-gas-stove-double-burner.jpg"
   },
   {
     "id": "ailyons-iron-198",
     "name": "AILYONS iron 198",
     "sku": "1",
     "price": 1350,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/ailyons-iron-198.jpg"
   },
   {
     "id": "ailyons-iron-hd199a",
     "name": "AILYONS iron HD199A",
     "sku": "1",
     "price": 1550,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/ailyons-iron-hd199a.jpg"
   },
   {
     "id": "aldeepo-3-1-type-c",
     "name": "Aldeepo 3.1 type C",
     "sku": "1",
     "price": 150,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/aldeepo-3-1-type-c.jpg"
   },
   {
     "id": "aldeepo-3-1-type-c-1-2m",
     "name": "Aldeepo 3.1 type C 1.2M",
     "sku": "1",
     "price": 200,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/aldeepo-3-1-type-c-1-2m.jpg"
   },
   {
     "id": "aldeepo-3-1-usb-cable",
     "name": "Aldeepo 3.1 usb cable",
     "sku": "1",
     "price": 100,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/aldeepo-3-1-usb-cable.jpg"
   },
   {
     "id": "aldeepo-3-1-usb-cable-1-2",
     "name": "Aldeepo 3.1 usb cable 1.2",
     "sku": "1",
     "price": 150,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/aldeepo-3-1-usb-cable-1-2.jpg"
   },
   {
     "id": "aldeepo-bl-5c",
     "name": "Aldeepo BL-5C",
     "sku": "1",
     "price": 350,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/aldeepo-bl-5c.jpg"
   },
   {
     "id": "aldeepo-earphones",
     "name": "Aldeepo Earphones",
     "sku": "1",
     "price": 250,
-    "stock": 6
+    "stock": 6,
+    "img": "/products/aldeepo-earphones.jpg"
   },
   {
     "id": "aldeepo-wireless-earbuds",
     "name": "Aldeepo Wireless Earbuds",
     "sku": "1 pc",
     "price": 1250,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/aldeepo-wireless-earbuds.jpg"
   },
   {
     "id": "amaya-3-1a-charger",
     "name": "Amaya 3.1A charger",
     "sku": "1",
     "price": 350,
-    "stock": 8
+    "stock": 8,
+    "img": "/products/amaya-3-1a-charger.jpg"
   },
   {
     "id": "amaya-cable-type-c",
     "name": "Amaya Cable( Type C)",
     "sku": "1",
     "price": 200,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/amaya-cable-type-c.jpg"
   },
   {
     "id": "amaya-car-charger",
     "name": "Amaya Car charger",
     "sku": "1",
     "price": 150,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/amaya-car-charger.jpg"
   },
   {
     "id": "ampex-a-8551",
     "name": "Ampex A-8551",
     "sku": "1",
     "price": 6500,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/ampex-a-8551.jpg"
   },
   {
     "id": "ampex-a-8610",
     "name": "Ampex A-8610",
     "sku": "1",
     "price": 6500,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/ampex-a-8610.jpg"
   },
   {
     "id": "ampex-ax012bt",
     "name": "Ampex AX012BT",
     "sku": "1",
     "price": 3500,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/ampex-ax012bt.jpg"
   },
   {
     "id": "amtec-dtv-24",
     "name": "AMTEC DTV 24\"",
     "sku": "1",
     "price": 11500,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/amtec-dtv-24.jpg"
   },
   {
     "id": "amtec-dtv-32",
     "name": "AMTEC DTV 32\"",
     "sku": "1",
     "price": 18000,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/amtec-dtv-32.jpg"
   },
   {
     "id": "andeli-double-pole",
     "name": "Andeli Double pole",
     "sku": "1 pc",
     "price": 550,
-    "stock": 27
+    "stock": 27,
+    "img": "/products/andeli-double-pole.jpg"
   },
   {
     "id": "andeli-mcb",
     "name": "Andeli MCB",
     "sku": "1 pc",
     "price": 300,
-    "stock": 69
+    "stock": 69,
+    "img": "/products/andeli-mcb.jpg"
   },
   {
     "id": "annuo-steam-iron",
     "name": "ANNUO Steam Iron",
     "sku": "1 pc",
     "price": 1850,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/annuo-steam-iron.jpg"
   },
   {
     "id": "aspatek-gdb-5800-hair-dryer",
     "name": "Aspatek GDB-5800 Hair dryer",
     "sku": "1",
     "price": 4100,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/aspatek-gdb-5800-hair-dryer.jpg"
   },
   {
     "id": "aspatek-gdb-6800-hair-dryer",
     "name": "Aspatek GDB-6800 Hair dryer",
     "sku": "1",
     "price": 3950,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/aspatek-gdb-6800-hair-dryer.jpg"
   },
   {
     "id": "aspatek-kinyozi",
     "name": "Aspatek Kinyozi",
     "sku": "1",
     "price": 2650,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/aspatek-kinyozi.jpg"
   },
   {
     "id": "auto-car-charger-3-1a",
     "name": "Auto car charger 3.1A",
     "sku": "1",
     "price": 550,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/auto-car-charger-3-1a.jpg"
   },
   {
     "id": "auto-plastic-lock",
     "name": "Auto Plastic Lock",
     "sku": "1 pc",
     "price": 150,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/auto-plastic-lock.jpg"
   },
   {
     "id": "aux-2-in-1",
     "name": "AUX 2 in 1",
     "sku": "1",
     "price": 100,
-    "stock": 10
+    "stock": 10,
+    "img": "/products/aux-2-in-1.jpg"
   },
   {
     "id": "avc-led-bulk-head",
     "name": "AVC LED Bulk Head",
     "sku": "1 pc",
     "price": 800,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/avc-led-bulk-head.jpg"
   },
   {
     "id": "ball-fitting",
     "name": "Ball Fitting",
     "sku": "1 pc",
     "price": 500,
-    "stock": 7
+    "stock": 7,
+    "img": "/products/ball-fitting.jpg"
   },
   {
     "id": "battery-acid",
     "name": "Battery Acid",
     "sku": "1",
     "price": 150,
-    "stock": 11
+    "stock": 11,
+    "img": "/products/battery-acid.jpg"
   },
   {
     "id": "battery-water",
     "name": "Battery Water",
     "sku": "1",
     "price": 100,
-    "stock": 10
+    "stock": 10,
+    "img": "/products/battery-water.jpg"
   },
   {
     "id": "bed-switch",
     "name": "Bed Switch",
     "sku": "1",
     "price": 150,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/bed-switch.jpg"
   },
   {
     "id": "bend-20mm",
     "name": "Bend 20MM",
     "sku": "1 pc",
     "price": 15,
-    "stock": 109
+    "stock": 109,
+    "img": "/products/bend-20mm.jpg"
   },
   {
     "id": "bend-25mm",
     "name": "Bend 25MM",
     "sku": "1 pc",
     "price": 20,
-    "stock": 50
+    "stock": 50,
+    "img": "/products/bend-25mm.jpg"
   },
   {
     "id": "bending-spring-20mm",
     "name": "Bending Spring 20MM",
     "sku": "1",
     "price": 400,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/bending-spring-20mm.jpg"
   },
   {
     "id": "bending-spring-25mm",
     "name": "Bending Spring 25MM",
     "sku": "1 pc",
     "price": 500,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/bending-spring-25mm.jpg"
   },
   {
     "id": "blue-magnetic-screwdriver",
     "name": "Blue Magnetic Screwdriver",
     "sku": "1",
     "price": 150,
-    "stock": 23
+    "stock": 23,
+    "img": "/products/blue-magnetic-screwdriver.jpg"
   },
   {
     "id": "bluetooth-modulator",
     "name": "Bluetooth Modulator",
     "sku": "1",
     "price": 680,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/bluetooth-modulator.jpg"
   },
   {
     "id": "bluetooth-wireles-headset",
     "name": "Bluetooth Wireles Headset",
     "sku": "1",
     "price": 600,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/bluetooth-wireles-headset.jpg"
   },
   {
     "id": "bontel-l700",
     "name": "Bontel L700",
     "sku": "1",
     "price": 1350,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/bontel-l700.jpg"
   },
   {
     "id": "budget-pvc-tape",
     "name": "Budget PVC tape",
     "sku": "1 pc",
     "price": 50,
-    "stock": 33
+    "stock": 33,
+    "img": "/products/budget-pvc-tape.jpg"
   },
   {
     "id": "bulkhead-fitting-plastic",
     "name": "Bulkhead Fitting Plastic",
     "sku": "1 pc",
     "price": 500,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/bulkhead-fitting-plastic.jpg"
   },
   {
     "id": "burner-hr",
     "name": "Burner HR",
     "sku": "1",
     "price": 650,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/burner-hr.jpg"
   },
   {
     "id": "cable-clips",
     "name": "Cable Clips",
     "sku": "1 pc",
     "price": 100,
-    "stock": 42
+    "stock": 42,
+    "img": "/products/cable-clips.jpg"
   },
   {
     "id": "cable-tie-10",
     "name": "Cable tie 10\"",
     "sku": "1",
     "price": 230,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/cable-tie-10.jpg"
   },
   {
     "id": "cable-tie-4",
     "name": "Cable tie 4\"",
     "sku": "1",
     "price": 100,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/cable-tie-4.jpg"
   },
   {
     "id": "cable-tie-6",
     "name": "Cable tie 6\"",
     "sku": "1",
     "price": 150,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/cable-tie-6.jpg"
   },
   {
     "id": "camry-multi-plugs",
     "name": "Camry Multi plugs",
     "sku": "1",
     "price": 150,
-    "stock": 18
+    "stock": 18,
+    "img": "/products/camry-multi-plugs.jpg"
   },
   {
     "id": "candle-light-coloured",
     "name": "Candle Light Coloured",
     "sku": "1 pc",
     "price": 200,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/candle-light-coloured.jpg"
   },
   {
     "id": "carl-gilberts-double-13a-socket",
     "name": "Carl & Gilberts Double 13A socket",
     "sku": "1",
     "price": 450,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/carl-gilberts-double-13a-socket.jpg"
   },
   {
     "id": "carl-gilberts-1-gang-socket",
     "name": "Carl & Gilberts 1 gang socket",
     "sku": "1",
     "price": 280,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/carl-gilberts-1-gang-socket.jpg"
   },
   {
     "id": "carl-gilberts-2-gang-wall-switch",
     "name": "Carl & Gilberts 2 Gang Wall Switch",
     "sku": "1 pc",
     "price": 200,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/carl-gilberts-2-gang-wall-switch.jpg"
   },
   {
     "id": "carl-gilberts-3-gang-wall-switch",
     "name": "Carl & Gilberts 3 Gang Wall Switch",
     "sku": "1 pc",
     "price": 300,
-    "stock": 14
+    "stock": 14,
+    "img": "/products/carl-gilberts-3-gang-wall-switch.jpg"
   },
   {
     "id": "carl-gilberts-4-gang-wall-switch",
     "name": "Carl & Gilberts 4 Gang Wall Switch",
     "sku": "1 pc",
     "price": 350,
-    "stock": 6
+    "stock": 6,
+    "img": "/products/carl-gilberts-4-gang-wall-switch.jpg"
   },
   {
     "id": "carl-gilberts-4-way-consumer-unit",
     "name": "Carl & Gilberts 4 Way Consumer Unit",
     "sku": "1 pc",
     "price": 2350,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/carl-gilberts-4-way-consumer-unit.jpg"
   },
   {
     "id": "carl-gilberts-angle-holder",
     "name": "Carl & Gilberts Angle Holder",
     "sku": "1 pc",
     "price": 150,
-    "stock": 12
+    "stock": 12,
+    "img": "/products/carl-gilberts-angle-holder.jpg"
   },
   {
     "id": "carl-gilberts-ceiling-ross",
     "name": "Carl & Gilberts Ceiling Ross",
     "sku": "1 pc",
     "price": 350,
-    "stock": 8
+    "stock": 8,
+    "img": "/products/carl-gilberts-ceiling-ross.jpg"
   },
   {
     "id": "carl-gilberts-hanging-holder",
     "name": "Carl & Gilberts Hanging Holder",
     "sku": "1 pc",
     "price": 100,
-    "stock": 17
+    "stock": 17,
+    "img": "/products/carl-gilberts-hanging-holder.jpg"
   },
   {
     "id": "carl-gilberts-screw-type-holder",
     "name": "Carl & Gilberts Screw Type Holder",
     "sku": "1 pc",
     "price": 150,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/carl-gilberts-screw-type-holder.jpg"
   },
   {
     "id": "carl-gilberts-starter",
     "name": "Carl & Gilberts Starter",
     "sku": "1 pc",
     "price": 50,
-    "stock": 46
+    "stock": 46,
+    "img": "/products/carl-gilberts-starter.jpg"
   },
   {
     "id": "carl-gilberts-straight-holder",
     "name": "Carl & Gilberts Straight Holder",
     "sku": "1 pc",
     "price": 100,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/carl-gilberts-straight-holder.jpg"
   },
   {
     "id": "carl-gilberts-tape",
     "name": "Carl & Gilberts Tape",
     "sku": "Big",
     "price": 80,
-    "stock": 19
+    "stock": 19,
+    "img": "/products/carl-gilberts-tape.jpg"
   },
   {
     "id": "casio-2nd-edition-fx-82ms",
     "name": "CASIO 2nd edition fx-82ms",
     "sku": "1",
     "price": 1350,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/casio-2nd-edition-fx-82ms.jpg"
   },
   {
     "id": "caston",
     "name": "Caston",
     "sku": "1 pc",
     "price": 285,
-    "stock": 30
+    "stock": 30,
+    "img": "/products/caston.jpg"
   },
   {
     "id": "caston-st-1068a",
     "name": "Caston ST-1068A",
     "sku": "1",
     "price": 850,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/caston-st-1068a.jpg"
   },
   {
     "id": "cctv-car-charger",
     "name": "CCTV car charger",
     "sku": "1",
     "price": 250,
-    "stock": 6
+    "stock": 6,
+    "img": "/products/cctv-car-charger.jpg"
   },
   {
     "id": "ceramic-holder",
     "name": "Ceramic Holder",
     "sku": "1 pc",
     "price": 150,
-    "stock": 6
+    "stock": 6,
+    "img": "/products/ceramic-holder.jpg"
   },
   {
     "id": "ceriotti-gek-3000",
     "name": "Ceriotti Gek 3000",
     "sku": "1",
     "price": 3150,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/ceriotti-gek-3000.jpg"
   },
   {
     "id": "ceriotti-gek-3800",
     "name": "Ceriotti Gek 3800",
     "sku": "1",
     "price": 3450,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/ceriotti-gek-3800.jpg"
   },
   {
     "id": "chloride-exide-solar-026",
     "name": "Chloride Exide Solar 026",
     "sku": "1",
     "price": 5800,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/chloride-exide-solar-026.jpg"
   },
   {
     "id": "chloride-exide-solar-50ah",
     "name": "Chloride Exide Solar 50AH",
     "sku": "1",
     "price": 7600,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/chloride-exide-solar-50ah.jpg"
   },
   {
     "id": "chloride-exide-solar-75ah",
     "name": "Chloride Exide Solar 75AH",
     "sku": "1",
     "price": 9200,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/chloride-exide-solar-75ah.jpg"
   },
   {
     "id": "circular-box-20mm",
     "name": "Circular Box 20mm",
     "sku": "1 pc",
     "price": 30,
-    "stock": 85
+    "stock": 85,
+    "img": "/products/circular-box-20mm.jpg"
   },
   {
     "id": "circular-box-25mm",
     "name": "Circular Box 25mm",
     "sku": "1 pc",
     "price": 50,
-    "stock": 142
+    "stock": 142,
+    "img": "/products/circular-box-25mm.jpg"
   },
   {
     "id": "circular-covers-20mm",
     "name": "Circular covers 20MM",
     "sku": "1",
     "price": 5,
-    "stock": 28
+    "stock": 28,
+    "img": "/products/circular-covers-20mm.jpg"
   },
   {
     "id": "clutch-fixing-labour",
     "name": "CLUTCH FIXING LABOUR",
     "sku": "1",
     "price": 10000,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/clutch-fixing-labour.jpg"
   },
   {
     "id": "coaxial-cable",
     "name": "Coaxial Cable",
     "sku": "1",
     "price": 30,
-    "stock": 404
+    "stock": 404,
+    "img": "/products/coaxial-cable.jpg"
   },
   {
     "id": "conduit-pipes-20mm-pvc",
     "name": "Conduit Pipes 20mm(PVC)",
     "sku": "1 pc",
     "price": 120,
-    "stock": 85
+    "stock": 85,
+    "img": "/products/conduit-pipes-20mm-pvc.jpg"
   },
   {
     "id": "conduit-pipes-25mm-pvc",
     "name": "Conduit Pipes 25mm(PVC)",
     "sku": "1 pc",
     "price": 200,
-    "stock": 27
+    "stock": 27,
+    "img": "/products/conduit-pipes-25mm-pvc.jpg"
   },
   {
     "id": "cooker-coils",
     "name": "Cooker Coils",
     "sku": "1 pc",
     "price": 300,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/cooker-coils.jpg"
   },
   {
     "id": "copplers",
     "name": "copplers",
     "sku": "1",
     "price": 5,
-    "stock": 30
+    "stock": 30,
+    "img": "/products/copplers.jpg"
   },
   {
     "id": "coslec-3gang-switch",
     "name": "Coslec 3Gang Switch",
     "sku": "1 pc",
     "price": 250,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/coslec-3gang-switch.jpg"
   },
   {
     "id": "coslec-consumer-unit",
     "name": "Coslec Consumer Unit",
     "sku": "1 pc",
     "price": 2450,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/coslec-consumer-unit.jpg"
   },
   {
     "id": "coslec-cooker-socket",
     "name": "Coslec Cooker Socket",
     "sku": "1 pc",
     "price": 500,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/coslec-cooker-socket.jpg"
   },
   {
     "id": "coslec-double-socket",
     "name": "Coslec Double Socket",
     "sku": "1 pc",
     "price": 250,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/coslec-double-socket.jpg"
   },
   {
     "id": "coslec-shower-switch",
     "name": "Coslec Shower Switch",
     "sku": "1 pc",
     "price": 500,
-    "stock": 8
+    "stock": 8,
+    "img": "/products/coslec-shower-switch.jpg"
   },
   {
     "id": "coslec-single-socket",
     "name": "Coslec Single Socket",
     "sku": "1 pc",
     "price": 200,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/coslec-single-socket.jpg"
   },
   {
     "id": "coslec-t8-4ft-led-fitting",
     "name": "Coslec T8 4FT LED fitting",
     "sku": "1 pc",
     "price": 350,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/coslec-t8-4ft-led-fitting.jpg"
   },
   {
     "id": "coslik-1gang-switch",
     "name": "Coslik 1Gang Switch",
     "sku": "1 pc",
     "price": 100,
-    "stock": 13
+    "stock": 13,
+    "img": "/products/coslik-1gang-switch.jpg"
   },
   {
     "id": "coslik-b22-straight-holder",
     "name": "Coslik B22 Straight Holder",
     "sku": "1 pc",
     "price": 100,
-    "stock": 56
+    "stock": 56,
+    "img": "/products/coslik-b22-straight-holder.jpg"
   },
   {
     "id": "couplers-20mm",
     "name": "Couplers 20mm",
     "sku": "1 pcs",
     "price": 5,
-    "stock": 156
+    "stock": 156,
+    "img": "/products/couplers-20mm.jpg"
   },
   {
     "id": "cr-v-6",
     "name": "CR-V 6\"",
     "sku": "1",
     "price": 350,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/cr-v-6.jpg"
   },
   {
     "id": "cr-v-6-long-nose-plier",
     "name": "CR-V 6\" Long Nose Plier",
     "sku": "1",
     "price": 350,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/cr-v-6-long-nose-plier.jpg"
   },
   {
     "id": "cr-v-8",
     "name": "CR-V 8\"",
     "sku": "1",
     "price": 450,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/cr-v-8.jpg"
   },
   {
     "id": "cr-v-8-long-nose-plier",
     "name": "CR-V 8\" Long Nose Plier",
     "sku": "1",
     "price": 450,
-    "stock": 6
+    "stock": 6,
+    "img": "/products/cr-v-8-long-nose-plier.jpg"
   },
   {
     "id": "cr-v-side-cutter",
     "name": "CR-V Side Cutter",
     "sku": "1",
     "price": 450,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/cr-v-side-cutter.jpg"
   },
   {
     "id": "d-light-solar-lantern",
     "name": "D light solar lantern",
     "sku": "1",
     "price": 600,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/d-light-solar-lantern.jpg"
   },
   {
     "id": "d-light-a2",
     "name": "d.light A2",
     "sku": "1",
     "price": 600,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/d-light-a2.jpg"
   },
   {
     "id": "d-light-s3",
     "name": "d.light S3",
     "sku": "1",
     "price": 1050,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/d-light-s3.jpg"
   },
   {
     "id": "dc-to-ac-inverter-150w",
     "name": "DC to AC Inverter 150W",
     "sku": "1 pc",
     "price": 1850,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/dc-to-ac-inverter-150w.jpg"
   },
   {
     "id": "dc-to-ac-inverter-300w",
     "name": "DC to AC Inverter 300W",
     "sku": "1",
     "price": 2700,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/dc-to-ac-inverter-300w.jpg"
   },
   {
     "id": "disco-lights",
     "name": "Disco Lights",
     "sku": "1 pc",
     "price": 350,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/disco-lights.jpg"
   },
   {
     "id": "dp-3w-bulbs",
     "name": "DP 3W Bulbs",
     "sku": "1 pc",
     "price": 100,
-    "stock": 19
+    "stock": 19,
+    "img": "/products/dp-3w-bulbs.jpg"
   },
   {
     "id": "dp-light-10w-floodlight",
     "name": "DP Light 10W Floodlight",
     "sku": "1 pc",
     "price": 650,
-    "stock": 13
+    "stock": 13,
+    "img": "/products/dp-light-10w-floodlight.jpg"
   },
   {
     "id": "dp-light-10w-t8-led-tube",
     "name": "DP Light 10W T8 LED TUBE",
     "sku": "1 pc",
     "price": 250,
-    "stock": 7
+    "stock": 7,
+    "img": "/products/dp-light-10w-t8-led-tube.jpg"
   },
   {
     "id": "dp-light-20w-floodlight",
     "name": "DP Light 20W Floodlight",
     "sku": "1 pc",
     "price": 950,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/dp-light-20w-floodlight.jpg"
   },
   {
     "id": "dp-light-30w-floodlight",
     "name": "DP Light 30W Floodlight",
     "sku": "1 pc",
     "price": 1150,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/dp-light-30w-floodlight.jpg"
   },
   {
     "id": "dp-light-bulb-holder-straight",
     "name": "DP Light Bulb Holder Straight",
     "sku": "1 pc",
     "price": 100,
-    "stock": 38
+    "stock": 38,
+    "img": "/products/dp-light-bulb-holder-straight.jpg"
   },
   {
     "id": "dp-light-dc12v-3w",
     "name": "DP Light DC12V 3W",
     "sku": "1",
     "price": 150,
-    "stock": 10
+    "stock": 10,
+    "img": "/products/dp-light-dc12v-3w.jpg"
   },
   {
     "id": "dp-light-dc12v-5w",
     "name": "DP Light DC12V 5W",
     "sku": "1",
     "price": 200,
-    "stock": 8
+    "stock": 8,
+    "img": "/products/dp-light-dc12v-5w.jpg"
   },
   {
     "id": "dp-light-dc12v-7w",
     "name": "DP Light DC12V 7W",
     "sku": "1",
     "price": 250,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/dp-light-dc12v-7w.jpg"
   },
   {
     "id": "dp-light-rechargeable-20w",
     "name": "DP Light Rechargeable 20W",
     "sku": "1 pc",
     "price": 500,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/dp-light-rechargeable-20w.jpg"
   },
   {
     "id": "dp-light-rechargeable-30w",
     "name": "DP Light Rechargeable 30W",
     "sku": "1 pc",
     "price": 750,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/dp-light-rechargeable-30w.jpg"
   },
   {
     "id": "dp-light-ufo-fd-15",
     "name": "DP Light UFO FD-15",
     "sku": "1 pc",
     "price": 350,
-    "stock": 8
+    "stock": 8,
+    "img": "/products/dp-light-ufo-fd-15.jpg"
   },
   {
     "id": "dp-light-ufo-fd-18",
     "name": "DP Light UFO FD-18",
     "sku": "1",
     "price": 450,
-    "stock": 10
+    "stock": 10,
+    "img": "/products/dp-light-ufo-fd-18.jpg"
   },
   {
     "id": "dp-light-ufo-fd-24",
     "name": "DP Light UFO FD-24",
     "sku": "1 pc",
     "price": 550,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/dp-light-ufo-fd-24.jpg"
   },
   {
     "id": "dp-light-ufo-fd-36",
     "name": "DP Light UFO FD-36",
     "sku": "1 pc",
     "price": 650,
-    "stock": 10
+    "stock": 10,
+    "img": "/products/dp-light-ufo-fd-36.jpg"
   },
   {
     "id": "dr-lee-earphones",
     "name": "Dr Lee Earphones",
     "sku": "1",
     "price": 150,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/dr-lee-earphones.jpg"
   },
   {
     "id": "dstv-complete-kit",
     "name": "DSTV Complete kit",
     "sku": "1",
     "price": 5000,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/dstv-complete-kit.jpg"
   },
   {
     "id": "dupro-voltage-test-pencil",
     "name": "Dupro Voltage Test pencil",
     "sku": "1 pc",
     "price": 100,
-    "stock": 14
+    "stock": 14,
+    "img": "/products/dupro-voltage-test-pencil.jpg"
   },
   {
     "id": "dupro-voltage-tester",
     "name": "Dupro Voltage Tester",
     "sku": "1 pc",
     "price": 50,
-    "stock": 14
+    "stock": 14,
+    "img": "/products/dupro-voltage-tester.jpg"
   },
   {
     "id": "earth-rod-big",
     "name": "Earth Rod Big",
     "sku": "1",
     "price": 400,
-    "stock": 7
+    "stock": 7,
+    "img": "/products/earth-rod-big.jpg"
   },
   {
     "id": "earth-rod-small",
     "name": "Earth Rod Small",
     "sku": "1",
     "price": 200,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/earth-rod-small.jpg"
   },
   {
     "id": "egypt-lights-30w-bulb",
     "name": "Egypt Lights 30W bulb",
     "sku": "1",
     "price": 500,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/egypt-lights-30w-bulb.jpg"
   },
   {
     "id": "egypt-lights-40w-bulb",
     "name": "Egypt Lights 40W bulb",
     "sku": "1",
     "price": 600,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/egypt-lights-40w-bulb.jpg"
   },
   {
     "id": "energizer-3v-1620",
     "name": "Energizer 3V 1620",
     "sku": "1",
     "price": 200,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/energizer-3v-1620.jpg"
   },
   {
     "id": "energizer-3v-2016",
     "name": "Energizer 3V 2016",
     "sku": "1",
     "price": 200,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/energizer-3v-2016.jpg"
   },
   {
     "id": "energizer-3v-2025",
     "name": "Energizer 3V 2025",
     "sku": "1",
     "price": 200,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/energizer-3v-2025.jpg"
   },
   {
     "id": "energizer-3v-2032",
     "name": "Energizer 3V 2032",
     "sku": "1",
     "price": 200,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/energizer-3v-2032.jpg"
   },
   {
     "id": "energizer-alkaline-power-aa",
     "name": "Energizer Alkaline Power AA",
     "sku": "1 pc",
     "price": 200,
-    "stock": 21
+    "stock": 21,
+    "img": "/products/energizer-alkaline-power-aa.jpg"
   },
   {
     "id": "enershower-4t",
     "name": "Enershower 4T",
     "sku": "1 pc",
     "price": 3750,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/enershower-4t.jpg"
   },
   {
     "id": "england-extension-cable",
     "name": "England Extension cable",
     "sku": "1 pc",
     "price": 500,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/england-extension-cable.jpg"
   },
   {
     "id": "estia-led-batten-fitting",
     "name": "ESTIA LED BATTEN Fitting",
     "sku": "1 pc",
     "price": 250,
-    "stock": 22
+    "stock": 22,
+    "img": "/products/estia-led-batten-fitting.jpg"
   },
   {
     "id": "eurochef-burner",
     "name": "EUROCHEF burner",
     "sku": "1",
     "price": 3350,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/eurochef-burner.jpg"
   },
   {
     "id": "eurochef-burner-glass",
     "name": "EUROCHEF burner glass",
     "sku": "1",
     "price": 3950,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/eurochef-burner-glass.jpg"
   },
   {
     "id": "eveready-9v-battery-black",
     "name": "EVEREADY 9V Battery (Black)",
     "sku": "1 pc",
     "price": 300,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/eveready-9v-battery-black.jpg"
   },
   {
     "id": "eveready-aa-battery",
     "name": "EVEREADY AA Battery",
     "sku": "1 pc",
     "price": 70,
-    "stock": 20
+    "stock": 20,
+    "img": "/products/eveready-aa-battery.jpg"
   },
   {
     "id": "eveready-aaa-battery",
     "name": "EVEREADY AAA Battery",
     "sku": "0 Pair",
     "price": 70,
-    "stock": 31
+    "stock": 31,
+    "img": "/products/eveready-aaa-battery.jpg"
   },
   {
     "id": "eveready-size-d-battery-blue",
     "name": "EVEREADY Size D Battery(Blue)",
     "sku": "1",
     "price": 120,
-    "stock": 6
+    "stock": 6,
+    "img": "/products/eveready-size-d-battery-blue.jpg"
   },
   {
     "id": "eveready-size-d-battery-red",
     "name": "EVEREADY Size D Battery(Red)",
     "sku": "1 pc",
     "price": 150,
-    "stock": 8
+    "stock": 8,
+    "img": "/products/eveready-size-d-battery-red.jpg"
   },
   {
     "id": "evin-cable-1-0mm-twe-flat",
     "name": "Evin Cable 1.0mm TWE/Flat",
     "sku": "1 M",
     "price": 60,
-    "stock": 355
+    "stock": 355,
+    "img": "/products/evin-cable-1-0mm-twe-flat.jpg"
   },
   {
     "id": "evin-cable-2-5mm-single",
     "name": "Evin Cable 2.5mm Single",
     "sku": "1 M",
     "price": 40,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/evin-cable-2-5mm-single.jpg"
   },
   {
     "id": "evin-cable-2-5mm-twe",
     "name": "Evin Cable 2.5mm TWE",
     "sku": "1 M",
     "price": 120,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/evin-cable-2-5mm-twe.jpg"
   },
   {
     "id": "excellent-3x-charger",
     "name": "Excellent 3X Charger",
     "sku": "1 pc",
     "price": 750,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/excellent-3x-charger.jpg"
   },
   {
     "id": "excellent-car-charger",
     "name": "Excellent Car Charger",
     "sku": "1 pc",
     "price": 550,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/excellent-car-charger.jpg"
   },
   {
     "id": "excellent-usb-cable",
     "name": "Excellent USB Cable",
     "sku": "1 pc",
     "price": 150,
-    "stock": 6
+    "stock": 6,
+    "img": "/products/excellent-usb-cable.jpg"
   },
   {
     "id": "excellent-usb-cable-type-c",
     "name": "Excellent USB Cable Type C",
     "sku": "1 pc",
     "price": 200,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/excellent-usb-cable-type-c.jpg"
   },
   {
     "id": "extension-cable-4-way",
     "name": "Extension Cable 4 Way",
     "sku": "1 pc",
     "price": 1000,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/extension-cable-4-way.jpg"
   },
   {
     "id": "fan-blade-bulb",
     "name": "Fan Blade Bulb",
     "sku": "1 pc",
     "price": 1050,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/fan-blade-bulb.jpg"
   },
   {
     "id": "fixed-wall-mount-sh-45f",
     "name": "Fixed Wall Mount SH 45F",
     "sku": "1 pc",
     "price": 900,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/fixed-wall-mount-sh-45f.jpg"
   },
   {
     "id": "flat-star-screwdriver",
     "name": "Flat/Star Screwdriver",
     "sku": "1",
     "price": 100,
-    "stock": 8
+    "stock": 8,
+    "img": "/products/flat-star-screwdriver.jpg"
   },
   {
     "id": "flex-1-5mm",
     "name": "Flex 1.5MM",
     "sku": "1",
     "price": 60,
-    "stock": 59
+    "stock": 59,
+    "img": "/products/flex-1-5mm.jpg"
   },
   {
     "id": "flex-2-5mm",
     "name": "Flex 2.5MM",
     "sku": "1",
     "price": 80,
-    "stock": 59
+    "stock": 59,
+    "img": "/products/flex-2-5mm.jpg"
   },
   {
     "id": "flexible-conduit-20mm",
     "name": "Flexible Conduit 20MM",
     "sku": "1 m",
     "price": 40,
-    "stock": 49
+    "stock": 49,
+    "img": "/products/flexible-conduit-20mm.jpg"
   },
   {
     "id": "floating-ark-3-5mm-aux-earphones",
     "name": "Floating Ark 3.5mm AUX Earphones",
     "sku": "1 pc",
     "price": 250,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/floating-ark-3-5mm-aux-earphones.jpg"
   },
   {
     "id": "floating-ark-dual-usb-car-charger-2-in-1-cable",
     "name": "Floating Ark Dual USB Car Charger+ 2 in 1 Cable",
     "sku": "1 pc",
     "price": 850,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/floating-ark-dual-usb-car-charger-2-in-1-cable.jpg"
   },
   {
     "id": "floating-ark-dual-usb-wall-charger-2-in-1-cable",
     "name": "Floating Ark Dual USB Wall Charger + 2 in 1 Cable",
     "sku": "1 pc",
     "price": 750,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/floating-ark-dual-usb-wall-charger-2-in-1-cable.jpg"
   },
   {
     "id": "floating-ark-dual-usb-wall-charger-usb-c-to-usb-a-cable",
     "name": "Floating Ark Dual USB Wall Charger +USB-C to USB-A CABLE",
     "sku": "1 pc",
     "price": 750,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/floating-ark-dual-usb-wall-charger-usb-c-to-usb-a-cable.jpg"
   },
   {
     "id": "floating-ark-micro-usb-cable",
     "name": "Floating Ark Micro USB Cable",
     "sku": "1 pc",
     "price": 100,
-    "stock": 6
+    "stock": 6,
+    "img": "/products/floating-ark-micro-usb-cable.jpg"
   },
   {
     "id": "floating-ark-neck-band-bt-earphones",
     "name": "Floating Ark Neck Band BT Earphones",
     "sku": "1 pc",
     "price": 1350,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/floating-ark-neck-band-bt-earphones.jpg"
   },
   {
     "id": "floating-ark-the-commander-power-bank-10000mah",
     "name": "Floating Ark The Commander Power Bank 10000mAh",
     "sku": "1 pc",
     "price": 2550,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/floating-ark-the-commander-power-bank-10000mah.jpg"
   },
   {
     "id": "floating-ark-type-c-cable",
     "name": "Floating Ark Type C Cable",
     "sku": "1 pc",
     "price": 100,
-    "stock": 7
+    "stock": 7,
+    "img": "/products/floating-ark-type-c-cable.jpg"
   },
   {
     "id": "floating-ark-usb-c-cable",
     "name": "Floating Ark USB-C Cable",
     "sku": "1 pc",
     "price": 230,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/floating-ark-usb-c-cable.jpg"
   },
   {
     "id": "floating-ark-wall-charger-micro-usb",
     "name": "Floating Ark Wall Charger + Micro USB",
     "sku": "1 pc",
     "price": 450,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/floating-ark-wall-charger-micro-usb.jpg"
   },
   {
     "id": "fridge-bulb-cooker",
     "name": "Fridge Bulb/Cooker",
     "sku": "1 pc",
     "price": 250,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/fridge-bulb-cooker.jpg"
   },
   {
     "id": "fridge-guard",
     "name": "Fridge Guard",
     "sku": "1 pc",
     "price": 1150,
-    "stock": 28
+    "stock": 28,
+    "img": "/products/fridge-guard.jpg"
   },
   {
     "id": "gas-burner",
     "name": "Gas Burner",
     "sku": "1 pc",
     "price": 350,
-    "stock": 57
+    "stock": 57,
+    "img": "/products/gas-burner.jpg"
   },
   {
     "id": "gas-hose-pipe",
     "name": "Gas Hose Pipe",
     "sku": "1 pc",
     "price": 250,
-    "stock": 50
+    "stock": 50,
+    "img": "/products/gas-hose-pipe.jpg"
   },
   {
     "id": "gas-hose-safety-clips",
     "name": "Gas Hose Safety Clips",
     "sku": "1 pc",
     "price": 50,
-    "stock": 100
+    "stock": 100,
+    "img": "/products/gas-hose-safety-clips.jpg"
   },
   {
     "id": "gas-regulator",
     "name": "Gas Regulator",
     "sku": "6 kg",
     "price": 650,
-    "stock": 12
+    "stock": 12,
+    "img": "/products/gas-regulator.jpg"
   },
   {
     "id": "gas-regulator-2",
     "name": "Gas Regulator",
     "sku": "13 kg",
     "price": 850,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/gas-regulator-2.jpg"
   },
   {
     "id": "geemy-gm-1017",
     "name": "Geemy GM-1017",
     "sku": "1",
     "price": 2700,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/geemy-gm-1017.jpg"
   },
   {
     "id": "geemy-gm-1021",
     "name": "Geemy GM-1021",
     "sku": "1",
     "price": 1850,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/geemy-gm-1021.jpg"
   },
   {
     "id": "geemy-gm-595",
     "name": "Geemy GM-595",
     "sku": "1",
     "price": 1450,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/geemy-gm-595.jpg"
   },
   {
     "id": "geemy-gm-6576",
     "name": "Geemy GM-6576",
     "sku": "1 pc",
     "price": 850,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/geemy-gm-6576.jpg"
   },
   {
     "id": "gettop-9v",
     "name": "Gettop 9V",
     "sku": "1 pc",
     "price": 60,
-    "stock": 12
+    "stock": 12,
+    "img": "/products/gettop-9v.jpg"
   },
   {
     "id": "globe-tape",
     "name": "Globe Tape",
     "sku": "1 pc",
     "price": 50,
-    "stock": 28
+    "stock": 28,
+    "img": "/products/globe-tape.jpg"
   },
   {
     "id": "globe-tape-original",
     "name": "Globe Tape Original",
     "sku": "1 pc",
     "price": 120,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/globe-tape-original.jpg"
   },
   {
     "id": "globe-tape-original-2",
     "name": "Globe Tape Original",
     "sku": "1 pc",
     "price": 120,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/globe-tape-original-2.jpg"
   },
   {
     "id": "gotenna",
     "name": "GoTenna",
     "sku": "1",
     "price": 1500,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/gotenna.jpg"
   },
   {
     "id": "gotv-decorder",
     "name": "GoTv Decorder",
     "sku": "1 pc",
     "price": 1500,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/gotv-decorder.jpg"
   },
   {
     "id": "gp-23a",
     "name": "GP 23A",
     "sku": "1",
     "price": 200,
-    "stock": 10
+    "stock": 10,
+    "img": "/products/gp-23a.jpg"
   },
   {
     "id": "gp-27a",
     "name": "GP 27A",
     "sku": "1",
     "price": 200,
-    "stock": 8
+    "stock": 8,
+    "img": "/products/gp-27a.jpg"
   },
   {
     "id": "guava-g2030",
     "name": "Guava G2030",
     "sku": "1",
     "price": 1300,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/guava-g2030.jpg"
   },
   {
     "id": "guava-g330",
     "name": "Guava G330",
     "sku": "1",
     "price": 1200,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/guava-g330.jpg"
   },
   {
     "id": "gypsum-screws",
     "name": "Gypsum Screws",
     "sku": "1",
     "price": 150,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/gypsum-screws.jpg"
   },
   {
     "id": "half-thread-head-coupler",
     "name": "Half Thread Head Coupler",
     "sku": "1 pc",
     "price": 20,
-    "stock": 200
+    "stock": 200,
+    "img": "/products/half-thread-head-coupler.jpg"
   },
   {
     "id": "havells-double-pole",
     "name": "Havells Double Pole",
     "sku": "100 A",
     "price": 600,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/havells-double-pole.jpg"
   },
   {
     "id": "havells-mcb",
     "name": "Havells MCB",
     "sku": "1 pc",
     "price": 250,
-    "stock": 12
+    "stock": 12,
+    "img": "/products/havells-mcb.jpg"
   },
   {
     "id": "hdmi-cable",
     "name": "HDMI CABLE",
     "sku": "1",
     "price": 350,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/hdmi-cable.jpg"
   },
   {
     "id": "headphones-i12",
     "name": "Headphones I12",
     "sku": "1 pc",
     "price": 1750,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/headphones-i12.jpg"
   },
   {
     "id": "hg-double-cut-out",
     "name": "HG Double Cut Out",
     "sku": "1 pc",
     "price": 950,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/hg-double-cut-out.jpg"
   },
   {
     "id": "hg-marcos-junction-box",
     "name": "HG MARCOS Junction Box",
     "sku": "1 pc",
     "price": 100,
-    "stock": 35
+    "stock": 35,
+    "img": "/products/hg-marcos-junction-box.jpg"
   },
   {
     "id": "hg-marcos-shower-switch",
     "name": "HG MARCOS Shower Switch",
     "sku": "1 pc",
     "price": 300,
-    "stock": 12
+    "stock": 12,
+    "img": "/products/hg-marcos-shower-switch.jpg"
   },
   {
     "id": "hg-top-plug",
     "name": "HG top plug",
     "sku": "1",
     "price": 80,
-    "stock": 7
+    "stock": 7,
+    "img": "/products/hg-top-plug.jpg"
   },
   {
     "id": "hp-dell-laptop-adapter",
     "name": "Hp/Dell laptop adapter",
     "sku": "1",
     "price": 1500,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/hp-dell-laptop-adapter.jpg"
   },
   {
     "id": "hunkar-gas-burner",
     "name": "Hunkar Gas Burner",
     "sku": "1 pc",
     "price": 680,
-    "stock": 37
+    "stock": 37,
+    "img": "/products/hunkar-gas-burner.jpg"
   },
   {
     "id": "hunkar-gas-grill",
     "name": "Hunkar Gas Grill",
     "sku": "1 pc",
     "price": 750,
-    "stock": 21
+    "stock": 21,
+    "img": "/products/hunkar-gas-grill.jpg"
   },
   {
     "id": "industrial-sockets-2pin",
     "name": "Industrial Sockets 2pin",
     "sku": "32 A",
     "price": 950,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/industrial-sockets-2pin.jpg"
   },
   {
     "id": "industrial-sockets-3pin-32a",
     "name": "Industrial Sockets 3pin 32A",
     "sku": "1",
     "price": 1350,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/industrial-sockets-3pin-32a.jpg"
   },
   {
     "id": "industrial-sockets-3pin-63a",
     "name": "Industrial Sockets 3pin 63A",
     "sku": "1",
     "price": 3650,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/industrial-sockets-3pin-63a.jpg"
   },
   {
     "id": "infinix-hot-40i-128-4-4",
     "name": "Infinix Hot 40i 128+4+4",
     "sku": "1 pc",
     "price": 15299,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/infinix-hot-40i-128-4-4.jpg"
   },
   {
     "id": "itel-bl-5c",
     "name": "Itel BL-5C",
     "sku": "1",
     "price": 350,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/itel-bl-5c.jpg"
   },
   {
     "id": "itel-buds-ace",
     "name": "Itel Buds Ace",
     "sku": "1 pc",
     "price": 1850,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/itel-buds-ace.jpg"
   },
   {
     "id": "itel-buds-neo",
     "name": "Itel Buds Neo",
     "sku": "1 pc",
     "price": 1950,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/itel-buds-neo.jpg"
   },
   {
     "id": "itel-budsair",
     "name": "Itel BudsAir",
     "sku": "1",
     "price": 1250,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/itel-budsair.jpg"
   },
   {
     "id": "itel-budsair-earbuds",
     "name": "Itel BudsAir Earbuds",
     "sku": "1 pc",
     "price": 1650,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/itel-budsair-earbuds.jpg"
   },
   {
     "id": "itel-charger-5w",
     "name": "Itel charger 5W",
     "sku": "1",
     "price": 450,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/itel-charger-5w.jpg"
   },
   {
     "id": "itel-it2160",
     "name": "Itel it2160",
     "sku": "1",
     "price": 1499,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/itel-it2160.jpg"
   },
   {
     "id": "itel-it2163",
     "name": "Itel it2163",
     "sku": "1",
     "price": 1400,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/itel-it2163.jpg"
   },
   {
     "id": "itel-it2165",
     "name": "Itel it2165",
     "sku": "1 pc",
     "price": 1499,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/itel-it2165.jpg"
   },
   {
     "id": "itel-it2166",
     "name": "Itel It2166",
     "sku": "1 pc",
     "price": 1699,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/itel-it2166.jpg"
   },
   {
     "id": "itel-it2176",
     "name": "Itel it2176",
     "sku": "1 pc",
     "price": 2399,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/itel-it2176.jpg"
   },
   {
     "id": "itel-it5027",
     "name": "Itel it5027",
     "sku": "1 pc",
     "price": 2299,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/itel-it5027.jpg"
   },
   {
     "id": "itel-it5082",
     "name": "Itel It5082",
     "sku": "1 pc",
     "price": 2599,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/itel-it5082.jpg"
   },
   {
     "id": "itel-it5627",
     "name": "Itel it5627",
     "sku": "1 pc",
     "price": 2999,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/itel-it5627.jpg"
   },
   {
     "id": "itel-micro-usb-m11",
     "name": "Itel Micro-USB M11",
     "sku": "1",
     "price": 100,
-    "stock": 16
+    "stock": 16,
+    "img": "/products/itel-micro-usb-m11.jpg"
   },
   {
     "id": "itel-type-c-braided",
     "name": "Itel Type-C Braided",
     "sku": "1",
     "price": 200,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/itel-type-c-braided.jpg"
   },
   {
     "id": "jack-to-jack-cable-long",
     "name": "Jack to Jack cable Long",
     "sku": "1",
     "price": 150,
-    "stock": 58
+    "stock": 58,
+    "img": "/products/jack-to-jack-cable-long.jpg"
   },
   {
     "id": "jack-to-jack-cable-short",
     "name": "Jack to Jack cable Short",
     "sku": "1",
     "price": 100,
-    "stock": 7
+    "stock": 7,
+    "img": "/products/jack-to-jack-cable-short.jpg"
   },
   {
     "id": "jbl-tws-4",
     "name": "JBL TWS-4",
     "sku": "1",
     "price": 1450,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/jbl-tws-4.jpg"
   },
   {
     "id": "jsb-extra-power-5way-10m",
     "name": "JSB Extra Power 5way 10M",
     "sku": "1 pc",
     "price": 1750,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/jsb-extra-power-5way-10m.jpg"
   },
   {
     "id": "jsb-extra-power-5way-5m",
     "name": "JSB Extra Power 5way 5M",
     "sku": "1 pc",
     "price": 1550,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/jsb-extra-power-5way-5m.jpg"
   },
   {
     "id": "jumbo-connector-fuse-100a",
     "name": "Jumbo Connector Fuse 100A",
     "sku": "1 pc",
     "price": 780,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/jumbo-connector-fuse-100a.jpg"
   },
   {
     "id": "junction-box-small",
     "name": "Junction Box Small",
     "sku": "1 pc",
     "price": 60,
-    "stock": 23
+    "stock": 23,
+    "img": "/products/junction-box-small.jpg"
   },
   {
     "id": "kamisafe-km-8931",
     "name": "KaMISaFE KM-8931",
     "sku": "1",
     "price": 340,
-    "stock": 27
+    "stock": 27,
+    "img": "/products/kamisafe-km-8931.jpg"
   },
   {
     "id": "kamisafe-km-h06u",
     "name": "KaMISaFE KM-H06U",
     "sku": "1",
     "price": 580,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/kamisafe-km-h06u.jpg"
   },
   {
     "id": "kamisafe-km-h07u",
     "name": "KaMISaFE KM-H07U",
     "sku": "1",
     "price": 850,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/kamisafe-km-h07u.jpg"
   },
   {
     "id": "lcd-multicharger",
     "name": "LCD multiCharger",
     "sku": "1",
     "price": 250,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/lcd-multicharger.jpg"
   },
   {
     "id": "led-tv-wall-mount-14-43",
     "name": "LED Tv Wall Mount(14-43)",
     "sku": "1",
     "price": 500,
-    "stock": 16
+    "stock": 16,
+    "img": "/products/led-tv-wall-mount-14-43.jpg"
   },
   {
     "id": "ledon-bulb-holder-angle",
     "name": "LEDON bulb holder Angle",
     "sku": "1 pc",
     "price": 100,
-    "stock": 45
+    "stock": 45,
+    "img": "/products/ledon-bulb-holder-angle.jpg"
   },
   {
     "id": "ledon-bulb-holder-straight",
     "name": "LEDON bulb holder Straight",
     "sku": "1",
     "price": 100,
-    "stock": 23
+    "stock": 23,
+    "img": "/products/ledon-bulb-holder-straight.jpg"
   },
   {
     "id": "ledon-pendant-set-6-t2",
     "name": "LEDON Pendant set 6 T2",
     "sku": "1 pc",
     "price": 250,
-    "stock": 20
+    "stock": 20,
+    "img": "/products/ledon-pendant-set-6-t2.jpg"
   },
   {
     "id": "lerno-size-d-battery",
     "name": "Lerno Size D Battery",
     "sku": "1 pc",
     "price": 20,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/lerno-size-d-battery.jpg"
   },
   {
     "id": "linier-2ft-fitting",
     "name": "Linier 2FT Fitting",
     "sku": "1 pc",
     "price": 500,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/linier-2ft-fitting.jpg"
   },
   {
     "id": "linier-4ft-fitting",
     "name": "Linier 4FT Fitting",
     "sku": "1 pc",
     "price": 800,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/linier-4ft-fitting.jpg"
   },
   {
     "id": "linier-avs30",
     "name": "Linier AVS30",
     "sku": "1",
     "price": 3350,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/linier-avs30.jpg"
   },
   {
     "id": "lockable-meter-box",
     "name": "Lockable Meter box",
     "sku": "1",
     "price": 2000,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/lockable-meter-box.jpg"
   },
   {
     "id": "lorenzetti-shower",
     "name": "Lorenzetti Shower",
     "sku": "1 pc",
     "price": 1850,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/lorenzetti-shower.jpg"
   },
   {
     "id": "loya-1-gang-wall-switch",
     "name": "Loya 1 Gang wall Switch",
     "sku": "1 pc",
     "price": 100,
-    "stock": 26
+    "stock": 26,
+    "img": "/products/loya-1-gang-wall-switch.jpg"
   },
   {
     "id": "loya-4ft-led-florescent-bulb",
     "name": "Loya 4Ft LED Florescent Bulb",
     "sku": "1 pc",
     "price": 350,
-    "stock": 13
+    "stock": 13,
+    "img": "/products/loya-4ft-led-florescent-bulb.jpg"
   },
   {
     "id": "loya-double-socket",
     "name": "Loya Double Socket",
     "sku": "1 pc",
     "price": 250,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/loya-double-socket.jpg"
   },
   {
     "id": "loya-florescent-lamp",
     "name": "Loya Florescent Lamp",
     "sku": "1 pc",
     "price": 200,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/loya-florescent-lamp.jpg"
   },
   {
     "id": "lyons-11w",
     "name": "Lyons 11W",
     "sku": "1 pc",
     "price": 250,
-    "stock": 7
+    "stock": 7,
+    "img": "/products/lyons-11w.jpg"
   },
   {
     "id": "matstar-1-0mm-twe-flat",
     "name": "Matstar 1.0mm² TWE/Flat",
     "sku": "1",
     "price": 50,
-    "stock": 131
+    "stock": 131,
+    "img": "/products/matstar-1-0mm-twe-flat.jpg"
   },
   {
     "id": "matstar-1-5mm-twe",
     "name": "Matstar 1.5mm² TWE",
     "sku": "1 m",
     "price": 70,
-    "stock": 475
+    "stock": 475,
+    "img": "/products/matstar-1-5mm-twe.jpg"
   },
   {
     "id": "matstar-2-5mm-twe",
     "name": "Matstar 2.5mm² TWE",
     "sku": "1 m",
     "price": 95,
-    "stock": 343
+    "stock": 343,
+    "img": "/products/matstar-2-5mm-twe.jpg"
   },
   {
     "id": "maxtek-mini-floodlight-20w",
     "name": "MAXTEK Mini Floodlight 20W",
     "sku": "1",
     "price": 1050,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/maxtek-mini-floodlight-20w.jpg"
   },
   {
     "id": "measure-tape-3m",
     "name": "Measure Tape 3M",
     "sku": "1 pc",
     "price": 150,
-    "stock": 10
+    "stock": 10,
+    "img": "/products/measure-tape-3m.jpg"
   },
   {
     "id": "measure-tape-5m",
     "name": "Measure Tape 5M",
     "sku": "1 pc",
     "price": 180,
-    "stock": 11
+    "stock": 11,
+    "img": "/products/measure-tape-5m.jpg"
   },
   {
     "id": "meter-box-light-gauge",
     "name": "Meter Box Light gauge",
     "sku": "1",
     "price": 350,
-    "stock": 10
+    "stock": 10,
+    "img": "/products/meter-box-light-gauge.jpg"
   },
   {
     "id": "microsd-memory-card-16gb",
     "name": "MicroSD memory Card 16GB",
     "sku": "1",
     "price": 850,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/microsd-memory-card-16gb.jpg"
   },
   {
     "id": "microsd-memory-card-2gb",
     "name": "MicroSD memory Card 2GB",
     "sku": "1",
     "price": 450,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/microsd-memory-card-2gb.jpg"
   },
   {
     "id": "microsd-memory-card-32gb",
     "name": "MicroSD memory Card 32GB",
     "sku": "1",
     "price": 950,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/microsd-memory-card-32gb.jpg"
   },
   {
     "id": "microsd-memory-card-4gb",
     "name": "MicroSD memory Card 4GB",
     "sku": "1",
     "price": 580,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/microsd-memory-card-4gb.jpg"
   },
   {
     "id": "microsd-memory-card-64gb",
     "name": "MicroSD memory Card 64GB",
     "sku": "1",
     "price": 1200,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/microsd-memory-card-64gb.jpg"
   },
   {
     "id": "microsd-memory-card-8gb",
     "name": "MicroSD memory Card 8GB",
     "sku": "1",
     "price": 750,
-    "stock": 8
+    "stock": 8,
+    "img": "/products/microsd-memory-card-8gb.jpg"
   },
   {
     "id": "mindy-anti-theft-lock-40mm",
     "name": "MINDY Anti-Theft Lock 40mm",
     "sku": "1",
     "price": 680,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/mindy-anti-theft-lock-40mm.jpg"
   },
   {
     "id": "mindy-anti-theft-lock-50mm",
     "name": "MINDY Anti-Theft Lock 50mm",
     "sku": "1",
     "price": 750,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/mindy-anti-theft-lock-50mm.jpg"
   },
   {
     "id": "mindy-anti-theft-lock-60mm",
     "name": "MINDY Anti-Theft Lock 60mm",
     "sku": "1",
     "price": 980,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/mindy-anti-theft-lock-60mm.jpg"
   },
   {
     "id": "mindy-anti-theft-lock-70mm",
     "name": "MINDY Anti-Theft Lock 70mm",
     "sku": "1",
     "price": 1150,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/mindy-anti-theft-lock-70mm.jpg"
   },
   {
     "id": "mini-tranking",
     "name": "Mini Tranking",
     "sku": "1 pc",
     "price": 100,
-    "stock": 26
+    "stock": 26,
+    "img": "/products/mini-tranking.jpg"
   },
   {
     "id": "mini-ws-887",
     "name": "Mini WS-887",
     "sku": "1",
     "price": 650,
-    "stock": 8
+    "stock": 8,
+    "img": "/products/mini-ws-887.jpg"
   },
   {
     "id": "miralux-mht-303bt",
     "name": "Miralux MHT-303BT",
     "sku": "1 pc",
     "price": 5999,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/miralux-mht-303bt.jpg"
   },
   {
     "id": "mk-box-black-double",
     "name": "MK Box Black Double",
     "sku": "1 pc",
     "price": 50,
-    "stock": 22
+    "stock": 22,
+    "img": "/products/mk-box-black-double.jpg"
   },
   {
     "id": "mk-boxes-black-single",
     "name": "MK Boxes Black Single",
     "sku": "1 pc",
     "price": 30,
-    "stock": 136
+    "stock": 136,
+    "img": "/products/mk-boxes-black-single.jpg"
   },
   {
     "id": "moderna-angle-bulb-holder",
     "name": "Moderna Angle Bulb Holder",
     "sku": "1 pc",
     "price": 100,
-    "stock": 19
+    "stock": 19,
+    "img": "/products/moderna-angle-bulb-holder.jpg"
   },
   {
     "id": "moderna-straight-bulb-holder",
     "name": "Moderna Straight Bulb Holder",
     "sku": "1 pc",
     "price": 100,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/moderna-straight-bulb-holder.jpg"
   },
   {
     "id": "multifuction-wireless-car-mp3-player",
     "name": "Multifuction Wireless Car MP3 Player",
     "sku": "1 pc",
     "price": 650,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/multifuction-wireless-car-mp3-player.jpg"
   },
   {
     "id": "neelux-disco-5w",
     "name": "Neelux Disco 5W",
     "sku": "1",
     "price": 350,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/neelux-disco-5w.jpg"
   },
   {
     "id": "nokia-105",
     "name": "Nokia 105",
     "sku": "1 pc",
     "price": 2499,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/nokia-105.jpg"
   },
   {
     "id": "nokia-106-4g",
     "name": "Nokia 106 4G",
     "sku": "1 pc",
     "price": 2500,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/nokia-106-4g.jpg"
   },
   {
     "id": "nokia-3310-4g",
     "name": "Nokia 3310 4G",
     "sku": "1 pc",
     "price": 3750,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/nokia-3310-4g.jpg"
   },
   {
     "id": "nova-nhc-9012",
     "name": "NOVA NHC-9012",
     "sku": "1",
     "price": 750,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/nova-nhc-9012.jpg"
   },
   {
     "id": "nunix-blender-ak-100",
     "name": "NUNIX Blender AK-100",
     "sku": "1",
     "price": 2950,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/nunix-blender-ak-100.jpg"
   },
   {
     "id": "nunix-blender-ak-300",
     "name": "NUNIX Blender AK-300",
     "sku": "1",
     "price": 2750,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/nunix-blender-ak-300.jpg"
   },
   {
     "id": "nunix-blender-ak-301",
     "name": "NUNIX Blender AK-301",
     "sku": "1",
     "price": 2750,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/nunix-blender-ak-301.jpg"
   },
   {
     "id": "nunix-iron",
     "name": "Nunix Iron",
     "sku": "1",
     "price": 1500,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/nunix-iron.jpg"
   },
   {
     "id": "obk-2gang-switch",
     "name": "OBK 2Gang Switch",
     "sku": "1 pc",
     "price": 150,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/obk-2gang-switch.jpg"
   },
   {
     "id": "obk-double-socket",
     "name": "OBK Double Socket",
     "sku": "1 pc",
     "price": 250,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/obk-double-socket.jpg"
   },
   {
     "id": "ofia-earphones-x19-x12",
     "name": "OFIA Earphones X19/X12",
     "sku": "1",
     "price": 200,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/ofia-earphones-x19-x12.jpg"
   },
   {
     "id": "ofia-of02-powerbank",
     "name": "OFIA OF02 Powerbank",
     "sku": "1 pc",
     "price": 2350,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/ofia-of02-powerbank.jpg"
   },
   {
     "id": "ofia-of03-powerbank",
     "name": "OFIA OF03 Powerbank",
     "sku": "1 pc",
     "price": 2999,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/ofia-of03-powerbank.jpg"
   },
   {
     "id": "ofia-stereo-earphones",
     "name": "OFIA Stereo Earphones",
     "sku": "1",
     "price": 100,
-    "stock": 7
+    "stock": 7,
+    "img": "/products/ofia-stereo-earphones.jpg"
   },
   {
     "id": "oraim-earphones",
     "name": "Oraim Earphones",
     "sku": "1",
     "price": 350,
-    "stock": 13
+    "stock": 13,
+    "img": "/products/oraim-earphones.jpg"
   },
   {
     "id": "oraimo-bl-5c",
     "name": "Oraimo BL-5C",
     "sku": "1",
     "price": 550,
-    "stock": 8
+    "stock": 8,
+    "img": "/products/oraimo-bl-5c.jpg"
   },
   {
     "id": "oraimo-cable-type-c",
     "name": "Oraimo Cable Type C",
     "sku": "1",
     "price": 350,
-    "stock": 7
+    "stock": 7,
+    "img": "/products/oraimo-cable-type-c.jpg"
   },
   {
     "id": "oraimo-charger-kit",
     "name": "Oraimo Charger kit",
     "sku": "1",
     "price": 750,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/oraimo-charger-kit.jpg"
   },
   {
     "id": "oraimo-micro-usb-data-cable",
     "name": "Oraimo Micro-USB data cable",
     "sku": "1",
     "price": 250,
-    "stock": 7
+    "stock": 7,
+    "img": "/products/oraimo-micro-usb-data-cable.jpg"
   },
   {
     "id": "oraimo-type-c-ocw-u66s-c53",
     "name": "Oraimo Type C OCW-U66S+C53",
     "sku": "1",
     "price": 820,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/oraimo-type-c-ocw-u66s-c53.jpg"
   },
   {
     "id": "ordinary-bulbs-60w-75w-100w",
     "name": "Ordinary Bulbs 60w/75w/100w",
     "sku": "1 pc",
     "price": 50,
-    "stock": 69
+    "stock": 69,
+    "img": "/products/ordinary-bulbs-60w-75w-100w.jpg"
   },
   {
     "id": "otg-normal",
     "name": "OTG Normal",
     "sku": "1",
     "price": 100,
-    "stock": 15
+    "stock": 15,
+    "img": "/products/otg-normal.jpg"
   },
   {
     "id": "otg-type-c",
     "name": "OTG Type C",
     "sku": "1",
     "price": 150,
-    "stock": 12
+    "stock": 12,
+    "img": "/products/otg-type-c.jpg"
   },
   {
     "id": "p47-wireless-headphones",
     "name": "P47 Wireless Headphones",
     "sku": "1 pc",
     "price": 850,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/p47-wireless-headphones.jpg"
   },
   {
     "id": "pac-glue",
     "name": "PAC Glue",
     "sku": "1 pc",
     "price": 350,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/pac-glue.jpg"
   },
   {
     "id": "panel-lights-3w",
     "name": "Panel Lights 3W",
     "sku": "1 pc",
     "price": 350,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/panel-lights-3w.jpg"
   },
   {
     "id": "panel-lights-6w",
     "name": "Panel Lights 6W",
     "sku": "1 pc",
     "price": 450,
-    "stock": 8
+    "stock": 8,
+    "img": "/products/panel-lights-6w.jpg"
   },
   {
     "id": "pattress-box-deep-double-white",
     "name": "Pattress Box Deep Double(White)",
     "sku": "1 pc",
     "price": 80,
-    "stock": 28
+    "stock": 28,
+    "img": "/products/pattress-box-deep-double-white.jpg"
   },
   {
     "id": "pattress-deep-single-white",
     "name": "Pattress Deep Single(White)",
     "sku": "1 pc",
     "price": 40,
-    "stock": 68
+    "stock": 68,
+    "img": "/products/pattress-deep-single-white.jpg"
   },
   {
     "id": "pcinener-tx-350-tweeter",
     "name": "pcinener TX 350 Tweeter",
     "sku": "1 pc",
     "price": 150,
-    "stock": 19
+    "stock": 19,
+    "img": "/products/pcinener-tx-350-tweeter.jpg"
   },
   {
     "id": "phelistar-aeriel",
     "name": "Phelistar Aeriel",
     "sku": "1 pc",
     "price": 780,
-    "stock": 7
+    "stock": 7,
+    "img": "/products/phelistar-aeriel.jpg"
   },
   {
     "id": "phelistar-speaker-cable-100t",
     "name": "Phelistar Speaker Cable 100T",
     "sku": "1 M",
     "price": 20,
-    "stock": 36
+    "stock": 36,
+    "img": "/products/phelistar-speaker-cable-100t.jpg"
   },
   {
     "id": "phelistar-speaker-cable-500t",
     "name": "Phelistar Speaker Cable 500T",
     "sku": "1 M",
     "price": 30,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/phelistar-speaker-cable-500t.jpg"
   },
   {
     "id": "phelistar-speaker-cable-700t",
     "name": "Phelistar Speaker Cable 700T",
     "sku": "1 M",
     "price": 40,
-    "stock": 14
+    "stock": 14,
+    "img": "/products/phelistar-speaker-cable-700t.jpg"
   },
   {
     "id": "phelister-jetaaerial-booster",
     "name": "Phelister Jetaaerial booster",
     "sku": "1",
     "price": 380,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/phelister-jetaaerial-booster.jpg"
   },
   {
     "id": "philips-14w",
     "name": "Philips 14w",
     "sku": "1 pc",
     "price": 300,
-    "stock": 23
+    "stock": 23,
+    "img": "/products/philips-14w.jpg"
   },
   {
     "id": "philips-2ft-bulbs",
     "name": "Philips 2Ft Bulbs",
     "sku": "1 pc",
     "price": 200,
-    "stock": 18
+    "stock": 18,
+    "img": "/products/philips-2ft-bulbs.jpg"
   },
   {
     "id": "philips-dry-iron-1000w",
     "name": "Philips Dry Iron 1000W",
     "sku": "1 pc",
     "price": 3350,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/philips-dry-iron-1000w.jpg"
   },
   {
     "id": "pioneer-deh-s1150ub-system",
     "name": "Pioneer DEH-S1150UB System",
     "sku": "1",
     "price": 14999,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/pioneer-deh-s1150ub-system.jpg"
   },
   {
     "id": "pmax-1-gang-2-way-switch",
     "name": "Pmax 1 Gang 2 Way Switch",
     "sku": "1 pc",
     "price": 180,
-    "stock": 50
+    "stock": 50,
+    "img": "/products/pmax-1-gang-2-way-switch.jpg"
   },
   {
     "id": "pmax-4way-extension",
     "name": "PMax 4Way Extension",
     "sku": "1 pc",
     "price": 1750,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/pmax-4way-extension.jpg"
   },
   {
     "id": "pmax-singe-socket-13a",
     "name": "Pmax Singe Socket 13A",
     "sku": "1 pc",
     "price": 200,
-    "stock": 33
+    "stock": 33,
+    "img": "/products/pmax-singe-socket-13a.jpg"
   },
   {
     "id": "pmax-top-plug-13a",
     "name": "PMax Top Plug 13a",
     "sku": "1",
     "price": 150,
-    "stock": 18
+    "stock": 18,
+    "img": "/products/pmax-top-plug-13a.jpg"
   },
   {
     "id": "portable-mini-666s",
     "name": "Portable Mini 666S",
     "sku": "1",
     "price": 1500,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/portable-mini-666s.jpg"
   },
   {
     "id": "portable-mini-dg29",
     "name": "Portable Mini DG29",
     "sku": "1",
     "price": 1650,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/portable-mini-dg29.jpg"
   },
   {
     "id": "power-adapter",
     "name": "Power Adapter",
     "sku": "1",
     "price": 450,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/power-adapter.jpg"
   },
   {
     "id": "power-cable",
     "name": "Power Cable",
     "sku": "1 pc",
     "price": 350,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/power-cable.jpg"
   },
   {
     "id": "power-charger",
     "name": "Power Charger",
     "sku": "1",
     "price": 850,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/power-charger.jpg"
   },
   {
     "id": "power-inverter-300w",
     "name": "Power Inverter 300W",
     "sku": "1 pc",
     "price": 2800,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/power-inverter-300w.jpg"
   },
   {
     "id": "power-king-pk-1004",
     "name": "Power King PK-1004",
     "sku": "1 pc",
     "price": 460,
-    "stock": 41
+    "stock": 41,
+    "img": "/products/power-king-pk-1004.jpg"
   },
   {
     "id": "power-king-pk-1005",
     "name": "Power King PK-1005",
     "sku": "1 pc",
     "price": 560,
-    "stock": 17
+    "stock": 17,
+    "img": "/products/power-king-pk-1005.jpg"
   },
   {
     "id": "power-king-pk-1006",
     "name": "Power King PK-1006",
     "sku": "1 pc",
     "price": 650,
-    "stock": 17
+    "stock": 17,
+    "img": "/products/power-king-pk-1006.jpg"
   },
   {
     "id": "power-sky-mcb",
     "name": "Power Sky MCB",
     "sku": "1 pc",
     "price": 200,
-    "stock": 35
+    "stock": 35,
+    "img": "/products/power-sky-mcb.jpg"
   },
   {
     "id": "powerlast-035",
     "name": "PowerLast 035",
     "sku": "1",
     "price": 7100,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/powerlast-035.jpg"
   },
   {
     "id": "powerlast-045",
     "name": "PowerLast 045",
     "sku": "1",
     "price": 7450,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/powerlast-045.jpg"
   },
   {
     "id": "powerlast-n70",
     "name": "PowerLast N70",
     "sku": "1",
     "price": 10900,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/powerlast-n70.jpg"
   },
   {
     "id": "powerlast-ns70",
     "name": "PowerLast NS70",
     "sku": "1",
     "price": 9050,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/powerlast-ns70.jpg"
   },
   {
     "id": "powermax-1gang-switch",
     "name": "Powermax 1Gang Switch",
     "sku": "1 pc",
     "price": 100,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/powermax-1gang-switch.jpg"
   },
   {
     "id": "powermax-1gang-tv-socket",
     "name": "Powermax 1Gang TV Socket",
     "sku": "1",
     "price": 200,
-    "stock": 7
+    "stock": 7,
+    "img": "/products/powermax-1gang-tv-socket.jpg"
   },
   {
     "id": "powermax-2ft-fitting-complete",
     "name": "Powermax 2FT Fitting Complete",
     "sku": "1 pc",
     "price": 600,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/powermax-2ft-fitting-complete.jpg"
   },
   {
     "id": "powermax-2gang-switch",
     "name": "Powermax 2Gang Switch",
     "sku": "1 pc",
     "price": 200,
-    "stock": 43
+    "stock": 43,
+    "img": "/products/powermax-2gang-switch.jpg"
   },
   {
     "id": "powermax-3gang-switch",
     "name": "Powermax 3Gang Switch",
     "sku": "1 pc",
     "price": 250,
-    "stock": 56
+    "stock": 56,
+    "img": "/products/powermax-3gang-switch.jpg"
   },
   {
     "id": "powermax-4-way-consumer-unit",
     "name": "Powermax 4 Way Consumer Unit",
     "sku": "1 pc",
     "price": 2150,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/powermax-4-way-consumer-unit.jpg"
   },
   {
     "id": "powermax-4-way-extension",
     "name": "Powermax 4 way Extension",
     "sku": "1 pc",
     "price": 2450,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/powermax-4-way-extension.jpg"
   },
   {
     "id": "powermax-4-way-multifunctional-extension-2-usb-c",
     "name": "Powermax 4 Way Multifunctional Extension+2 USB+C",
     "sku": "1 pc",
     "price": 2750,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/powermax-4-way-multifunctional-extension-2-usb-c.jpg"
   },
   {
     "id": "powermax-4ft-fitting-complete",
     "name": "Powermax 4FT Fitting Complete",
     "sku": "1 pc",
     "price": 750,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/powermax-4ft-fitting-complete.jpg"
   },
   {
     "id": "powermax-6-way-consumer-unit",
     "name": "Powermax 6 Way Consumer Unit",
     "sku": "1 pc",
     "price": 2650,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/powermax-6-way-consumer-unit.jpg"
   },
   {
     "id": "powermax-8-way-consumer-unit",
     "name": "Powermax 8 Way Consumer Unit",
     "sku": "1 pc",
     "price": 3500,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/powermax-8-way-consumer-unit.jpg"
   },
   {
     "id": "powermax-angled-holder",
     "name": "Powermax Angled Holder",
     "sku": "1 pc",
     "price": 150,
-    "stock": 46
+    "stock": 46,
+    "img": "/products/powermax-angled-holder.jpg"
   },
   {
     "id": "powermax-cooker-connector",
     "name": "Powermax Cooker Connector",
     "sku": "1 pc",
     "price": 400,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/powermax-cooker-connector.jpg"
   },
   {
     "id": "powermax-double-pole-100a",
     "name": "Powermax Double Pole 100A",
     "sku": "1 pc",
     "price": 800,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/powermax-double-pole-100a.jpg"
   },
   {
     "id": "powermax-double-pole-63a",
     "name": "Powermax Double Pole 63A",
     "sku": "1 pc",
     "price": 700,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/powermax-double-pole-63a.jpg"
   },
   {
     "id": "powermax-double-socket",
     "name": "Powermax Double Socket",
     "sku": "1 pc",
     "price": 400,
-    "stock": 23
+    "stock": 23,
+    "img": "/products/powermax-double-socket.jpg"
   },
   {
     "id": "powermax-mcb",
     "name": "Powermax MCB",
     "sku": "1 pc",
     "price": 350,
-    "stock": 96
+    "stock": 96,
+    "img": "/products/powermax-mcb.jpg"
   },
   {
     "id": "powermax-single-socket",
     "name": "Powermax Single Socket",
     "sku": "1 pc",
     "price": 250,
-    "stock": 14
+    "stock": 14,
+    "img": "/products/powermax-single-socket.jpg"
   },
   {
     "id": "powermax-straight-holder",
     "name": "Powermax Straight Holder",
     "sku": "1 pc",
     "price": 150,
-    "stock": 84
+    "stock": 84,
+    "img": "/products/powermax-straight-holder.jpg"
   },
   {
     "id": "powermax-surge-4-way-extension-usb",
     "name": "Powermax Surge 4 Way Extension+USB",
     "sku": "1",
     "price": 2300,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/powermax-surge-4-way-extension-usb.jpg"
   },
   {
     "id": "powermax-surge-6-way-extension",
     "name": "Powermax Surge 6 Way Extension",
     "sku": "1",
     "price": 2300,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/powermax-surge-6-way-extension.jpg"
   },
   {
     "id": "powermax-top-plug",
     "name": "Powermax Top Plug",
     "sku": "1 pc",
     "price": 150,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/powermax-top-plug.jpg"
   },
   {
     "id": "powermax-tv-outlet",
     "name": "Powermax Tv Outlet",
     "sku": "1 pc",
     "price": 250,
-    "stock": 10
+    "stock": 10,
+    "img": "/products/powermax-tv-outlet.jpg"
   },
   {
     "id": "powermax-water-heater-20a",
     "name": "Powermax Water Heater 20A",
     "sku": "1",
     "price": 400,
-    "stock": 26
+    "stock": 26,
+    "img": "/products/powermax-water-heater-20a.jpg"
   },
   {
     "id": "premi-2gang-switch",
     "name": "Premi 2Gang Switch",
     "sku": "1 pc",
     "price": 150,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/premi-2gang-switch.jpg"
   },
   {
     "id": "premi-double-socket",
     "name": "Premi Double Socket",
     "sku": "1 pc",
     "price": 250,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/premi-double-socket.jpg"
   },
   {
     "id": "premi-single-socket",
     "name": "Premi Single Socket",
     "sku": "1 pc",
     "price": 150,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/premi-single-socket.jpg"
   },
   {
     "id": "primdale-iron",
     "name": "Primdale Iron",
     "sku": "1",
     "price": 1900,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/primdale-iron.jpg"
   },
   {
     "id": "punex-type-c",
     "name": "PUNEX TYPE C",
     "sku": "1",
     "price": 200,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/punex-type-c.jpg"
   },
   {
     "id": "punex-type-c-to-c",
     "name": "PUNEX TYPE C to C",
     "sku": "1",
     "price": 300,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/punex-type-c-to-c.jpg"
   },
   {
     "id": "pxygen-free",
     "name": "Pxygen Free",
     "sku": "1 pc",
     "price": 10,
-    "stock": 50
+    "stock": 50,
+    "img": "/products/pxygen-free.jpg"
   },
   {
     "id": "radio-cord",
     "name": "Radio Cord",
     "sku": "1 pc",
     "price": 70,
-    "stock": 14
+    "stock": 14,
+    "img": "/products/radio-cord.jpg"
   },
   {
     "id": "rashnik-blender-rn-1002",
     "name": "RASHNIK Blender RN-1002",
     "sku": "1",
     "price": 3250,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/rashnik-blender-rn-1002.jpg"
   },
   {
     "id": "rashnik-kettle-rn-1151",
     "name": "RASHNIK Kettle RN-1151",
     "sku": "1",
     "price": 2000,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/rashnik-kettle-rn-1151.jpg"
   },
   {
     "id": "rbt-speaker",
     "name": "RBT Speaker",
     "sku": "1 pc",
     "price": 2850,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/rbt-speaker.jpg"
   },
   {
     "id": "rca-3-in-3-cable",
     "name": "RCA 3 in 3 cable",
     "sku": "1",
     "price": 150,
-    "stock": 12
+    "stock": 12,
+    "img": "/products/rca-3-in-3-cable.jpg"
   },
   {
     "id": "rechargeable-battery-aa",
     "name": "Rechargeable Battery AA",
     "sku": "pair",
     "price": 100,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/rechargeable-battery-aa.jpg"
   },
   {
     "id": "rechargeable-battery-aaa",
     "name": "Rechargeable Battery AAA",
     "sku": "pair",
     "price": 100,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/rechargeable-battery-aaa.jpg"
   },
   {
     "id": "redmi-13c-256-8",
     "name": "Redmi 13C (256+8)",
     "sku": "1 pc",
     "price": 18999,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/redmi-13c-256-8.jpg"
   },
   {
     "id": "saddle-clips",
     "name": "Saddle clips",
     "sku": "20 mm",
     "price": 10,
-    "stock": 81
+    "stock": 81,
+    "img": "/products/saddle-clips.jpg"
   },
   {
     "id": "samsung-a04e",
     "name": "Samsung A04e",
     "sku": "1 pc",
     "price": 13899,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/samsung-a04e.jpg"
   },
   {
     "id": "samsung-a05-64-4",
     "name": "Samsung A05 (64+4)",
     "sku": "1 pc",
     "price": 13999,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/samsung-a05-64-4.jpg"
   },
   {
     "id": "samsung-usb-c-jack-adaptor",
     "name": "Samsung USB C Jack Adaptor",
     "sku": "1",
     "price": 400,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/samsung-usb-c-jack-adaptor.jpg"
   },
   {
     "id": "samsung-usb-c-to-c",
     "name": "Samsung USB C to C",
     "sku": "1",
     "price": 300,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/samsung-usb-c-to-c.jpg"
   },
   {
     "id": "sathiya-plastic-kettle",
     "name": "Sathiya Plastic kettle",
     "sku": "1",
     "price": 1500,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/sathiya-plastic-kettle.jpg"
   },
   {
     "id": "sathiya-stainless-kettle",
     "name": "Sathiya Stainless kettle",
     "sku": "1",
     "price": 1300,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/sathiya-stainless-kettle.jpg"
   },
   {
     "id": "sayona-2-1ch",
     "name": "Sayona 2.1CH",
     "sku": "1 pc",
     "price": 7700,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/sayona-2-1ch.jpg"
   },
   {
     "id": "sayona-balding-clipper",
     "name": "Sayona Balding Clipper",
     "sku": "1",
     "price": 4150,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/sayona-balding-clipper.jpg"
   },
   {
     "id": "sayona-clipper",
     "name": "Sayona Clipper",
     "sku": "1",
     "price": 3950,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/sayona-clipper.jpg"
   },
   {
     "id": "sayona-si-2084-iron",
     "name": "Sayona SI-2084 Iron",
     "sku": "1",
     "price": 2000,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/sayona-si-2084-iron.jpg"
   },
   {
     "id": "sayona-si-406-iron",
     "name": "Sayona SI-406 Iron",
     "sku": "1",
     "price": 1950,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/sayona-si-406-iron.jpg"
   },
   {
     "id": "sayona-sy-1000-gold-hair-dryer",
     "name": "Sayona SY-1000 GOLD Hair Dryer",
     "sku": "1",
     "price": 3950,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/sayona-sy-1000-gold-hair-dryer.jpg"
   },
   {
     "id": "sayona-sy-3000-gold-hair-dryer",
     "name": "Sayona SY-3000 GOLD Hair Dryer",
     "sku": "1",
     "price": 3950,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/sayona-sy-3000-gold-hair-dryer.jpg"
   },
   {
     "id": "scanford-1-gang-2-way-switch",
     "name": "Scanford 1 Gang 2 Way Switch",
     "sku": "1 pc",
     "price": 100,
-    "stock": 11
+    "stock": 11,
+    "img": "/products/scanford-1-gang-2-way-switch.jpg"
   },
   {
     "id": "scanford-2-gang-2-way-switch",
     "name": "Scanford 2 Gang 2 Way Switch",
     "sku": "1 pc",
     "price": 200,
-    "stock": 30
+    "stock": 30,
+    "img": "/products/scanford-2-gang-2-way-switch.jpg"
   },
   {
     "id": "scanford-2ft-fittin-complete",
     "name": "Scanford 2FT Fittin Complete",
     "sku": "1 pc",
     "price": 550,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/scanford-2ft-fittin-complete.jpg"
   },
   {
     "id": "scanford-3-gang-2-way-switch",
     "name": "Scanford 3 Gang 2 Way Switch",
     "sku": "1 pc",
     "price": 300,
-    "stock": 47
+    "stock": 47,
+    "img": "/products/scanford-3-gang-2-way-switch.jpg"
   },
   {
     "id": "scanford-4-gang-2-way-switch",
     "name": "Scanford 4 Gang 2 Way Switch",
     "sku": "1 pc",
     "price": 350,
-    "stock": 18
+    "stock": 18,
+    "img": "/products/scanford-4-gang-2-way-switch.jpg"
   },
   {
     "id": "scanford-4ft-fittin-complete",
     "name": "Scanford 4FT Fittin Complete",
     "sku": "1 pc",
     "price": 700,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/scanford-4ft-fittin-complete.jpg"
   },
   {
     "id": "scanford-coaxial-socket",
     "name": "Scanford Coaxial Socket",
     "sku": "1 pc",
     "price": 250,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/scanford-coaxial-socket.jpg"
   },
   {
     "id": "scanford-cooker-connector",
     "name": "Scanford cooker Connector",
     "sku": "1 pc",
     "price": 350,
-    "stock": 10
+    "stock": 10,
+    "img": "/products/scanford-cooker-connector.jpg"
   },
   {
     "id": "scanford-industrial-socket-32a-3pin",
     "name": "Scanford Industrial Socket 32a 3pin",
     "sku": "1 pc",
     "price": 930,
-    "stock": 8
+    "stock": 8,
+    "img": "/products/scanford-industrial-socket-32a-3pin.jpg"
   },
   {
     "id": "scanford-socket-13a",
     "name": "Scanford Socket 13a",
     "sku": "1 pc",
     "price": 260,
-    "stock": 25
+    "stock": 25,
+    "img": "/products/scanford-socket-13a.jpg"
   },
   {
     "id": "scanford-surge-4way-extension",
     "name": "Scanford Surge 4Way Extension",
     "sku": "1",
     "price": 1350,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/scanford-surge-4way-extension.jpg"
   },
   {
     "id": "scanford-surge-6-way-extension",
     "name": "Scanford Surge 6 Way Extension",
     "sku": "1",
     "price": 1700,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/scanford-surge-6-way-extension.jpg"
   },
   {
     "id": "scanford-twin-socket-13a",
     "name": "Scanford Twin Socket 13a",
     "sku": "1 pc",
     "price": 350,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/scanford-twin-socket-13a.jpg"
   },
   {
     "id": "scanford-water-heater-20a-switch",
     "name": "Scanford Water Heater 20a Switch",
     "sku": "1 pc",
     "price": 350,
-    "stock": 6
+    "stock": 6,
+    "img": "/products/scanford-water-heater-20a-switch.jpg"
   },
   {
     "id": "scanford-water-heater-45a-switch",
     "name": "Scanford Water Heater 45a Switch",
     "sku": "1 pc",
     "price": 550,
-    "stock": 8
+    "stock": 8,
+    "img": "/products/scanford-water-heater-45a-switch.jpg"
   },
   {
     "id": "screw-type-bulb-18w",
     "name": "Screw Type Bulb 18W",
     "sku": "1 pc",
     "price": 300,
-    "stock": 20
+    "stock": 20,
+    "img": "/products/screw-type-bulb-18w.jpg"
   },
   {
     "id": "single-blanking",
     "name": "Single Blanking",
     "sku": "1 pc",
     "price": 30,
-    "stock": 40
+    "stock": 40,
+    "img": "/products/single-blanking.jpg"
   },
   {
     "id": "solar-induction-wall-lamp",
     "name": "Solar Induction Wall Lamp",
     "sku": "1",
     "price": 1900,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/solar-induction-wall-lamp.jpg"
   },
   {
     "id": "solar-max-power-inverter-600w",
     "name": "Solar Max Power Inverter 600W",
     "sku": "1 pc",
     "price": 3750,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/solar-max-power-inverter-600w.jpg"
   },
   {
     "id": "solar-sensor-light",
     "name": "Solar Sensor Light",
     "sku": "1",
     "price": 1500,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/solar-sensor-light.jpg"
   },
   {
     "id": "solar-spark-026-mf",
     "name": "Solar Spark 026 MF",
     "sku": "1 pc",
     "price": 5250,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/solar-spark-026-mf.jpg"
   },
   {
     "id": "solar-street-js-112",
     "name": "Solar Street JS-112",
     "sku": "1",
     "price": 3050,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/solar-street-js-112.jpg"
   },
   {
     "id": "solar-street-js-115",
     "name": "Solar Street JS-115",
     "sku": "1",
     "price": 3850,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/solar-street-js-115.jpg"
   },
   {
     "id": "solarmax-10a-charger-controller",
     "name": "Solarmax 10A Charger Controller",
     "sku": "1",
     "price": 1350,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/solarmax-10a-charger-controller.jpg"
   },
   {
     "id": "solarmax-pwm-30a-charge-controller",
     "name": "SOLARMAX PWM 30A Charge Controller",
     "sku": "1 pc",
     "price": 1750,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/solarmax-pwm-30a-charge-controller.jpg"
   },
   {
     "id": "soldering-gun-25w",
     "name": "Soldering Gun 25W",
     "sku": "1",
     "price": 450,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/soldering-gun-25w.jpg"
   },
   {
     "id": "soldering-gun-60w",
     "name": "Soldering Gun 60W",
     "sku": "1",
     "price": 600,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/soldering-gun-60w.jpg"
   },
   {
     "id": "sonar-kettle-x1",
     "name": "Sonar Kettle X1",
     "sku": "1 pc",
     "price": 950,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/sonar-kettle-x1.jpg"
   },
   {
     "id": "songya-bulb-holder-straight",
     "name": "Songya Bulb Holder Straight",
     "sku": "1 pc",
     "price": 100,
-    "stock": 15
+    "stock": 15,
+    "img": "/products/songya-bulb-holder-straight.jpg"
   },
   {
     "id": "songya-ceiling-ross",
     "name": "Songya Ceiling Ross",
     "sku": "1 pc",
     "price": 150,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/songya-ceiling-ross.jpg"
   },
   {
     "id": "sonitec-st-5400",
     "name": "Sonitec ST-5400",
     "sku": "1",
     "price": 1650,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/sonitec-st-5400.jpg"
   },
   {
     "id": "sony-hdmi-2m",
     "name": "Sony HDMI 2M",
     "sku": "1",
     "price": 550,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/sony-hdmi-2m.jpg"
   },
   {
     "id": "spark-35mf",
     "name": "Spark 35MF",
     "sku": "1",
     "price": 5500,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/spark-35mf.jpg"
   },
   {
     "id": "spark-mf-045",
     "name": "Spark MF 045",
     "sku": "1 pc",
     "price": 6700,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/spark-mf-045.jpg"
   },
   {
     "id": "spark-n70",
     "name": "Spark N70",
     "sku": "1",
     "price": 10650,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/spark-n70.jpg"
   },
   {
     "id": "spark-ns70",
     "name": "Spark NS70",
     "sku": "1",
     "price": 8950,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/spark-ns70.jpg"
   },
   {
     "id": "starex-taper-blades",
     "name": "STAREX TAPER BLADES",
     "sku": "1",
     "price": 500,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/starex-taper-blades.jpg"
   },
   {
     "id": "startimes-full-kit",
     "name": "StarTimes Full Kit",
     "sku": "1 pc",
     "price": 3500,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/startimes-full-kit.jpg"
   },
   {
     "id": "steel-tape",
     "name": "Steel Tape",
     "sku": "1",
     "price": 400,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/steel-tape.jpg"
   },
   {
     "id": "sun-gas-burner",
     "name": "Sun gas burner",
     "sku": "1",
     "price": 650,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/sun-gas-burner.jpg"
   },
   {
     "id": "sunking-pico-plus",
     "name": "Sunking PICO PLUS",
     "sku": "1",
     "price": 1150,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/sunking-pico-plus.jpg"
   },
   {
     "id": "suntown-led-fixture-50w",
     "name": "SUNTOWN LED FIXTURE 50W",
     "sku": "1",
     "price": 950,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/suntown-led-fixture-50w.jpg"
   },
   {
     "id": "suntown-rechargeble-30w",
     "name": "SUNTOWN rechargeble 30W",
     "sku": "1",
     "price": 600,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/suntown-rechargeble-30w.jpg"
   },
   {
     "id": "suntown-rechargeble-40w",
     "name": "SUNTOWN rechargeble 40W",
     "sku": "1",
     "price": 750,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/suntown-rechargeble-40w.jpg"
   },
   {
     "id": "suntown-rechargeble-50w",
     "name": "SUNTOWN rechargeble 50W",
     "sku": "1",
     "price": 950,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/suntown-rechargeble-50w.jpg"
   },
   {
     "id": "sunup-tape",
     "name": "Sunup Tape",
     "sku": "1 pc",
     "price": 30,
-    "stock": 65
+    "stock": 65,
+    "img": "/products/sunup-tape.jpg"
   },
   {
     "id": "super-glue-big",
     "name": "Super Glue(Big)",
     "sku": "1",
     "price": 50,
-    "stock": 11
+    "stock": 11,
+    "img": "/products/super-glue-big.jpg"
   },
   {
     "id": "super-glue-small",
     "name": "Super Glue(small)",
     "sku": "1",
     "price": 30,
-    "stock": 20
+    "stock": 20,
+    "img": "/products/super-glue-small.jpg"
   },
   {
     "id": "switch-box",
     "name": "Switch Box",
     "sku": "Single /Double",
     "price": 150,
-    "stock": 8
+    "stock": 8,
+    "img": "/products/switch-box.jpg"
   },
   {
     "id": "switch-box-2",
     "name": "Switch Box",
     "sku": "8 Way",
     "price": 600,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/switch-box-2.jpg"
   },
   {
     "id": "synix-smart-55",
     "name": "Synix smart 55\"",
     "sku": "1",
     "price": 51500,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/synix-smart-55.jpg"
   },
   {
     "id": "t-g-6-way-consumer-unit",
     "name": "T&G 6 Way Consumer Unit",
     "sku": "1 pc",
     "price": 2050,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/t-g-6-way-consumer-unit.jpg"
   },
   {
     "id": "t-g-mcb",
     "name": "T&G MCB",
     "sku": "1 pc",
     "price": 250,
-    "stock": 36
+    "stock": 36,
+    "img": "/products/t-g-mcb.jpg"
   },
   {
     "id": "t5-bluetooth-speaker",
     "name": "T5 Bluetooth Speaker",
     "sku": "1",
     "price": 850,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/t5-bluetooth-speaker.jpg"
   },
   {
     "id": "taoben-black-extension",
     "name": "Taoben Black Extension",
     "sku": "1 pc",
     "price": 200,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/taoben-black-extension.jpg"
   },
   {
     "id": "tecno-pop8-64-2",
     "name": "Tecno Pop8 (64+2)",
     "sku": "1 pc",
     "price": 12999,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/tecno-pop8-64-2.jpg"
   },
   {
     "id": "tecno-spark-30c-128-4",
     "name": "Tecno Spark 30c 128+4",
     "sku": "1 pc",
     "price": 17299,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/tecno-spark-30c-128-4.jpg"
   },
   {
     "id": "tecno-t301",
     "name": "Tecno T301",
     "sku": "1 pc",
     "price": 2499,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/tecno-t301.jpg"
   },
   {
     "id": "tecno-t302",
     "name": "Tecno T302",
     "sku": "1 pc",
     "price": 1999,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/tecno-t302.jpg"
   },
   {
     "id": "tecno-t315",
     "name": "Tecno T315",
     "sku": "1 pc",
     "price": 2599,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/tecno-t315.jpg"
   },
   {
     "id": "tecno-t528",
     "name": "Tecno T528",
     "sku": "1 pc",
     "price": 3299,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/tecno-t528.jpg"
   },
   {
     "id": "televes-lnb",
     "name": "Televes LNB",
     "sku": "1",
     "price": 700,
-    "stock": 48
+    "stock": 48,
+    "img": "/products/televes-lnb.jpg"
   },
   {
     "id": "tender-n300-router",
     "name": "Tender N300 Router",
     "sku": "1",
     "price": 2250,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/tender-n300-router.jpg"
   },
   {
     "id": "terminal-set",
     "name": "Terminal Set",
     "sku": "1",
     "price": 350,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/terminal-set.jpg"
   },
   {
     "id": "thread-seal-tape",
     "name": "Thread Seal Tape",
     "sku": "1",
     "price": 30,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/thread-seal-tape.jpg"
   },
   {
     "id": "tilting-wall-mount-sh-20t",
     "name": "Tilting Wall mount SH 20T",
     "sku": "1",
     "price": 850,
-    "stock": 12
+    "stock": 12,
+    "img": "/products/tilting-wall-mount-sh-20t.jpg"
   },
   {
     "id": "tilting-wall-mount-sh-42t",
     "name": "Tilting Wall mount SH 42T",
     "sku": "1",
     "price": 1150,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/tilting-wall-mount-sh-42t.jpg"
   },
   {
     "id": "tocebal-aa-pair",
     "name": "TOCEBAL AA pair",
     "sku": "1",
     "price": 30,
-    "stock": 23
+    "stock": 23,
+    "img": "/products/tocebal-aa-pair.jpg"
   },
   {
     "id": "tocebal-aaa-pair",
     "name": "TOCEBAL AAA pair",
     "sku": "1",
     "price": 20,
-    "stock": 55
+    "stock": 55,
+    "img": "/products/tocebal-aaa-pair.jpg"
   },
   {
     "id": "top-plug-white",
     "name": "Top plug White",
     "sku": "1",
     "price": 50,
-    "stock": 18
+    "stock": 18,
+    "img": "/products/top-plug-white.jpg"
   },
   {
     "id": "torch-th-5050a",
     "name": "Torch TH-5050A",
     "sku": "1",
     "price": 350,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/torch-th-5050a.jpg"
   },
   {
     "id": "torch-th-5153",
     "name": "Torch TH-5153",
     "sku": "1 pc",
     "price": 350,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/torch-th-5153.jpg"
   },
   {
     "id": "torch-th-5155a",
     "name": "Torch TH-5155A",
     "sku": "1",
     "price": 400,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/torch-th-5155a.jpg"
   },
   {
     "id": "tronic-12-watts",
     "name": "Tronic 12 watts",
     "sku": "12 watts",
     "price": 250,
-    "stock": 89
+    "stock": 89,
+    "img": "/products/tronic-12-watts.jpg"
   },
   {
     "id": "tronic-18-watts-led-tube",
     "name": "Tronic 18 watts LED Tube",
     "sku": "18 watts",
     "price": 280,
-    "stock": 19
+    "stock": 19,
+    "img": "/products/tronic-18-watts-led-tube.jpg"
   },
   {
     "id": "tronic-5-watts",
     "name": "Tronic 5 watts",
     "sku": "5 watts",
     "price": 100,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/tronic-5-watts.jpg"
   },
   {
     "id": "tronic-9-watts",
     "name": "Tronic 9 watts",
     "sku": "9 watts",
     "price": 200,
-    "stock": 132
+    "stock": 132,
+    "img": "/products/tronic-9-watts.jpg"
   },
   {
     "id": "tronic-consumer-unit-4way",
     "name": "Tronic Consumer Unit 4Way",
     "sku": "1 pc",
     "price": 2500,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/tronic-consumer-unit-4way.jpg"
   },
   {
     "id": "tronic-float-switch-2mtr",
     "name": "Tronic Float Switch 2MTR",
     "sku": "1 pc",
     "price": 1250,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/tronic-float-switch-2mtr.jpg"
   },
   {
     "id": "tronic-float-switch-3mtr",
     "name": "Tronic Float Switch 3MTR",
     "sku": "1 pc",
     "price": 1550,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/tronic-float-switch-3mtr.jpg"
   },
   {
     "id": "tronic-flood-light-led-slim-20w",
     "name": "Tronic Flood Light Led Slim 20w",
     "sku": "1 pc",
     "price": 1250,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/tronic-flood-light-led-slim-20w.jpg"
   },
   {
     "id": "tronic-mcb-sp-6a-10a-20a-32",
     "name": "Tronic MCB SP 6A,10A,20A,32",
     "sku": "1 pc",
     "price": 250,
-    "stock": 78
+    "stock": 78,
+    "img": "/products/tronic-mcb-sp-6a-10a-20a-32.jpg"
   },
   {
     "id": "tronic-tape-10-yards",
     "name": "Tronic Tape 10 Yards",
     "sku": "1 pc",
     "price": 50,
-    "stock": 66
+    "stock": 66,
+    "img": "/products/tronic-tape-10-yards.jpg"
   },
   {
     "id": "tronic-tape-20yards",
     "name": "Tronic Tape 20Yards",
     "sku": "1 pc",
     "price": 100,
-    "stock": 34
+    "stock": 34,
+    "img": "/products/tronic-tape-20yards.jpg"
   },
   {
     "id": "twin-blanking",
     "name": "Twin Blanking",
     "sku": "1 pc",
     "price": 50,
-    "stock": 50
+    "stock": 50,
+    "img": "/products/twin-blanking.jpg"
   },
   {
     "id": "tws",
     "name": "TWS",
     "sku": "1",
     "price": 950,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/tws.jpg"
   },
   {
     "id": "uk-3-gang",
     "name": "UK 3 Gang",
     "sku": "1 pc",
     "price": 200,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/uk-3-gang.jpg"
   },
   {
     "id": "uk-bulb-holders-straight",
     "name": "UK bulb Holders straight",
     "sku": "1",
     "price": 50,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/uk-bulb-holders-straight.jpg"
   },
   {
     "id": "uk-hanging-holder",
     "name": "UK hanging Holder",
     "sku": "1",
     "price": 50,
-    "stock": 52
+    "stock": 52,
+    "img": "/products/uk-hanging-holder.jpg"
   },
   {
     "id": "usb-charger-micro",
     "name": "USB charger Micro",
     "sku": "1",
     "price": 250,
-    "stock": 39
+    "stock": 39,
+    "img": "/products/usb-charger-micro.jpg"
   },
   {
     "id": "vellmax-7w-emergency-bulb",
     "name": "Vellmax 7W Emergency Bulb",
     "sku": "1 pc",
     "price": 460,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/vellmax-7w-emergency-bulb.jpg"
   },
   {
     "id": "vellmax-floodlight-100w",
     "name": "Vellmax Floodlight 100W",
     "sku": "1",
     "price": 2250,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/vellmax-floodlight-100w.jpg"
   },
   {
     "id": "vellmax-floodlight-20w",
     "name": "Vellmax Floodlight 20W",
     "sku": "1",
     "price": 950,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/vellmax-floodlight-20w.jpg"
   },
   {
     "id": "vellmax-floodlight-30w",
     "name": "Vellmax Floodlight 30W",
     "sku": "1",
     "price": 1150,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/vellmax-floodlight-30w.jpg"
   },
   {
     "id": "vellmax-floodlight-30w-motion",
     "name": "Vellmax Floodlight 30W motion",
     "sku": "1 pc",
     "price": 2350,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/vellmax-floodlight-30w-motion.jpg"
   },
   {
     "id": "vellmax-floodlight-50w",
     "name": "Vellmax Floodlight 50W",
     "sku": "1",
     "price": 1450,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/vellmax-floodlight-50w.jpg"
   },
   {
     "id": "vellmax-floodlight-50w-motion",
     "name": "Vellmax Floodlight 50W motion",
     "sku": "1",
     "price": 2950,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/vellmax-floodlight-50w-motion.jpg"
   },
   {
     "id": "vellmax-mosquito-bulb-20w",
     "name": "Vellmax Mosquito bulb 20W",
     "sku": "1",
     "price": 400,
-    "stock": 6
+    "stock": 6,
+    "img": "/products/vellmax-mosquito-bulb-20w.jpg"
   },
   {
     "id": "vellmax-panel-recess-3w",
     "name": "VELLMAX Panel recess 3W",
     "sku": "2",
     "price": 650,
-    "stock": 10
+    "stock": 10,
+    "img": "/products/vellmax-panel-recess-3w.jpg"
   },
   {
     "id": "vellmax-panel-recess-6w",
     "name": "VELLMAX Panel recess 6W",
     "sku": "2",
     "price": 850,
-    "stock": 6
+    "stock": 6,
+    "img": "/products/vellmax-panel-recess-6w.jpg"
   },
   {
     "id": "vellmax-panel-recess-9w",
     "name": "VELLMAX Panel recess 9W",
     "sku": "2 pc",
     "price": 1250,
-    "stock": 20
+    "stock": 20,
+    "img": "/products/vellmax-panel-recess-9w.jpg"
   },
   {
     "id": "vellmax-panel-surface-12w",
     "name": "VELLMAX panel surface 12W",
     "sku": "1 pc",
     "price": 900,
-    "stock": 7
+    "stock": 7,
+    "img": "/products/vellmax-panel-surface-12w.jpg"
   },
   {
     "id": "vellmax-panel-surface-18w",
     "name": "VELLMAX panel surface 18W",
     "sku": "1",
     "price": 1250,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/vellmax-panel-surface-18w.jpg"
   },
   {
     "id": "vellmax-panel-surface-30w",
     "name": "VELLMAX panel surface 30W",
     "sku": "1 pc",
     "price": 1850,
-    "stock": 10
+    "stock": 10,
+    "img": "/products/vellmax-panel-surface-30w.jpg"
   },
   {
     "id": "vellmax-panel-surface-6w",
     "name": "VELLMAX panel surface 6W",
     "sku": "1 pc",
     "price": 590,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/vellmax-panel-surface-6w.jpg"
   },
   {
     "id": "venus-bl-25at",
     "name": "VENUS BL-25AT",
     "sku": "1",
     "price": 550,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/venus-bl-25at.jpg"
   },
   {
     "id": "villaon-v101",
     "name": "Villaon V101",
     "sku": "1 pc",
     "price": 1299,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/villaon-v101.jpg"
   },
   {
     "id": "villaon-v105",
     "name": "Villaon V105",
     "sku": "1 pc",
     "price": 1250,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/villaon-v105.jpg"
   },
   {
     "id": "villaon-v110",
     "name": "villaon v110",
     "sku": "1 pc",
     "price": 1199,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/villaon-v110.jpg"
   },
   {
     "id": "villaontel-micro-usb",
     "name": "VILLAONTEL Micro usb",
     "sku": "1 pc",
     "price": 230,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/villaontel-micro-usb.jpg"
   },
   {
     "id": "villaontel-type-c",
     "name": "VILLAONTEL Type C",
     "sku": "1",
     "price": 250,
-    "stock": 8
+    "stock": 8,
+    "img": "/products/villaontel-type-c.jpg"
   },
   {
     "id": "vitron-dtv-32",
     "name": "Vitron DTV 32\"",
     "sku": "1",
     "price": 14500,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/vitron-dtv-32.jpg"
   },
   {
     "id": "vitron-smart-tv-32",
     "name": "Vitron Smart Tv 32\"",
     "sku": "1",
     "price": 14500,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/vitron-smart-tv-32.jpg"
   },
   {
     "id": "vitron-smart-tv-43",
     "name": "Vitron Smart Tv 43\"",
     "sku": "1",
     "price": 25500,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/vitron-smart-tv-43.jpg"
   },
   {
     "id": "vitron-v402",
     "name": "Vitron V402",
     "sku": "1 pc",
     "price": 3850,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/vitron-v402.jpg"
   },
   {
     "id": "vitron-v403",
     "name": "Vitron V403",
     "sku": "1 pc",
     "price": 3850,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/vitron-v403.jpg"
   },
   {
     "id": "vitron-v642",
     "name": "Vitron V642",
     "sku": "1 pc",
     "price": 6950,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/vitron-v642.jpg"
   },
   {
     "id": "vitron-v643",
     "name": "Vitron V643",
     "sku": "1 pc",
     "price": 6500,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/vitron-v643.jpg"
   },
   {
     "id": "vitron-v645",
     "name": "Vitron V645",
     "sku": "1 pc",
     "price": 6500,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/vitron-v645.jpg"
   },
   {
     "id": "voltron-n70s",
     "name": "Voltron N70S",
     "sku": "1",
     "price": 7800,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/voltron-n70s.jpg"
   },
   {
     "id": "von-hotpoint-kettle-black",
     "name": "Von Hotpoint Kettle Black",
     "sku": "1",
     "price": 2000,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/von-hotpoint-kettle-black.jpg"
   },
   {
     "id": "von-hotpoint-kettle-white",
     "name": "Von Hotpoint Kettle White",
     "sku": "1",
     "price": 2200,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/von-hotpoint-kettle-white.jpg"
   },
   {
     "id": "wahl-balding-classic-taper",
     "name": "WAHL Balding Classic taper",
     "sku": "1",
     "price": 4550,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/wahl-balding-classic-taper.jpg"
   },
   {
     "id": "wahl-balding-classic-taper-small",
     "name": "WAHL Balding Classic taper small",
     "sku": "1",
     "price": 3500,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/wahl-balding-classic-taper-small.jpg"
   },
   {
     "id": "wahl-super-taper-classic-series",
     "name": "WAHL Super taper Classic series",
     "sku": "1",
     "price": 4550,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/wahl-super-taper-classic-series.jpg"
   },
   {
     "id": "wahl-super-taper-classic-series-2",
     "name": "WAHL Super taper Classic series #2",
     "sku": "1",
     "price": 3550,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/wahl-super-taper-classic-series-2.jpg"
   },
   {
     "id": "wahl-super-taper-classic-series-icon",
     "name": "WAHL Super taper Classic series ICON",
     "sku": "1",
     "price": 4550,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/wahl-super-taper-classic-series-icon.jpg"
   },
   {
     "id": "water-heater-black",
     "name": "Water Heater Black",
     "sku": "1 pc",
     "price": 400,
-    "stock": 6
+    "stock": 6,
+    "img": "/products/water-heater-black.jpg"
   },
   {
     "id": "water-heater-green",
     "name": "Water Heater Green",
     "sku": "1 pc",
     "price": 300,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/water-heater-green.jpg"
   },
   {
     "id": "water-heater-red",
     "name": "Water Heater Red",
     "sku": "1 pc",
     "price": 250,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/water-heater-red.jpg"
   },
   {
     "id": "white-charger-header",
     "name": "White Charger Header",
     "sku": "1",
     "price": 200,
-    "stock": 7
+    "stock": 7,
+    "img": "/products/white-charger-header.jpg"
   },
   {
     "id": "windsor-bulkhead-fitting",
     "name": "Windsor Bulkhead Fitting",
     "sku": "1 pc",
     "price": 750,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/windsor-bulkhead-fitting.jpg"
   },
   {
     "id": "windsor-infrared-bulb-250w",
     "name": "Windsor Infrared Bulb 250w",
     "sku": "1 pc",
     "price": 750,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/windsor-infrared-bulb-250w.jpg"
   },
   {
     "id": "wired-mouse",
     "name": "Wired Mouse",
     "sku": "1",
     "price": 320,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/wired-mouse.jpg"
   },
   {
     "id": "ws-633bt",
     "name": "WS-633BT",
     "sku": "1",
     "price": 650,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/ws-633bt.jpg"
   },
   {
     "id": "wster-ws-306-5w",
     "name": "WSTER WS-306 5W",
     "sku": "1 pc",
     "price": 450,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/wster-ws-306-5w.jpg"
   },
   {
     "id": "wster-ws-y06",
     "name": "WSTER WS-Y06",
     "sku": "1 pc",
     "price": 450,
-    "stock": 4
+    "stock": 4,
+    "img": "/products/wster-ws-y06.jpg"
   },
   {
     "id": "yk-powerbank",
     "name": "YK Powerbank",
     "sku": "1 pc",
     "price": 1950,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/yk-powerbank.jpg"
   },
   {
     "id": "zodion-photo-cell",
     "name": "Zodion photo cell",
     "sku": "1",
     "price": 1050,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/zodion-photo-cell.jpg"
   },
   {
     "id": "zuku-satellite-complete-kit",
     "name": "ZUKU Satellite complete kit",
     "sku": "1",
     "price": 3500,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/zuku-satellite-complete-kit.jpg"
   },
   {
     "id": "zy-electrical-2-way-ccu",
     "name": "ZY ELECTRICAL 2 Way CCU",
     "sku": "1 pc",
     "price": 850,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/zy-electrical-2-way-ccu.jpg"
   },
   {
     "id": "zy-electrical-4-way-ccu",
     "name": "ZY ELECTRICAL 4 Way CCU",
     "sku": "1 pc",
     "price": 1380,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/zy-electrical-4-way-ccu.jpg"
   },
   {
-  "id": "gas-6kg",
-  "name": "Gas Refill 6KG",
-  "price": 1110,
-  "sku": "refill",
-  "stock": 999,
-  "img": ""
-},
-{
-  "id": "gas-13kg",
-  "name": "Gas Refill 13KG",
-  "price": 2355,
-  "sku": "refill",
-  "stock": 999,
-  "img": ""
-}
+    "id": "gas-6kg",
+    "name": "Gas Refill 6KG",
+    "price": 1110,
+    "sku": "refill",
+    "stock": 999,
+    "img": "/products/gas-6kg.jpg"
+  },
+  {
+    "id": "gas-13kg",
+    "name": "Gas Refill 13KG",
+    "price": 2355,
+    "sku": "refill",
+    "stock": 999,
+    "img": "/products/gas-13kg.jpg"
+  }
 ]
