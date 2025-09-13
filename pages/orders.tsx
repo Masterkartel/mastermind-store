@@ -1,5 +1,5 @@
 // pages/orders.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 /** ---------------- Types ---------------- */
 type OrderItem = {
@@ -151,7 +151,8 @@ const StatusPill = ({ status }: { status: "SUCCESS" | "FAILED" | "PENDING" }) =>
   };
   const s = styleMap[status];
 
-  return
+  // >>> FIX: return JSX in parentheses (no newline after return)
+  return (
     <span
       style={{
         background: s.bg,
@@ -164,7 +165,8 @@ const StatusPill = ({ status }: { status: "SUCCESS" | "FAILED" | "PENDING" }) =>
       }}
     >
       {s.label}
-    </span>;
+    </span>
+  );
 };
 
 /** ---------------- Small "Copied!" bubble ---------------- */
@@ -272,7 +274,6 @@ export default function OrdersPage() {
     } catch {}
   };
 
-  // Avoid recomputing locale totals etc.
   const asKES = (n: number) =>
     `KES ${Math.round(n).toLocaleString("en-KE")}`;
 
@@ -544,4 +545,4 @@ export default function OrdersPage() {
       </div>
     </div>
   );
-}
+                }
