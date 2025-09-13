@@ -13,9 +13,9 @@ type OrderItem = {
 
 type Order = {
   id: string;
-  reference?: string; // exists when paid
-  createdAt?: string; // human-friendly date/time we display
-  paidAt?: string;    // if you ever save it
+  reference?: string;
+  createdAt?: string; // human display
+  paidAt?: string;    // ISO when present
   total: number;
   items: OrderItem[];
 };
@@ -23,30 +23,22 @@ type Order = {
 /** -------- Storage keys -------- */
 const CANONICAL_KEY = "orders";
 const POSSIBLE_KEYS = ["orders", "mm_orders", "mastermind_orders", "cart_orders"];
-const FIXED_DATES_KEY = "orderFixedDates"; // id -> number (ms) frozen once
+const EXPANDED_KEY = "orders_expanded_state";
 
-/** -------- Helpers -------- */
+/** -------- Helpers (display only) -------- */
 const pad = (n: number) => String(n).padStart(2, "0");
 const formatDateTime = (d: Date) =>
-  `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-
-const parseToMs = (v: unknown): number | undefined => {
-  if (!v) return;
-  // If it's already a number-like string
-  if (typeof v === "number" && Number.isFinite(v)) return v;
-  if (typeof v === "string" && v.trim()) {
-    const ms = Date.parse(v);
-    if (!Number.isNaN(ms)) return ms;
-  }
-  return;
-};
+  `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
 const createdFromId = (id: string): string | undefined => {
-  const tsNum = Number((id || "").replace(/^\D+/, ""));
-  if (!Number.isFinite(tsNum)) return;
-  const d = new Date(tsNum);
-  if (Number.isNaN(d.getTime())) return;
-  return formatDateTime(d);
+  const m = id.match(/\d+/);
+  if (!m) return;
+  const ts = Number(m[0]);
+  if (!Number.isFinite(ts)) return;
+  const d = new Date(ts);
+  return isNaN(d.getTime()) ? undefined : formatDateTime(d);
 };
 
 const PLACEHOLDER = "https://via.placeholder.com/56x56.png?text=%20";
@@ -57,7 +49,7 @@ const slugify = (s: string) =>
     .replace(/(^-|-$)/g, "");
 
 const resolveItemImage = (it: OrderItem) => {
-  const direct = it.image || it.img || it.imageUrl || it.photo || it.picture;
+  const direct = it.image || (it as any).img || (it as any).imageUrl || (it as any).photo || (it as any).picture;
   if (typeof direct === "string" && direct.trim()) return direct.trim();
 
   if (typeof window !== "undefined") {
@@ -65,89 +57,88 @@ const resolveItemImage = (it: OrderItem) => {
       const raw = localStorage.getItem("productImages");
       if (raw) {
         const map = JSON.parse(raw);
-        if (map && typeof map === "object" && map[it.name]) {
-          return String(map[it.name]);
-        }
+        if (map && typeof map === "object" && map[it.name]) return String(map[it.name]);
       }
     } catch {}
   }
 
   const slug = slugify(it.name);
   if (slug) return `/images/${slug}.webp`;
-
   return PLACEHOLDER;
 };
 
-/** -------- Pills (same styles you locked) -------- */
+/** -------- Pills (unchanged) -------- */
+const Pill = ({ bg, text, label }: { bg: string; text: string; label: string }) => (
+  <span
+    style={{
+      background: bg,
+      color: text,
+      fontSize: 12,
+      fontWeight: 800,
+      padding: "4px 10px",
+      borderRadius: 999,
+      whiteSpace: "nowrap",
+    }}
+  >
+    {label}
+  </span>
+);
+
 const HeaderPill = ({ status }: { status: "SUCCESS" | "FAILED" | "PENDING" }) => {
-  const isSuccess = status === "SUCCESS";
-  const isFailed = status === "FAILED";
-  const bg = isSuccess ? "rgba(16,185,129,0.18)" : isFailed ? "rgba(239,68,68,0.18)" : "rgba(148,163,184,0.18)";
-  const fg = isSuccess ? "#10b981" : isFailed ? "#ef4444" : "#64748b";
-  const text = isSuccess ? "Successful" : isFailed ? "Failed" : "Pending";
-  return (
-    <span
-      style={{
-        background: bg,
-        color: fg,
-        fontSize: 12,
-        fontWeight: 800,
-        padding: "4px 10px",
-        borderRadius: 999,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {text}
-    </span>
-  );
+  if (status === "SUCCESS")
+    return <Pill bg="rgba(34,197,94,0.18)" text="#0a5b2a" label="Successful" />;
+  if (status === "FAILED")
+    return <Pill bg="rgba(248,113,113,0.18)" text="#7f1d1d" label="Failed" />;
+  return <Pill bg="rgba(148,163,184,0.18)" text="#334155" label="Pending" />;
 };
 
 const StatusPill = ({ status }: { status: "SUCCESS" | "FAILED" | "PENDING" }) => {
-  const isSuccess = status === "SUCCESS";
-  const isFailed = status === "FAILED";
-  const bg = isSuccess ? "rgba(16,185,129,0.18)" : isFailed ? "rgba(239,68,68,0.18)" : "rgba(148,163,184,0.18)";
-  const fg = isSuccess ? "#10b981" : isFailed ? "#ef4444" : "#64748b";
-  const text = isSuccess ? "Paid" : isFailed ? "Failed" : "Pending";
-  return (
-    <span
-      style={{
-        background: bg,
-        color: fg,
-        fontSize: 12,
-        fontWeight: 800,
-        padding: "4px 10px",
-        borderRadius: 999,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {text}
-    </span>
-  );
+  if (status === "SUCCESS")
+    return <Pill bg="rgba(34,197,94,0.18)" text="#0a5b2a" label="Paid" />;
+  if (status === "FAILED")
+    return <Pill bg="rgba(248,113,113,0.18)" text="#7f1d1d" label="Failed" />;
+  return <Pill bg="rgba(148,163,184,0.18)" text="#334155" label="Pending" />;
+};
+
+/** -------- Time helpers for SORT only -------- */
+const toMsSafe = (v?: string): number | undefined => {
+  if (!v || typeof v !== "string") return;
+  const isoLike =
+    /\d{4}-\d{2}-\d{2}T/.test(v) || /\d{4}-\d{2}-\d{2}\s/.test(v) || /Z$/.test(v);
+  if (!isoLike) return;
+  const n = Date.parse(v);
+  return Number.isFinite(n) ? n : undefined;
+};
+
+const idMs = (id: string): number | undefined => {
+  const m = id.match(/\d+/);
+  if (!m) return;
+  const n = Number(m[0]);
+  return Number.isFinite(n) ? n : undefined;
+};
+
+/** Mark display dates that are obviously wrong so they go to the bottom */
+const isUnrealisticDisplayDate = (display?: string): boolean => {
+  if (!display) return false;
+  const yearMatch = display.match(/(\d{4})/);
+  if (!yearMatch) return false;
+  const year = Number(yearMatch[1]);
+  const now = new Date();
+  const max = now.getFullYear() + 1;
+  if (year < 2000 || year > max) return true;
+  return false;
 };
 
 /** -------- Page -------- */
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedFor, setCopiedFor] = useState<string | null>(null);
 
-  // tiny floating "Copied!" for 1.2s
-  const showCopied = (id: string) => {
-    setCopiedId(id);
-    setTimeout(() => setCopiedId((v) => (v === id ? null : v)), 1200);
-  };
-
+  // Load orders, normalize, migrate, sort
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // 1) Read any previously frozen fallback dates
-    let fixedDates: Record<string, number> = {};
-    try {
-      const rawFixed = localStorage.getItem(FIXED_DATES_KEY);
-      if (rawFixed) fixedDates = JSON.parse(rawFixed) || {};
-    } catch {}
-
-    // 2) Merge any legacy keys
     const merged: Order[] = [];
     for (const key of POSSIBLE_KEYS) {
       try {
@@ -158,76 +149,81 @@ export default function OrdersPage() {
       } catch {}
     }
 
-    // 3) Normalize & compute display/sort times
-    const normalized: (Order & { __sortMs: number; __status: "SUCCESS" | "FAILED" | "PENDING" })[] = (merged || [])
+    const normalized: Order[] = (merged || [])
       .filter((o) => o && typeof (o as any).id === "string")
       .map((o: any) => {
-        const paidMs = parseToMs(o.paidAt);
-        const createdMsRaw = parseToMs(o.createdAt);
-        const idNum = Number(String(o.id || "").replace(/^\D+/, ""));
-        const idMs = Number.isFinite(idNum) ? idNum : undefined;
-
-        // choose display date string (what you show under the order number)
-        let displayMs =
-          (typeof paidMs === "number" ? paidMs : undefined) ??
-          (typeof createdMsRaw === "number" ? createdMsRaw : undefined) ??
-          (typeof idMs === "number" ? idMs : undefined);
-
-        // If still invalid, freeze a fallback once and re-use forever
-        if (typeof displayMs !== "number") {
-          if (typeof fixedDates[o.id] !== "number") {
-            fixedDates[o.id] = Date.now();
-          }
-          displayMs = fixedDates[o.id];
-        }
-
-        const createdAt = formatDateTime(new Date(displayMs));
-
-        // consistent sort key (same as displayMs so the card and order are aligned)
-        const sortMs = displayMs;
-
+        const createdDisplay =
+          o.createdAt || createdFromId(o.id) || formatDateTime(new Date());
         const items: OrderItem[] = Array.isArray(o.items) ? o.items : [];
-        const status: "SUCCESS" | "FAILED" | "PENDING" =
-          o.reference ? "SUCCESS" : o.status === "FAILED" ? "FAILED" : "PENDING";
-
-        return { ...o, createdAt, items, __sortMs: sortMs, __status: status };
+        return { ...o, createdAt: createdDisplay, items };
       });
 
-    // 4) Save back the frozen fallback map (only when it changed / existed)
-    try {
-      localStorage.setItem(FIXED_DATES_KEY, JSON.stringify(fixedDates));
-    } catch {}
+    // Sort rules:
+    // 1) realistic dates first; unrealistic display dates sink
+    // 2) within realistic: sort by id ms -> paidAt ISO -> createdAt ISO (desc)
+    normalized.sort((a, b) => {
+      const aBad = isUnrealisticDisplayDate(a.createdAt);
+      const bBad = isUnrealisticDisplayDate(b.createdAt);
+      if (aBad !== bBad) return aBad ? 1 : -1; // push bad below
 
-    // 5) Sort newest first (bigger ms on top)
-    normalized.sort((a, b) => b.__sortMs - a.__sortMs);
+      const aId = idMs(a.id);
+      const bId = idMs(b.id);
+      const aPaid = toMsSafe(a.paidAt);
+      const bPaid = toMsSafe(b.paidAt);
+      const aCreated = toMsSafe(a.createdAt);
+      const bCreated = toMsSafe(b.createdAt);
 
-    // 6) Persist to canonical key and clean legacy keys
+      const aTs = aId ?? aPaid ?? aCreated ?? 0;
+      const bTs = bId ?? bPaid ?? bCreated ?? 0;
+      return bTs - aTs;
+    });
+
+    // Save canonical
     try {
-      const toSave: Order[] = normalized.map(({ __sortMs, __status, ...rest }) => rest);
-      localStorage.setItem(CANONICAL_KEY, JSON.stringify(toSave));
+      localStorage.setItem(CANONICAL_KEY, JSON.stringify(normalized));
       for (const key of POSSIBLE_KEYS) {
         if (key !== CANONICAL_KEY) localStorage.removeItem(key);
       }
     } catch {}
 
-    // expand all by default (kept from your flow)
-    const initialExpanded: Record<string, boolean> = {};
-    normalized.forEach((o) => (initialExpanded[o.id] = true));
+    // Load expanded state (default ALL collapsed)
+    let stored: Record<string, boolean> = {};
+    try {
+      const raw = localStorage.getItem(EXPANDED_KEY);
+      if (raw) stored = JSON.parse(raw) || {};
+    } catch {}
+    const initial: Record<string, boolean> = {};
+    normalized.forEach((o) => {
+      initial[o.id] = stored[o.id] ?? false; // collapsed by default
+    });
 
     setOrders(normalized);
-    setExpanded(initialExpanded);
+    setExpanded(initial);
   }, []);
 
-  const toggle = (id: string) =>
-    setExpanded((e) => ({ ...e, [id]: !e[id] }));
+  const saveExpanded = (next: Record<string, boolean>) => {
+    setExpanded(next);
+    try {
+      localStorage.setItem(EXPANDED_KEY, JSON.stringify(next));
+    } catch {}
+  };
+
+  const toggle = (id: string) => {
+    saveExpanded({ ...expanded, [id]: !expanded[id] });
+  };
+
+  const statusFrom = (o: Order): "SUCCESS" | "FAILED" | "PENDING" => {
+    if (o.reference) return "SUCCESS";
+    return "PENDING";
+  };
 
   if (orders === null) {
     return <div style={{ background: "#f6f6f6", minHeight: "100vh" }} />;
   }
 
   return (
-    <div style={{ background: "#f6f6f6", minHeight: "100vh", position: "relative" }}>
-      {/* Header bar */}
+    <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
+      {/* Header bar (unchanged) */}
       <div
         style={{
           background: "#111",
@@ -305,12 +301,9 @@ export default function OrdersPage() {
           </div>
         ) : (
           <div style={{ display: "grid", gap: 12 }}>
-            {orders.map((orderAny) => {
-              // carry through helper fields
-              const order = orderAny as Order & { __status: "SUCCESS" | "FAILED" | "PENDING" };
+            {orders.map((order) => {
               const isOpen = !!expanded[order.id];
-              const status = order.__status;
-
+              const status = statusFrom(order);
               return (
                 <div
                   key={order.id}
@@ -370,49 +363,48 @@ export default function OrdersPage() {
                   {/* Body */}
                   {isOpen && (
                     <div style={{ padding: 14, display: "grid", gap: 10 }}>
-                      {Array.isArray(order.items) &&
-                        order.items.map((it, i) => {
-                          const qty = Number(it.quantity ?? it.qty ?? 1) || 1;
-                          const price = Number(it.price) || 0;
-                          const src = resolveItemImage(it);
-                          return (
-                            <div
-                              key={i}
-                              style={{
-                                display: "grid",
-                                gridTemplateColumns: "auto 1fr",
-                                gap: 10,
-                                alignItems: "center",
+                      {order.items.map((it, i) => {
+                        const qty = Number(it.quantity ?? it.qty ?? 1);
+                        const price = Number(it.price) || 0;
+                        const src = resolveItemImage(it);
+                        return (
+                          <div
+                            key={i}
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "auto 1fr",
+                              gap: 10,
+                              alignItems: "center",
+                            }}
+                          >
+                            <img
+                              src={src}
+                              alt={it.name}
+                              loading="lazy"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).src = PLACEHOLDER;
                               }}
-                            >
-                              <img
-                                src={src}
-                                alt={it.name}
-                                loading="lazy"
-                                onError={(e) => {
-                                  (e.currentTarget as HTMLImageElement).src = PLACEHOLDER;
-                                }}
-                                style={{
-                                  width: 56,
-                                  height: 56,
-                                  borderRadius: 10,
-                                  objectFit: "cover",
-                                  background: "#f4f4f4",
-                                  border: "1px solid #eee",
-                                }}
-                              />
-                              <div>
-                                <div style={{ fontWeight: 800 }}>{it.name}</div>
-                                <div style={{ color: "#666" }}>
-                                  KES {Math.round(price)} × {qty} ={" "}
-                                  <span style={{ fontWeight: 700, color: "#111" }}>
-                                    KES {Math.round(price * qty)}
-                                  </span>
-                                </div>
+                              style={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: 10,
+                                objectFit: "cover",
+                                background: "#f4f4f4",
+                                border: "1px solid #eee",
+                              }}
+                            />
+                            <div>
+                              <div style={{ fontWeight: 800 }}>{it.name}</div>
+                              <div style={{ color: "#666" }}>
+                                KES {Math.round(price)} × {qty} ={" "}
+                                <span style={{ fontWeight: 700, color: "#111" }}>
+                                  KES {Math.round(price * qty)}
+                                </span>
                               </div>
                             </div>
-                          );
-                        })}
+                          </div>
+                        );
+                      })}
 
                       {/* Reference */}
                       <div
@@ -422,7 +414,6 @@ export default function OrdersPage() {
                           gap: 8,
                           flexWrap: "wrap",
                           marginTop: 4,
-                          position: "relative",
                         }}
                       >
                         <span style={{ color: "#777" }}>Reference</span>
@@ -440,44 +431,47 @@ export default function OrdersPage() {
                           {order.reference || "—"}
                         </span>
                         {order.reference ? (
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(order.reference!);
-                              showCopied(order.id);
-                            }}
-                            style={{
-                              background: "rgba(250,204,21,0.35)",
-                              color: "#111",
-                              fontWeight: 800,
-                              border: "none",
-                              padding: "6px 10px",
-                              borderRadius: 10,
-                              cursor: "pointer",
-                              position: "relative",
-                            }}
-                          >
-                            Copy
-                          </button>
+                          <>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await navigator.clipboard.writeText(order.reference!);
+                                  setCopiedFor(order.id);
+                                  setTimeout(
+                                    () =>
+                                      setCopiedFor((v) => (v === order.id ? null : v)),
+                                    1200
+                                  );
+                                } catch {}
+                              }}
+                              style={{
+                                background: "#fde68a",
+                                color: "#111",
+                                fontWeight: 800,
+                                border: "none",
+                                padding: "6px 10px",
+                                borderRadius: 10,
+                                cursor: "pointer",
+                              }}
+                            >
+                              Copy
+                            </button>
+                            {copiedFor === order.id && (
+                              <span
+                                style={{
+                                  fontSize: 12,
+                                  fontWeight: 800,
+                                  background: "rgba(34,197,94,0.18)",
+                                  color: "#0a5b2a",
+                                  padding: "4px 8px",
+                                  borderRadius: 8,
+                                }}
+                              >
+                                Copied!
+                              </span>
+                            )}
+                          </>
                         ) : null}
-
-                        {/* silent copied bubble */}
-                        {copiedId === order.id && (
-                          <span
-                            style={{
-                              position: "absolute",
-                              right: 0,
-                              top: -22,
-                              background: "rgba(16,185,129,0.18)",
-                              color: "#10b981",
-                              fontSize: 12,
-                              fontWeight: 800,
-                              borderRadius: 999,
-                              padding: "2px 8px",
-                            }}
-                          >
-                            Copied!
-                          </span>
-                        )}
                       </div>
 
                       {/* Status */}
