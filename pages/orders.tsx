@@ -18,7 +18,8 @@ type OrderItem = {
 type Order = {
   id: string;
   reference?: string;
-  createdAt?: string;
+  createdAt?: string;   // display date
+  paidAt?: string;      // if present, we’ll prefer this for the header date
   total: number;
   items: OrderItem[];
 };
@@ -32,15 +33,12 @@ const pad = (n: number) => String(n).padStart(2, "0");
 const formatDateTime = (d: Date) =>
   `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
-// If createdAt is ISO-like, format it; otherwise keep as-is
 const formatMaybeDate = (s?: string): string | undefined => {
   if (!s) return undefined;
-  // quick ISO-ish check
   if (/\d{4}-\d{2}-\d{2}T/.test(s)) {
     const d = new Date(s);
     if (!isNaN(d.getTime())) return formatDateTime(d);
   }
-  // some backends send "YYYY-MM-DD HH:mm:ss"
   if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?/.test(s)) {
     const d = new Date(s.replace(" ", "T"));
     if (!isNaN(d.getTime())) return formatDateTime(d);
@@ -84,7 +82,7 @@ const resolveItemImage = (it: OrderItem) => {
   return PLACEHOLDER;
 };
 
-/** ---------- Pill styles ---------- */
+/** ---------- Pill styles (unchanged) ---------- */
 const shades = {
   greenBg: "#E6F7ED",
   greenText: "#0E7C66",
@@ -110,7 +108,7 @@ const Pill = ({ bg, color, children }: { bg: string; color: string; children: Re
   </span>
 );
 
-/** ---------- Tiny toast (silent “Copied!”) ---------- */
+/** ---------- Tiny toast (kept; used elsewhere if needed) ---------- */
 const useToast = () => {
   const [msg, setMsg] = useState<string | null>(null);
   const t = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -149,7 +147,8 @@ const useToast = () => {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const { show, node: toast } = useToast();
+  const { node: toast } = useToast(); // toast kept but not used for Copy now
+  const [copied, setCopied] = useState<Record<string, boolean>>({}); // inline “Copied!” per order
 
   const loadOrders = useMemo(
     () =>
@@ -168,11 +167,11 @@ export default function OrdersPage() {
         const normalized: Order[] = (merged || [])
           .filter((o) => o && typeof (o as any).id === "string")
           .map((o: any) => {
-            const createdRaw =
-              o.createdAt || createdFromId(o.id) || formatDateTime(new Date());
-            const created = formatMaybeDate(createdRaw) || createdRaw;
+            // prefer paidAt if present, else createdAt, else derive
+            const base = o.paidAt || o.createdAt || createdFromId(o.id) || formatDateTime(new Date());
+            const displayDate = formatMaybeDate(base) || base;
             const items: OrderItem[] = Array.isArray(o.items) ? o.items : [];
-            return { ...o, createdAt: created, items };
+            return { ...o, createdAt: displayDate, items };
           });
 
         normalized.sort((a, b) => {
@@ -227,13 +226,18 @@ export default function OrdersPage() {
   const toggle = (id: string) =>
     setExpanded((e) => ({ ...e, [id]: !e[id] }));
 
+  const markCopied = (id: string) => {
+    setCopied((m) => ({ ...m, [id]: true }));
+    setTimeout(() => setCopied((m) => ({ ...m, [id]: false })), 1200);
+  };
+
   if (orders === null) {
     return <div style={{ background: "#f6f6f6", minHeight: "100vh" }} />;
   }
 
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
-      {/* Header bar */}
+      {/* Header bar (unchanged) */}
       <div
         style={{
           background: "#111",
@@ -339,7 +343,7 @@ export default function OrdersPage() {
                         borderBottom: "1px solid #f0f0f0",
                       }}
                     >
-                      {/* Left: order id + date (date under id) */}
+                      {/* Left: order id + date */}
                       <div style={{ display: "flex", flexDirection: "column" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span style={{ color: "#666" }}>Order</span>
@@ -419,7 +423,7 @@ export default function OrdersPage() {
                         );
                       })}
 
-                      {/* Reference */}
+                      {/* Reference + Copy + inline Copied! */}
                       <div
                         style={{
                           display: "flex",
@@ -444,24 +448,39 @@ export default function OrdersPage() {
                           {order.reference || "—"}
                         </span>
                         {order.reference ? (
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(order.reference!);
-                              // silent toast 1.2s
-                              show("Copied!");
-                            }}
-                            style={{
-                              background: "#F6F0FD",
-                              color: "#6B21A8",
-                              fontWeight: 800,
-                              border: "none",
-                              padding: "6px 10px",
-                              borderRadius: 10,
-                              cursor: "pointer",
-                            }}
-                          >
-                            Copy
-                          </button>
+                          <>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(order.reference!);
+                                markCopied(order.id);
+                              }}
+                              style={{
+                                background: "#F6F0FD",
+                                color: "#6B21A8",
+                                fontWeight: 800,
+                                border: "none",
+                                padding: "6px 10px",
+                                borderRadius: 10,
+                                cursor: "pointer",
+                              }}
+                            >
+                              Copy
+                            </button>
+                            {copied[order.id] && (
+                              <span
+                                style={{
+                                  fontSize: 12,
+                                  fontWeight: 800,
+                                  color: "#0E7C66",
+                                  background: "#E6F7ED",
+                                  padding: "4px 10px",
+                                  borderRadius: 999,
+                                }}
+                              >
+                                Copied!
+                              </span>
+                            )}
+                          </>
                         ) : null}
                       </div>
 
@@ -501,4 +520,4 @@ export default function OrdersPage() {
       {toast}
     </div>
   );
-                                }
+}
