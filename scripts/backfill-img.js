@@ -2,54 +2,47 @@
 const fs = require("fs");
 const path = require("path");
 
-const FILE = path.join(__dirname, "..", "public", "products.json");
-const IMG_DIR = path.join(__dirname, "..", "public", "products");
-const exts = [".jpg", ".png", ".webp"];
+const PRODUCTS_PATH = path.join(process.cwd(), "public", "products.json");
+const BACKUP_PATH = path.join(process.cwd(), "public", `products.backup.${Date.now()}.json`);
 
-function findExistingForId(id) {
-  for (const ext of exts) {
-    const p = path.join(IMG_DIR, `${id}${ext}`);
-    if (fs.existsSync(p)) return `/products/${id}${ext}`;
-  }
-  return null;
+function loadJson(p) {
+  return JSON.parse(fs.readFileSync(p, "utf8"));
+}
+function saveJson(p, data) {
+  fs.writeFileSync(p, JSON.stringify(data, null, 2) + "\n", "utf8");
 }
 
-function run() {
-  const raw = fs.readFileSync(FILE, "utf8");
-  const arr = JSON.parse(raw);
+try {
+  if (!fs.existsSync(PRODUCTS_PATH)) {
+    console.error("❌ public/products.json not found.");
+    process.exit(1);
+  }
 
-  let changed = false;
-  const updated = arr.map((p) => {
-    // if img is already valid on disk, keep it
-    if (p.img) {
-      const rel = p.img.replace(/^\//, "");
-      const abs = path.join(__dirname, "..", "public", rel);
-      if (fs.existsSync(abs)) return p;
+  const data = loadJson(PRODUCTS_PATH);
+  if (!Array.isArray(data)) {
+    console.error("❌ products.json is not an array.");
+    process.exit(1);
+  }
+
+  // backup first
+  fs.copyFileSync(PRODUCTS_PATH, BACKUP_PATH);
+
+  let changed = 0;
+  const next = data.map((p) => {
+    if (!p || typeof p !== "object") return p;
+    if (!p.img || String(p.img).trim() === "") {
+      p.img = `/products/${p.id}.jpg`; // upload this file name
+      changed++;
     }
-    // otherwise find one that exists by id + extension
-    const existing = findExistingForId(p.id);
-    if (existing) {
-      p.img = existing;
-      changed = true;
-      return p;
-    }
-    // default guess (so UI still has a path to use)
-    p.img = `/products/${p.id}.jpg`;
-    changed = true;
     return p;
   });
 
-  if (!changed) {
-    console.log("✅ No changes needed.");
-    return;
-  }
+  saveJson(PRODUCTS_PATH, next);
 
-  const backup = FILE + ".bak-" + Date.now();
-  fs.writeFileSync(backup, raw);
-  console.log("📦 Backup saved:", backup);
-
-  fs.writeFileSync(FILE, JSON.stringify(updated, null, 2));
-  console.log("✨ Updated", FILE);
+  console.log(`✅ Done. ${changed} product(s) got an img.`);
+  console.log(`💾 Backup saved at: ${BACKUP_PATH}`);
+  console.log(`🖼️ Upload files to: public/products/<id>.jpg`);
+} catch (e) {
+  console.error("❌ Failed:", e);
+  process.exit(1);
 }
-
-run();
