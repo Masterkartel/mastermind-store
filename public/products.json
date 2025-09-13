@@ -437,7 +437,7 @@
     "sku": "1 pc",
     "price": 2150,
     "stock": 2,
-    "img": "/products/ailyons-fk-0311-water-kettle.png"
+    "img": "/products/ailyons-fk-0311-water-kettle.webp"
   },
   {
     "id": "ailyons-fk-0316-kettle",
@@ -445,7 +445,7 @@
     "sku": "1 pc",
     "price": 2000,
     "stock": 1,
-    "img": "/products/ailyons-fk-0316-kettle.png"
+    "img": "/products/ailyons-fk-0316-kettle.webp"
   },
   {
     "id": "ailyons-fk-0338-5-7-litres-kettle",
@@ -453,7 +453,7 @@
     "sku": "1 pc",
     "price": 4150,
     "stock": 1,
-    "img": "/products/ailyons-fk-0338-5-7-litres-kettle.png"
+    "img": "/products/ailyons-fk-0338-5-7-litres-kettle.webp"
   },
   {
     "id": "ailyons-gs014-1-gas-stove-double-burner",
@@ -4062,7 +4062,8 @@
     "name": "Wired Mouse",
     "sku": "1",
     "price": 320,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/wired-mouse.webp"
   },
   {
     "id": "ws-633bt",
