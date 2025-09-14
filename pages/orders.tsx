@@ -51,17 +51,6 @@ const resolveItemImage = (it: OrderItem) => {
   const direct =
     it.image || (it as any).img || (it as any).imageUrl || (it as any).photo || (it as any).picture;
   if (typeof direct === "string" && direct.trim()) return direct.trim();
-
-  if (typeof window !== "undefined") {
-    try {
-      const raw = localStorage.getItem("productImages");
-      if (raw) {
-        const map = JSON.parse(raw);
-        if (map && typeof map === "object" && map[it.name]) return String(map[it.name]);
-      }
-    } catch {}
-  }
-
   const slug = slugify(it.name);
   if (slug) return `/images/${slug}.webp`;
   return PLACEHOLDER;
@@ -73,9 +62,9 @@ const Pill = ({ bg, text, label }: { bg: string; text: string; label: string }) 
     style={{
       background: bg,
       color: text,
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: 800,
-      padding: "2px 8px",
+      padding: "4px 10px",
       borderRadius: 999,
       whiteSpace: "nowrap",
     }}
@@ -150,25 +139,20 @@ export default function OrdersPage() {
       .filter((o) => o && typeof (o as any).id === "string")
       .map((o: any) => {
         const items: OrderItem[] = Array.isArray(o.items) ? o.items : [];
-        const ts =
-          idMs(o.id) ??
-          toMsSafe(o.paidAt) ??
-          toMsSafe(o.createdAt);
-
+        const ts = idMs(o.id) ?? toMsSafe(o.paidAt) ?? toMsSafe(o.createdAt);
         let display =
           (ts !== undefined ? formatDateTime(new Date(ts)) : undefined) ||
           o.createdAt ||
           createdFromId(o.id) ||
           formatDateTime(new Date());
-
         return { ...o, createdAt: display, items };
       });
 
+    // newest realistic dates first; unrealistic get pushed below
     normalized.sort((a, b) => {
       const aBad = isUnrealisticDisplayDate(a.createdAt);
       const bBad = isUnrealisticDisplayDate(b.createdAt);
       if (aBad !== bBad) return aBad ? 1 : -1;
-
       const aTs = idMs(a.id) ?? toMsSafe(a.paidAt) ?? toMsSafe(a.createdAt) ?? 0;
       const bTs = idMs(b.id) ?? toMsSafe(b.paidAt) ?? toMsSafe(b.createdAt) ?? 0;
       return bTs - aTs;
@@ -181,6 +165,7 @@ export default function OrdersPage() {
       }
     } catch {}
 
+    // collapsed on refresh
     const collapsed: Record<string, boolean> = {};
     normalized.forEach((o) => (collapsed[o.id] = false));
 
@@ -203,7 +188,7 @@ export default function OrdersPage() {
 
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
-      {/* Header */}
+      {/* Header bar */}
       <div
         style={{
           background: "#111",
@@ -264,7 +249,7 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* List */}
+      {/* Orders list */}
       <div style={{ maxWidth: 1200, margin: "12px auto", padding: "0 12px" }}>
         {orders.length === 0 ? (
           <div
@@ -301,68 +286,24 @@ export default function OrdersPage() {
                     style={{ all: "unset", cursor: "pointer", width: "100%" }}
                     aria-expanded={isOpen}
                   >
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr",
-                        padding: "10px 14px",
-                        borderBottom: "1px solid #f0f0f0",
-                      }}
-                    >
-                      {/* First line: Order # ... [Successful] KES ...  */}
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 10,
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ color: "#666", fontSize: 11 }}>Order</span>
-                          <span
-                            style={{
-                              fontWeight: 800,
-                              fontSize: 12,
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            #{order.id}
-                          </span>
+                    <div className="hdr">
+                      <div className="rowTop">
+                        <div className="left">
+                          <span className="lbl">Order</span>
+                          <span className="oid">#{order.id}</span>
                         </div>
 
-                        {/* pill + amount placed NEXT to the order number */}
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                          }}
-                        >
+                        {/* pill + amount (inline on mobile, balanced spacing on desktop) */}
+                        <div className="meta">
                           <HeaderPill status={status} />
-                          <span
-                            style={{
-                              fontWeight: 800,
-                              whiteSpace: "nowrap",
-                              fontSize: 12,
-                            }}
-                          >
+                          <span className="amt">
                             KES {Math.round(order.total).toLocaleString("en-KE")}
                           </span>
                         </div>
                       </div>
 
-                      {/* Second line: date */}
                       {order.createdAt ? (
-                        <span
-                          style={{
-                            color: "#9aa3af",
-                            fontSize: 11,
-                            marginTop: 4,
-                          }}
-                        >
-                          {order.createdAt}
-                        </span>
+                        <span className="dt">{order.createdAt}</span>
                       ) : null}
                     </div>
                   </button>
@@ -370,6 +311,7 @@ export default function OrdersPage() {
                   {/* Body */}
                   {isOpen && (
                     <div style={{ padding: 14, display: "grid", gap: 10 }}>
+                      {/* items */}
                       {order.items.map((it, i) => {
                         const qty = Number(it.quantity ?? it.qty ?? 1);
                         const price = Number(it.price) || 0;
@@ -401,8 +343,8 @@ export default function OrdersPage() {
                               }}
                             />
                             <div>
-                              <div style={{ fontWeight: 800, fontSize: 12 }}>{it.name}</div>
-                              <div style={{ color: "#666", fontSize: 11 }}>
+                              <div style={{ fontWeight: 800 }}>{it.name}</div>
+                              <div style={{ color: "#666" }}>
                                 KES {Math.round(price)} × {qty} ={" "}
                                 <span style={{ fontWeight: 700, color: "#111" }}>
                                   KES {Math.round(price * qty)}
@@ -421,7 +363,6 @@ export default function OrdersPage() {
                           gap: 8,
                           flexWrap: "wrap",
                           marginTop: 4,
-                          fontSize: 11,
                         }}
                       >
                         <span style={{ color: "#777" }}>Reference</span>
@@ -430,10 +371,10 @@ export default function OrdersPage() {
                             background: "#f5f6f8",
                             border: "1px solid #eee",
                             borderRadius: 10,
-                            padding: "4px 8px",
+                            padding: "6px 10px",
                             fontFamily:
                               "ui-monospace, SFMono-Regular, Menlo, monospace",
-                            fontSize: 12,
+                            fontSize: 13,
                           }}
                         >
                           {order.reference || "—"}
@@ -457,10 +398,9 @@ export default function OrdersPage() {
                                 color: "#111",
                                 fontWeight: 800,
                                 border: "none",
-                                padding: "4px 8px",
-                                borderRadius: 8,
+                                padding: "6px 10px",
+                                borderRadius: 10,
                                 cursor: "pointer",
-                                fontSize: 11,
                               }}
                             >
                               Copy
@@ -468,11 +408,11 @@ export default function OrdersPage() {
                             {copiedFor === order.id && (
                               <span
                                 style={{
-                                  fontSize: 11,
+                                  fontSize: 12,
                                   fontWeight: 800,
                                   background: "rgba(34,197,94,0.18)",
                                   color: "#0a5b2a",
-                                  padding: "2px 6px",
+                                  padding: "4px 8px",
                                   borderRadius: 8,
                                 }}
                               >
@@ -483,8 +423,8 @@ export default function OrdersPage() {
                         ) : null}
                       </div>
 
-                      {/* Status pill */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
+                      {/* Status */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ color: "#777" }}>Status</span>
                         <StatusPill status={status} />
                       </div>
@@ -496,7 +436,6 @@ export default function OrdersPage() {
                           gridTemplateColumns: "1fr auto",
                           alignItems: "center",
                           marginTop: 2,
-                          fontSize: 11,
                         }}
                       >
                         <span style={{ color: "#777" }}>Total</span>
@@ -512,6 +451,59 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
+
+      <style jsx>{`
+        .hdr {
+          padding: 10px 14px;
+          border-bottom: 1px solid #f0f0f0;
+        }
+        .rowTop {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+        .left {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .lbl {
+          color: #666;
+          font-size: 11px;
+        }
+        .oid {
+          font-weight: 800;
+          font-size: 12px;
+          white-space: nowrap;
+        }
+        .meta {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          /* Keep inline on mobile, near the order number but not touching */
+          margin-left: 10px;
+        }
+        .amt {
+          font-weight: 800;
+          white-space: nowrap;
+          font-size: 12px;
+        }
+        .dt {
+          display: block;
+          color: #9aa3af;
+          font-size: 11px;
+          margin-top: 4px;
+        }
+
+        /* Desktop tweak: keep away from the order number and from the far edge */
+        @media (min-width: 900px) {
+          .meta {
+            margin-left: 60px;
+            margin-right: 60px;
+          }
+        }
+      `}</style>
     </div>
   );
 }
