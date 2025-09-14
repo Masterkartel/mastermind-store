@@ -14,8 +14,8 @@ type OrderItem = {
 type Order = {
   id: string;
   reference?: string;
-  createdAt?: string;
-  paidAt?: string;
+  createdAt?: string; // human display
+  paidAt?: string;    // ISO timestamp if present
   total: number;
   items: OrderItem[];
 };
@@ -51,6 +51,17 @@ const resolveItemImage = (it: OrderItem) => {
   const direct =
     it.image || (it as any).img || (it as any).imageUrl || (it as any).photo || (it as any).picture;
   if (typeof direct === "string" && direct.trim()) return direct.trim();
+
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("productImages");
+      if (raw) {
+        const map = JSON.parse(raw);
+        if (map && typeof map === "object" && map[it.name]) return String(map[it.name]);
+      }
+    } catch {}
+  }
+
   const slug = slugify(it.name);
   if (slug) return `/images/${slug}.webp`;
   return PLACEHOLDER;
@@ -139,12 +150,18 @@ export default function OrdersPage() {
       .filter((o) => o && typeof (o as any).id === "string")
       .map((o: any) => {
         const items: OrderItem[] = Array.isArray(o.items) ? o.items : [];
-        const ts = idMs(o.id) ?? toMsSafe(o.paidAt) ?? toMsSafe(o.createdAt);
+
+        const ts =
+          idMs(o.id) ??
+          toMsSafe(o.paidAt) ??
+          toMsSafe(o.createdAt);
+
         let display =
           (ts !== undefined ? formatDateTime(new Date(ts)) : undefined) ||
           o.createdAt ||
           createdFromId(o.id) ||
           formatDateTime(new Date());
+
         return { ...o, createdAt: display, items };
       });
 
@@ -152,6 +169,7 @@ export default function OrdersPage() {
       const aBad = isUnrealisticDisplayDate(a.createdAt);
       const bBad = isUnrealisticDisplayDate(b.createdAt);
       if (aBad !== bBad) return aBad ? 1 : -1;
+
       const aTs = idMs(a.id) ?? toMsSafe(a.paidAt) ?? toMsSafe(a.createdAt) ?? 0;
       const bTs = idMs(b.id) ?? toMsSafe(b.paidAt) ?? toMsSafe(b.createdAt) ?? 0;
       return bTs - aTs;
@@ -166,6 +184,7 @@ export default function OrdersPage() {
 
     const collapsed: Record<string, boolean> = {};
     normalized.forEach((o) => (collapsed[o.id] = false));
+
     setOrders(normalized);
     setExpanded(collapsed);
   }, []);
@@ -277,7 +296,7 @@ export default function OrdersPage() {
                     overflow: "hidden",
                   }}
                 >
-                  {/* Header row (toggle) */}
+                  {/* Header row */}
                   <button
                     onClick={() => toggle(order.id)}
                     style={{ all: "unset", cursor: "pointer", width: "100%" }}
@@ -289,7 +308,6 @@ export default function OrdersPage() {
                           <span className="lbl">Order</span>
                           <span className="oid">#{order.id}</span>
                         </div>
-
                         <div className="meta">
                           <HeaderPill status={status} />
                           <span className="amt">
@@ -297,7 +315,6 @@ export default function OrdersPage() {
                           </span>
                         </div>
                       </div>
-
                       {order.createdAt ? (
                         <span className="dt">{order.createdAt}</span>
                       ) : null}
@@ -307,7 +324,6 @@ export default function OrdersPage() {
                   {/* Body */}
                   {isOpen && (
                     <div style={{ padding: 14, display: "grid", gap: 10 }}>
-                      {/* Items */}
                       {order.items.map((it, i) => {
                         const qty = Number(it.quantity ?? it.qty ?? 1);
                         const price = Number(it.price) || 0;
@@ -351,7 +367,7 @@ export default function OrdersPage() {
                         );
                       })}
 
-                      {/* Reference + copy */}
+                      {/* Reference */}
                       <div
                         style={{
                           display: "flex",
@@ -419,7 +435,7 @@ export default function OrdersPage() {
                         ) : null}
                       </div>
 
-                      {/* Status */}
+                      {/* Status pill */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ color: "#777" }}>Status</span>
                         <StatusPill status={status} />
@@ -477,6 +493,8 @@ export default function OrdersPage() {
           display: flex;
           align-items: center;
           gap: 10px;
+          margin-left: 40px;
+          margin-right: 60px;
         }
         .amt {
           font-weight: 800;
@@ -489,11 +507,17 @@ export default function OrdersPage() {
           font-size: 11px;
           margin-top: 4px;
         }
-        /* Desktop only: nudge pill+amount away from order number AND edge */
-        @media (min-width: 900px) {
+
+        /* Phones: center order id + pill + amount */
+        @media (max-width: 640px) {
+          .rowTop {
+            justify-content: center;
+          }
+          .left {
+            justify-content: center;
+          }
           .meta {
-            margin-left: 40px;
-            margin-right: 60px;
+            margin: 0;
           }
         }
       `}</style>
