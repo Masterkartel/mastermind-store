@@ -15,7 +15,7 @@ type Order = {
   id: string;
   reference?: string;
   createdAt?: string; // human display
-  paidAt?: string;    // ISO timestamp if present
+  paidAt?: string; // ISO timestamp if present
   total: number;
   items: OrderItem[];
 };
@@ -31,7 +31,6 @@ const formatDateTime = (d: Date) =>
     d.getHours()
   )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
-/** If id contains digits (epoch ms), use it to form a display */
 const createdFromId = (id: string): string | undefined => {
   const m = id.match(/\d+/);
   if (!m) return;
@@ -68,17 +67,18 @@ const resolveItemImage = (it: OrderItem) => {
   return PLACEHOLDER;
 };
 
-/* ---------- Pills (smaller text) ---------- */
+/* ---------- Pills ---------- */
 const Pill = ({ bg, text, label }: { bg: string; text: string; label: string }) => (
   <span
     style={{
       background: bg,
       color: text,
-      fontSize: 10,          // smaller pill text
+      fontSize: 11,
       fontWeight: 800,
-      padding: "3px 7px",
+      padding: "3px 8px",
       borderRadius: 999,
       whiteSpace: "nowrap",
+      lineHeight: 1,
     }}
   >
     {label}
@@ -104,7 +104,6 @@ const StatusPill = ({ status }: { status: "SUCCESS" | "FAILED" | "PENDING" }) =>
 /* ---------- Time helpers (sorting + reliable display) ---------- */
 const toMsSafe = (v?: string): number | undefined => {
   if (!v || typeof v !== "string") return;
-  // Accept only ISO-ish strings to avoid parsing “09/12/2025” wrongly.
   const isoLike =
     /\d{4}-\d{2}-\d{2}T/.test(v) || /\d{4}-\d{2}-\d{2}\s/.test(v) || /Z$/.test(v);
   if (!isoLike) return;
@@ -153,14 +152,8 @@ export default function OrdersPage() {
       .map((o: any) => {
         const items: OrderItem[] = Array.isArray(o.items) ? o.items : [];
 
-        // Compute a reliable timestamp (id → paidAt ISO → createdAt ISO)
-        const ts =
-          idMs(o.id) ??
-          toMsSafe(o.paidAt) ??
-          toMsSafe(o.createdAt);
+        const ts = idMs(o.id) ?? toMsSafe(o.paidAt) ?? toMsSafe(o.createdAt);
 
-        // Always show DD/MM/YYYY using the reliable ts if available,
-        // otherwise fall back to: existing createdAt → derived from id → now
         let display =
           (ts !== undefined ? formatDateTime(new Date(ts)) : undefined) ||
           o.createdAt ||
@@ -170,7 +163,6 @@ export default function OrdersPage() {
         return { ...o, createdAt: display, items };
       });
 
-    // Sort: realistic dates first; inside each bucket newest → oldest
     normalized.sort((a, b) => {
       const aBad = isUnrealisticDisplayDate(a.createdAt);
       const bBad = isUnrealisticDisplayDate(b.createdAt);
@@ -181,7 +173,6 @@ export default function OrdersPage() {
       return bTs - aTs;
     });
 
-    // Save canonical + remove old keys
     try {
       localStorage.setItem(CANONICAL_KEY, JSON.stringify(normalized));
       for (const key of POSSIBLE_KEYS) {
@@ -189,7 +180,6 @@ export default function OrdersPage() {
       }
     } catch {}
 
-    // ALWAYS collapsed on refresh
     const collapsed: Record<string, boolean> = {};
     normalized.forEach((o) => (collapsed[o.id] = false));
 
@@ -212,7 +202,7 @@ export default function OrdersPage() {
 
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
-      {/* Header (kept larger) */}
+      {/* Header */}
       <div
         style={{
           background: "#111",
@@ -246,15 +236,12 @@ export default function OrdersPage() {
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 16,
               }}
               aria-hidden
             >
               🧾
             </span>
-            <div style={{ fontWeight: 800, fontSize: 18 }}>
-              My Orders
-            </div>
+            <div style={{ fontWeight: 800, fontSize: 18 }}>My Orders</div>
           </div>
 
           <a
@@ -269,7 +256,6 @@ export default function OrdersPage() {
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
-              fontSize: 14,
             }}
           >
             ← Back to Shop
@@ -277,8 +263,8 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* Page content wrapper with smaller base font */}
-      <div style={{ maxWidth: 1200, margin: "12px auto", padding: "0 12px", fontSize: 12 }}>
+      {/* List */}
+      <div style={{ maxWidth: 1200, margin: "12px auto", padding: "0 12px" }}>
         {orders.length === 0 ? (
           <div
             style={{
@@ -316,55 +302,55 @@ export default function OrdersPage() {
                   >
                     <div
                       style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr auto",
+                        display: "flex",
                         alignItems: "center",
-                        gap: 10,
                         padding: "10px 12px",
                         borderBottom: "1px solid #f0f0f0",
+                        gap: 8,
                       }}
                     >
-                      <div style={{ display: "flex", flexDirection: "column" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ color: "#666" }}>Order</span>
-                          <span style={{ fontWeight: 800 }}>{`#${order.id}`}</span>
+                      {/* Left block holds everything now: Order#, pill, amount, date */}
+                      <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <span style={{ color: "#666", fontSize: 12 }}>Order</span>
+                          <span style={{ fontWeight: 800, fontSize: 12 }}>
+                            #{order.id}
+                          </span>
+
+                          {/* Pill + amount next to order number */}
+                          <HeaderPill status={status} />
+                          <span
+                            style={{
+                              fontWeight: 700,
+                              fontSize: 12,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            KES {Math.round(order.total).toLocaleString("en-KE")}
+                          </span>
                         </div>
+
                         {order.createdAt ? (
-                          <span style={{ color: "#9aa3af", fontSize: 11, marginTop: 3 }}>
+                          <span
+                            style={{ color: "#9aa3af", fontSize: 11, marginTop: 3 }}
+                          >
                             {order.createdAt}
                           </span>
                         ) : null}
-                      </div>
-
-                      {/* Center the pill + amount cell within the grid */}
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          flexWrap: "nowrap",
-                          justifyContent: "center",
-                          justifySelf: "center",     // <-- centers the whole right cell
-                          textAlign: "center",
-                        }}
-                      >
-                        <HeaderPill status={status} />
-                        <span
-                          style={{
-                            fontWeight: 700,
-                            fontSize: 12,            // smaller amount in header
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          KES {Math.round(order.total).toLocaleString("en-KE")}
-                        </span>
                       </div>
                     </div>
                   </button>
 
                   {/* Body */}
                   {isOpen && (
-                    <div style={{ padding: 12, display: "grid", gap: 10 }}>
+                    <div style={{ padding: 14, display: "grid", gap: 10 }}>
                       {order.items.map((it, i) => {
                         const qty = Number(it.quantity ?? it.qty ?? 1);
                         const price = Number(it.price) || 0;
@@ -375,7 +361,7 @@ export default function OrdersPage() {
                             style={{
                               display: "grid",
                               gridTemplateColumns: "auto 1fr",
-                              gap: 8,
+                              gap: 10,
                               alignItems: "center",
                             }}
                           >
@@ -387,8 +373,8 @@ export default function OrdersPage() {
                                 (e.currentTarget as HTMLImageElement).src = PLACEHOLDER;
                               }}
                               style={{
-                                width: 50,
-                                height: 50,
+                                width: 56,
+                                height: 56,
                                 borderRadius: 10,
                                 objectFit: "cover",
                                 background: "#f4f4f4",
@@ -396,8 +382,8 @@ export default function OrdersPage() {
                               }}
                             />
                             <div>
-                              <div style={{ fontWeight: 800 }}>{it.name}</div>
-                              <div style={{ color: "#666" }}>
+                              <div style={{ fontWeight: 800, fontSize: 13 }}>{it.name}</div>
+                              <div style={{ color: "#666", fontSize: 12 }}>
                                 KES {Math.round(price)} × {qty} ={" "}
                                 <span style={{ fontWeight: 700, color: "#111" }}>
                                   KES {Math.round(price * qty)}
@@ -415,19 +401,19 @@ export default function OrdersPage() {
                           alignItems: "center",
                           gap: 8,
                           flexWrap: "wrap",
-                          marginTop: 2,
+                          marginTop: 4,
                         }}
                       >
-                        <span style={{ color: "#777" }}>Reference</span>
+                        <span style={{ color: "#777", fontSize: 12 }}>Reference</span>
                         <span
                           style={{
                             background: "#f5f6f8",
                             border: "1px solid #eee",
                             borderRadius: 10,
-                            padding: "5px 8px",
+                            padding: "6px 10px",
                             fontFamily:
                               "ui-monospace, SFMono-Regular, Menlo, monospace",
-                            fontSize: 11,
+                            fontSize: 12,
                           }}
                         >
                           {order.reference || "—"}
@@ -451,10 +437,10 @@ export default function OrdersPage() {
                                 color: "#111",
                                 fontWeight: 800,
                                 border: "none",
-                                padding: "5px 8px",
+                                padding: "6px 10px",
                                 borderRadius: 10,
                                 cursor: "pointer",
-                                fontSize: 11,
+                                fontSize: 12,
                               }}
                             >
                               Copy
@@ -462,11 +448,11 @@ export default function OrdersPage() {
                             {copiedFor === order.id && (
                               <span
                                 style={{
-                                  fontSize: 10,
+                                  fontSize: 11,
                                   fontWeight: 800,
                                   background: "rgba(34,197,94,0.18)",
                                   color: "#0a5b2a",
-                                  padding: "3px 6px",
+                                  padding: "4px 8px",
                                   borderRadius: 8,
                                 }}
                               >
@@ -479,7 +465,7 @@ export default function OrdersPage() {
 
                       {/* Status pill */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ color: "#777" }}>Status</span>
+                        <span style={{ color: "#777", fontSize: 12 }}>Status</span>
                         <StatusPill status={status} />
                       </div>
 
@@ -492,15 +478,8 @@ export default function OrdersPage() {
                           marginTop: 2,
                         }}
                       >
-                        <span style={{ color: "#777" }}>Total</span>
-                        <span
-                          style={{
-                            fontWeight: 700,
-                            fontSize: 12,            // smaller amount in expanded
-                            whiteSpace: "nowrap",
-                            textAlign: "right",
-                          }}
-                        >
+                        <span style={{ color: "#777", fontSize: 12 }}>Total</span>
+                        <span style={{ fontWeight: 800, fontSize: 12, whiteSpace: "nowrap" }}>
                           KES {Math.round(order.total).toLocaleString("en-KE")}
                         </span>
                       </div>
