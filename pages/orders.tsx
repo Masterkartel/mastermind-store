@@ -31,6 +31,7 @@ const formatDateTime = (d: Date) =>
     d.getHours()
   )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
+/** If id contains digits (epoch ms), use it to form a display */
 const createdFromId = (id: string): string | undefined => {
   const m = id.match(/\d+/);
   if (!m) return;
@@ -67,15 +68,15 @@ const resolveItemImage = (it: OrderItem) => {
   return PLACEHOLDER;
 };
 
-/* ---------- Pills ---------- */
+/* ---------- Pills (unchanged logic, smaller text) ---------- */
 const Pill = ({ bg, text, label }: { bg: string; text: string; label: string }) => (
   <span
     style={{
       background: bg,
       color: text,
-      fontSize: 12,
+      fontSize: 11,          // smaller pill text
       fontWeight: 800,
-      padding: "4px 10px",
+      padding: "3px 8px",
       borderRadius: 999,
       whiteSpace: "nowrap",
     }}
@@ -100,9 +101,10 @@ const StatusPill = ({ status }: { status: "SUCCESS" | "FAILED" | "PENDING" }) =>
   return <Pill bg="rgba(148,163,184,0.18)" text="#334155" label="Pending" />;
 };
 
-/* ---------- Time helpers ---------- */
+/* ---------- Time helpers (sorting + reliable display) ---------- */
 const toMsSafe = (v?: string): number | undefined => {
   if (!v || typeof v !== "string") return;
+  // Accept only ISO-ish strings to avoid parsing “09/12/2025” wrongly.
   const isoLike =
     /\d{4}-\d{2}-\d{2}T/.test(v) || /\d{4}-\d{2}-\d{2}\s/.test(v) || /Z$/.test(v);
   if (!isoLike) return;
@@ -150,27 +152,36 @@ export default function OrdersPage() {
       .filter((o) => o && typeof (o as any).id === "string")
       .map((o: any) => {
         const items: OrderItem[] = Array.isArray(o.items) ? o.items : [];
+
+        // Compute a reliable timestamp (id → paidAt ISO → createdAt ISO)
         const ts =
           idMs(o.id) ??
           toMsSafe(o.paidAt) ??
           toMsSafe(o.createdAt);
+
+        // Always show DD/MM/YYYY using the reliable ts if available,
+        // otherwise fall back to: existing createdAt → derived from id → now
         let display =
           (ts !== undefined ? formatDateTime(new Date(ts)) : undefined) ||
           o.createdAt ||
           createdFromId(o.id) ||
           formatDateTime(new Date());
+
         return { ...o, createdAt: display, items };
       });
 
+    // Sort: realistic dates first; inside each bucket newest → oldest
     normalized.sort((a, b) => {
       const aBad = isUnrealisticDisplayDate(a.createdAt);
       const bBad = isUnrealisticDisplayDate(b.createdAt);
       if (aBad !== bBad) return aBad ? 1 : -1;
+
       const aTs = idMs(a.id) ?? toMsSafe(a.paidAt) ?? toMsSafe(a.createdAt) ?? 0;
       const bTs = idMs(b.id) ?? toMsSafe(b.paidAt) ?? toMsSafe(b.createdAt) ?? 0;
       return bTs - aTs;
     });
 
+    // Save canonical + remove old keys
     try {
       localStorage.setItem(CANONICAL_KEY, JSON.stringify(normalized));
       for (const key of POSSIBLE_KEYS) {
@@ -178,6 +189,7 @@ export default function OrdersPage() {
       }
     } catch {}
 
+    // ALWAYS collapsed on refresh
     const collapsed: Record<string, boolean> = {};
     normalized.forEach((o) => (collapsed[o.id] = false));
 
@@ -200,7 +212,7 @@ export default function OrdersPage() {
 
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
-      {/* Header */}
+      {/* Header (kept larger) */}
       <div
         style={{
           background: "#111",
@@ -234,12 +246,15 @@ export default function OrdersPage() {
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
+                fontSize: 16, // keep icon size nice
               }}
               aria-hidden
             >
               🧾
             </span>
-            <div style={{ fontWeight: 800 }}>My Orders</div>
+            <div style={{ fontWeight: 800, fontSize: 18 /* Title stays big */ }}>
+              My Orders
+            </div>
           </div>
 
           <a
@@ -254,6 +269,7 @@ export default function OrdersPage() {
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
+              fontSize: 14, // Back to Shop stays readable
             }}
           >
             ← Back to Shop
@@ -261,8 +277,8 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* List */}
-      <div style={{ maxWidth: 1200, margin: "12px auto", padding: "0 12px" }}>
+      {/* Page content wrapper with smaller base font */}
+      <div style={{ maxWidth: 1200, margin: "12px auto", padding: "0 12px", fontSize: 13 }}>
         {orders.length === 0 ? (
           <div
             style={{
@@ -304,17 +320,17 @@ export default function OrdersPage() {
                         gridTemplateColumns: "1fr auto",
                         alignItems: "center",
                         gap: 10,
-                        padding: "12px 14px",
+                        padding: "10px 12px",
                         borderBottom: "1px solid #f0f0f0",
                       }}
                     >
                       <div style={{ display: "flex", flexDirection: "column" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <span style={{ color: "#666" }}>Order</span>
-                          <span style={{ fontWeight: 800 }}>#{order.id}</span>
+                          <span style={{ fontWeight: 800 }}>{`#${order.id}`}</span>
                         </div>
                         {order.createdAt ? (
-                          <span style={{ color: "#9aa3af", fontSize: 12, marginTop: 4 }}>
+                          <span style={{ color: "#9aa3af", fontSize: 11, marginTop: 3 }}>
                             {order.createdAt}
                           </span>
                         ) : null}
@@ -324,20 +340,16 @@ export default function OrdersPage() {
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: 10,
+                          gap: 8,
                           flexWrap: "nowrap",
                         }}
                       >
                         <HeaderPill status={status} />
                         <span
-                          title={`KES ${Math.round(order.total).toLocaleString("en-KE")}`}
                           style={{
-                            fontWeight: 800,
+                            fontWeight: 700,
+                            fontSize: 13, // smaller amount in header
                             whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            maxWidth: 100,
-                            display: "inline-block",
                             textAlign: "right",
                           }}
                         >
@@ -349,7 +361,7 @@ export default function OrdersPage() {
 
                   {/* Body */}
                   {isOpen && (
-                    <div style={{ padding: 14, display: "grid", gap: 10 }}>
+                    <div style={{ padding: 12, display: "grid", gap: 10 }}>
                       {order.items.map((it, i) => {
                         const qty = Number(it.quantity ?? it.qty ?? 1);
                         const price = Number(it.price) || 0;
@@ -360,7 +372,7 @@ export default function OrdersPage() {
                             style={{
                               display: "grid",
                               gridTemplateColumns: "auto 1fr",
-                              gap: 10,
+                              gap: 8,
                               alignItems: "center",
                             }}
                           >
@@ -372,8 +384,8 @@ export default function OrdersPage() {
                                 (e.currentTarget as HTMLImageElement).src = PLACEHOLDER;
                               }}
                               style={{
-                                width: 56,
-                                height: 56,
+                                width: 50,
+                                height: 50,
                                 borderRadius: 10,
                                 objectFit: "cover",
                                 background: "#f4f4f4",
@@ -400,7 +412,7 @@ export default function OrdersPage() {
                           alignItems: "center",
                           gap: 8,
                           flexWrap: "wrap",
-                          marginTop: 4,
+                          marginTop: 2,
                         }}
                       >
                         <span style={{ color: "#777" }}>Reference</span>
@@ -409,10 +421,10 @@ export default function OrdersPage() {
                             background: "#f5f6f8",
                             border: "1px solid #eee",
                             borderRadius: 10,
-                            padding: "6px 10px",
+                            padding: "5px 8px",
                             fontFamily:
                               "ui-monospace, SFMono-Regular, Menlo, monospace",
-                            fontSize: 13,
+                            fontSize: 12,
                           }}
                         >
                           {order.reference || "—"}
@@ -436,9 +448,10 @@ export default function OrdersPage() {
                                 color: "#111",
                                 fontWeight: 800,
                                 border: "none",
-                                padding: "6px 10px",
+                                padding: "5px 8px",
                                 borderRadius: 10,
                                 cursor: "pointer",
+                                fontSize: 12,
                               }}
                             >
                               Copy
@@ -446,11 +459,11 @@ export default function OrdersPage() {
                             {copiedFor === order.id && (
                               <span
                                 style={{
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   fontWeight: 800,
                                   background: "rgba(34,197,94,0.18)",
                                   color: "#0a5b2a",
-                                  padding: "4px 8px",
+                                  padding: "3px 6px",
                                   borderRadius: 8,
                                 }}
                               >
@@ -478,14 +491,10 @@ export default function OrdersPage() {
                       >
                         <span style={{ color: "#777" }}>Total</span>
                         <span
-                          title={`KES ${Math.round(order.total).toLocaleString("en-KE")}`}
                           style={{
-                            fontWeight: 800,
+                            fontWeight: 700,
+                            fontSize: 13, // smaller amount in expanded
                             whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            maxWidth: 120,
-                            display: "inline-block",
                             textAlign: "right",
                           }}
                         >
@@ -502,4 +511,4 @@ export default function OrdersPage() {
       </div>
     </div>
   );
-}
+                                }
