@@ -31,7 +31,6 @@ const formatDateTime = (d: Date) =>
     d.getHours()
   )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
-/** If id contains digits (epoch ms), use it to form a display */
 const createdFromId = (id: string): string | undefined => {
   const m = id.match(/\d+/);
   if (!m) return;
@@ -68,7 +67,7 @@ const resolveItemImage = (it: OrderItem) => {
   return PLACEHOLDER;
 };
 
-/* ---------- Pills (as-is) ---------- */
+/* ---------- Pills ---------- */
 const Pill = ({ bg, text, label }: { bg: string; text: string; label: string }) => (
   <span
     style={{
@@ -101,7 +100,7 @@ const StatusPill = ({ status }: { status: "SUCCESS" | "FAILED" | "PENDING" }) =>
   return <Pill bg="rgba(148,163,184,0.18)" text="#334155" label="Pending" />;
 };
 
-/* ---------- Time helpers (sorting + reliable display) ---------- */
+/* ---------- Time helpers ---------- */
 const toMsSafe = (v?: string): number | undefined => {
   if (!v || typeof v !== "string") return;
   const isoLike =
@@ -326,13 +325,15 @@ export default function OrdersPage() {
                         ) : null}
                       </div>
 
-                      {/* Right (pill + amount together) */}
+                      {/* Right (pill + amount moved near the order section) */}
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          justifyContent: "center",
+                          justifyContent: "flex-start",
+                          justifySelf: "start",
                           gap: 8,
+                          paddingLeft: 6, // tiny nudge away from the order text
                         }}
                       >
                         <HeaderPill status={status} />
@@ -349,7 +350,7 @@ export default function OrdersPage() {
                     </div>
                   </button>
 
-                  {/* Body (unchanged) */}
+                  {/* Body */}
                   {isOpen && (
                     <div style={{ padding: 14, display: "grid", gap: 10 }}>
                       {order.items.map((it, i) => {
