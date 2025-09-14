@@ -304,49 +304,66 @@ export default function OrdersPage() {
                     <div
                       style={{
                         display: "grid",
-                        gridTemplateColumns: "1fr auto",
-                        alignItems: "center",
+                        gridTemplateColumns: "1fr",
                         padding: "10px 14px",
                         borderBottom: "1px solid #f0f0f0",
                       }}
                     >
-                      {/* Left (order + date) */}
-                      <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ color: "#666", fontSize: 11 }}>Order</span>
-                          <span style={{ fontWeight: 800, fontSize: 12, whiteSpace: "nowrap" }}>
-                            #{order.id}
-                          </span>
-                        </div>
-                        {order.createdAt ? (
-                          <span style={{ color: "#9aa3af", fontSize: 11, marginTop: 4 }}>
-                            {order.createdAt}
-                          </span>
-                        ) : null}
-                      </div>
-
-                      {/* Right (pill + amount moved near the order section) */}
+                      {/* First line: Order # ... [Successful] KES ...  */}
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          justifyContent: "flex-start",
-                          justifySelf: "start",
-                          gap: 8,
-                          paddingLeft: 6, // tiny nudge away from the order text
+                          gap: 10,
+                          flexWrap: "wrap",
                         }}
                       >
-                        <HeaderPill status={status} />
-                        <span
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ color: "#666", fontSize: 11 }}>Order</span>
+                          <span
+                            style={{
+                              fontWeight: 800,
+                              fontSize: 12,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            #{order.id}
+                          </span>
+                        </div>
+
+                        {/* pill + amount placed NEXT to the order number */}
+                        <div
                           style={{
-                            fontWeight: 800,
-                            whiteSpace: "nowrap",
-                            fontSize: 12,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
                           }}
                         >
-                          KES {Math.round(order.total).toLocaleString("en-KE")}
-                        </span>
+                          <HeaderPill status={status} />
+                          <span
+                            style={{
+                              fontWeight: 800,
+                              whiteSpace: "nowrap",
+                              fontSize: 12,
+                            }}
+                          >
+                            KES {Math.round(order.total).toLocaleString("en-KE")}
+                          </span>
+                        </div>
                       </div>
+
+                      {/* Second line: date */}
+                      {order.createdAt ? (
+                        <span
+                          style={{
+                            color: "#9aa3af",
+                            fontSize: 11,
+                            marginTop: 4,
+                          }}
+                        >
+                          {order.createdAt}
+                        </span>
+                      ) : null}
                     </div>
                   </button>
 
