@@ -68,15 +68,15 @@ const resolveItemImage = (it: OrderItem) => {
   return PLACEHOLDER;
 };
 
-/* ---------- Pills (unchanged logic, smaller text) ---------- */
+/* ---------- Pills (smaller text) ---------- */
 const Pill = ({ bg, text, label }: { bg: string; text: string; label: string }) => (
   <span
     style={{
       background: bg,
       color: text,
-      fontSize: 11,          // smaller pill text
+      fontSize: 10,          // smaller pill text
       fontWeight: 800,
-      padding: "3px 8px",
+      padding: "3px 7px",
       borderRadius: 999,
       whiteSpace: "nowrap",
     }}
@@ -246,13 +246,13 @@ export default function OrdersPage() {
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 16, // keep icon size nice
+                fontSize: 16,
               }}
               aria-hidden
             >
               🧾
             </span>
-            <div style={{ fontWeight: 800, fontSize: 18 /* Title stays big */ }}>
+            <div style={{ fontWeight: 800, fontSize: 18 }}>
               My Orders
             </div>
           </div>
@@ -269,7 +269,7 @@ export default function OrdersPage() {
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
-              fontSize: 14, // Back to Shop stays readable
+              fontSize: 14,
             }}
           >
             ← Back to Shop
@@ -278,7 +278,7 @@ export default function OrdersPage() {
       </div>
 
       {/* Page content wrapper with smaller base font */}
-      <div style={{ maxWidth: 1200, margin: "12px auto", padding: "0 12px", fontSize: 13 }}>
+      <div style={{ maxWidth: 1200, margin: "12px auto", padding: "0 12px", fontSize: 12 }}>
         {orders.length === 0 ? (
           <div
             style={{
@@ -336,21 +336,24 @@ export default function OrdersPage() {
                         ) : null}
                       </div>
 
+                      {/* Center the pill + amount cell within the grid */}
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
                           gap: 8,
                           flexWrap: "nowrap",
+                          justifyContent: "center",
+                          justifySelf: "center",     // <-- centers the whole right cell
+                          textAlign: "center",
                         }}
                       >
                         <HeaderPill status={status} />
                         <span
                           style={{
                             fontWeight: 700,
-                            fontSize: 13, // smaller amount in header
+                            fontSize: 12,            // smaller amount in header
                             whiteSpace: "nowrap",
-                            textAlign: "right",
                           }}
                         >
                           KES {Math.round(order.total).toLocaleString("en-KE")}
@@ -424,7 +427,7 @@ export default function OrdersPage() {
                             padding: "5px 8px",
                             fontFamily:
                               "ui-monospace, SFMono-Regular, Menlo, monospace",
-                            fontSize: 12,
+                            fontSize: 11,
                           }}
                         >
                           {order.reference || "—"}
@@ -451,7 +454,7 @@ export default function OrdersPage() {
                                 padding: "5px 8px",
                                 borderRadius: 10,
                                 cursor: "pointer",
-                                fontSize: 12,
+                                fontSize: 11,
                               }}
                             >
                               Copy
@@ -459,7 +462,7 @@ export default function OrdersPage() {
                             {copiedFor === order.id && (
                               <span
                                 style={{
-                                  fontSize: 11,
+                                  fontSize: 10,
                                   fontWeight: 800,
                                   background: "rgba(34,197,94,0.18)",
                                   color: "#0a5b2a",
@@ -493,7 +496,7 @@ export default function OrdersPage() {
                         <span
                           style={{
                             fontWeight: 700,
-                            fontSize: 13, // smaller amount in expanded
+                            fontSize: 12,            // smaller amount in expanded
                             whiteSpace: "nowrap",
                             textAlign: "right",
                           }}
@@ -511,4 +514,4 @@ export default function OrdersPage() {
       </div>
     </div>
   );
-                                }
+}
