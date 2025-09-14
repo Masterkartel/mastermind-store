@@ -31,7 +31,6 @@ const formatDateTime = (d: Date) =>
     d.getHours()
   )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
-/** If id contains digits (epoch ms), use it to form a display */
 const createdFromId = (id: string): string | undefined => {
   const m = id.match(/\d+/);
   if (!m) return;
@@ -70,19 +69,18 @@ const resolveItemImage = (it: OrderItem) => {
 
 /* ---------- Pills ---------- */
 const Pill = ({ bg, text, label }: { bg: string; text: string; label: string }) => (
-  <span className="pill">
+  <span
+    style={{
+      background: bg,
+      color: text,
+      fontSize: 12,
+      fontWeight: 800,
+      padding: "4px 10px",
+      borderRadius: 999,
+      whiteSpace: "nowrap",
+    }}
+  >
     {label}
-    <style jsx>{`
-      .pill {
-        background: ${bg};
-        color: ${text};
-        font-size: 12px;
-        font-weight: 800;
-        padding: 4px 10px;
-        border-radius: 999px;
-        white-space: nowrap;
-      }
-    `}</style>
   </span>
 );
 
@@ -105,7 +103,6 @@ const StatusPill = ({ status }: { status: "SUCCESS" | "FAILED" | "PENDING" }) =>
 /* ---------- Time helpers (sorting + reliable display) ---------- */
 const toMsSafe = (v?: string): number | undefined => {
   if (!v || typeof v !== "string") return;
-  // Accept only ISO-ish strings to avoid parsing “09/12/2025” wrongly.
   const isoLike =
     /\d{4}-\d{2}-\d{2}T/.test(v) || /\d{4}-\d{2}-\d{2}\s/.test(v) || /Z$/.test(v);
   if (!isoLike) return;
@@ -154,14 +151,11 @@ export default function OrdersPage() {
       .map((o: any) => {
         const items: OrderItem[] = Array.isArray(o.items) ? o.items : [];
 
-        // Compute a reliable timestamp (id → paidAt ISO → createdAt ISO)
         const ts =
           idMs(o.id) ??
           toMsSafe(o.paidAt) ??
           toMsSafe(o.createdAt);
 
-        // Always show DD/MM/YYYY using the reliable ts if available,
-        // otherwise fall back to: existing createdAt → derived from id → now
         let display =
           (ts !== undefined ? formatDateTime(new Date(ts)) : undefined) ||
           o.createdAt ||
@@ -171,7 +165,7 @@ export default function OrdersPage() {
         return { ...o, createdAt: display, items };
       });
 
-    // Sort: realistic dates first; inside each bucket newest → oldest
+    // Sort: realistic first (newest→oldest), then unrealistic (newest→oldest)
     normalized.sort((a, b) => {
       const aBad = isUnrealisticDisplayDate(a.createdAt);
       const bBad = isUnrealisticDisplayDate(b.createdAt);
@@ -182,7 +176,6 @@ export default function OrdersPage() {
       return bTs - aTs;
     });
 
-    // Save canonical + remove old keys
     try {
       localStorage.setItem(CANONICAL_KEY, JSON.stringify(normalized));
       for (const key of POSSIBLE_KEYS) {
@@ -190,7 +183,7 @@ export default function OrdersPage() {
       }
     } catch {}
 
-    // ALWAYS collapsed on refresh
+    // Start collapsed
     const collapsed: Record<string, boolean> = {};
     normalized.forEach((o) => (collapsed[o.id] = false));
 
@@ -313,13 +306,11 @@ export default function OrdersPage() {
                   >
                     <div className="hdr">
                       <div className="rowTop">
-                        {/* Left: label + order id (always left-aligned on mobile) */}
                         <div className="left">
                           <span className="lbl">Order</span>
                           <span className="oid">#{order.id}</span>
                         </div>
 
-                        {/* Meta: pill + amount (centered as a group on mobile) */}
                         <div className="meta">
                           <HeaderPill status={status} />
                           <span className="amt">
@@ -328,12 +319,13 @@ export default function OrdersPage() {
                         </div>
                       </div>
 
-                      {/* Date line */}
-                      {order.createdAt ? <span className="dt">{order.createdAt}</span> : null}
+                      {order.createdAt ? (
+                        <span className="dt">{order.createdAt}</span>
+                      ) : null}
                     </div>
                   </button>
 
-                  {/* Body */}
+                  {/* Body (details) */}
                   {isOpen && (
                     <div style={{ padding: 14, display: "grid", gap: 10 }}>
                       {order.items.map((it, i) => {
@@ -367,8 +359,8 @@ export default function OrdersPage() {
                               }}
                             />
                             <div>
-                              <div style={{ fontWeight: 800, fontSize: 13 }}>{it.name}</div>
-                              <div style={{ color: "#666", fontSize: 12 }}>
+                              <div style={{ fontWeight: 800 }}>{it.name}</div>
+                              <div style={{ color: "#666" }}>
                                 KES {Math.round(price)} × {qty} ={" "}
                                 <span style={{ fontWeight: 700, color: "#111" }}>
                                   KES {Math.round(price * qty)}
@@ -389,7 +381,7 @@ export default function OrdersPage() {
                           marginTop: 4,
                         }}
                       >
-                        <span style={{ color: "#777", fontSize: 12 }}>Reference</span>
+                        <span style={{ color: "#777" }}>Reference</span>
                         <span
                           style={{
                             background: "#f5f6f8",
@@ -398,7 +390,7 @@ export default function OrdersPage() {
                             padding: "6px 10px",
                             fontFamily:
                               "ui-monospace, SFMono-Regular, Menlo, monospace",
-                            fontSize: 12,
+                            fontSize: 13,
                           }}
                         >
                           {order.reference || "—"}
@@ -425,7 +417,6 @@ export default function OrdersPage() {
                                 padding: "6px 10px",
                                 borderRadius: 10,
                                 cursor: "pointer",
-                                fontSize: 12,
                               }}
                             >
                               Copy
@@ -450,7 +441,7 @@ export default function OrdersPage() {
 
                       {/* Status pill */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ color: "#777", fontSize: 12 }}>Status</span>
+                        <span style={{ color: "#777" }}>Status</span>
                         <StatusPill status={status} />
                       </div>
 
@@ -463,8 +454,8 @@ export default function OrdersPage() {
                           marginTop: 2,
                         }}
                       >
-                        <span style={{ color: "#777", fontSize: 12 }}>Total</span>
-                        <span style={{ fontWeight: 800, fontSize: 12 }}>
+                        <span style={{ color: "#777" }}>Total</span>
+                        <span style={{ fontWeight: 800 }}>
                           KES {Math.round(order.total).toLocaleString("en-KE")}
                         </span>
                       </div>
@@ -477,7 +468,7 @@ export default function OrdersPage() {
         )}
       </div>
 
-      {/* Scoped styles for the order header row */}
+      {/* styles */}
       <style jsx>{`
         .hdr {
           padding: 10px 14px;
@@ -522,20 +513,19 @@ export default function OrdersPage() {
           margin-top: 4px;
         }
 
-        /* Phones: keep Order left, center only pill + amount */
+        /* Phones: keep everything on one row; center pill+amount a bit */
         @media (max-width: 640px) {
           .rowTop {
-            flex-direction: column;
-            align-items: stretch;
-            text-align: left;
+            justify-content: flex-start;
           }
           .left {
+            flex: 1;
             justify-content: flex-start;
-            margin-bottom: 4px;
           }
           .meta {
             justify-content: center;
-            margin: 0; /* center group on mobile */
+            flex: 1;
+            margin: 0; /* override desktop spacing */
           }
         }
       `}</style>
