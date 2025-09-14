@@ -14,8 +14,8 @@ type OrderItem = {
 type Order = {
   id: string;
   reference?: string;
-  createdAt?: string; // human display
-  paidAt?: string;    // ISO timestamp if present
+  createdAt?: string;
+  paidAt?: string;
   total: number;
   items: OrderItem[];
 };
@@ -148,7 +148,6 @@ export default function OrdersPage() {
         return { ...o, createdAt: display, items };
       });
 
-    // newest realistic dates first; unrealistic get pushed below
     normalized.sort((a, b) => {
       const aBad = isUnrealisticDisplayDate(a.createdAt);
       const bBad = isUnrealisticDisplayDate(b.createdAt);
@@ -165,10 +164,8 @@ export default function OrdersPage() {
       }
     } catch {}
 
-    // collapsed on refresh
     const collapsed: Record<string, boolean> = {};
     normalized.forEach((o) => (collapsed[o.id] = false));
-
     setOrders(normalized);
     setExpanded(collapsed);
   }, []);
@@ -188,7 +185,7 @@ export default function OrdersPage() {
 
   return (
     <div style={{ background: "#f6f6f6", minHeight: "100vh" }}>
-      {/* Header bar */}
+      {/* Header */}
       <div
         style={{
           background: "#111",
@@ -249,7 +246,7 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* Orders list */}
+      {/* List */}
       <div style={{ maxWidth: 1200, margin: "12px auto", padding: "0 12px" }}>
         {orders.length === 0 ? (
           <div
@@ -293,7 +290,6 @@ export default function OrdersPage() {
                           <span className="oid">#{order.id}</span>
                         </div>
 
-                        {/* pill + amount (inline on mobile, balanced spacing on desktop) */}
                         <div className="meta">
                           <HeaderPill status={status} />
                           <span className="amt">
@@ -311,7 +307,7 @@ export default function OrdersPage() {
                   {/* Body */}
                   {isOpen && (
                     <div style={{ padding: 14, display: "grid", gap: 10 }}>
-                      {/* items */}
+                      {/* Items */}
                       {order.items.map((it, i) => {
                         const qty = Number(it.quantity ?? it.qty ?? 1);
                         const price = Number(it.price) || 0;
@@ -480,9 +476,7 @@ export default function OrdersPage() {
         .meta {
           display: flex;
           align-items: center;
-          gap: 12px;
-          /* Keep inline on mobile, near the order number but not touching */
-          margin-left: 10px;
+          gap: 10px;
         }
         .amt {
           font-weight: 800;
@@ -495,11 +489,10 @@ export default function OrdersPage() {
           font-size: 11px;
           margin-top: 4px;
         }
-
-        /* Desktop tweak: keep away from the order number and from the far edge */
+        /* Desktop only: nudge pill+amount away from order number AND edge */
         @media (min-width: 900px) {
           .meta {
-            margin-left: 60px;
+            margin-left: 40px;
             margin-right: 60px;
           }
         }
