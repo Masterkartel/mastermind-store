@@ -289,7 +289,7 @@ export default function Home() {
                   loading="lazy"
                 />
                 <button className="btn btn--ghost" onClick={() => add("gas-6kg")}>
-                  6KG — KES 1,110
+                  6KG — KES 1,100
                 </button>
               </div>
               <div className="cylCard">
@@ -300,7 +300,7 @@ export default function Home() {
                   loading="lazy"
                 />
                 <button className="btn btn--ghost" onClick={() => add("gas-13kg")}>
-                  13KG — KES 2,355
+                  13KG — KES 2,400
                 </button>
               </div>
             </div>
