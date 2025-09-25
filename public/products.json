@@ -83,105 +83,120 @@
     "name": "25W Sundabest",
     "sku": "1 pc",
     "price": 550,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/25w-sundabest.jpg"
   },
   {
     "id": "28w-sundabest",
     "name": "28W Sundabest",
     "sku": "1 pc",
     "price": 650,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/28w-sundabest.jpg"
   },
   {
     "id": "2ba-3-5-70mm",
     "name": "2BA 3.5×70mm",
     "sku": "1",
     "price": 5,
-    "stock": 285
+    "stock": 285,
+    "img": "/products/2ba-3-5-70mm.jpg"
   },
   {
     "id": "3-by-3-cable-silver",
     "name": "3 by 3 cable silver",
     "sku": "1",
     "price": 150,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/3-by-3-cable-silver.webp"
   },
   {
     "id": "3-pin-xlr-speaker-connector-plug",
     "name": "3 pin XLR speaker connector plug",
     "sku": "1",
     "price": 200,
-    "stock": 15
+    "stock": 15,
+    "img": "/products/3-pin-xlr-speaker-connector-plug.jpg"
   },
   {
     "id": "4-4-4-metallic-adaptor",
     "name": "4*4*4 Metallic adaptor",
     "sku": "1",
     "price": 200,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/4-4-4-metallic-adaptor.webp"
   },
   {
     "id": "45w-pd-adapter",
     "name": "45W PD Adapter",
     "sku": "1",
     "price": 950,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/45w-pd-adapter.jpg"
   },
   {
     "id": "45w-pd-charger",
     "name": "45W PD Charger",
     "sku": "1 pc",
     "price": 1250,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/45w-pd-charger.jpg"
   },
   {
     "id": "4ba-4-70mm",
     "name": "4BA 4×70mm",
     "sku": "1",
     "price": 5,
-    "stock": 68
+    "stock": 68,
+    "img": "/products/4ba-4-70mm.jpg"
   },
   {
     "id": "4mm-single-cable",
     "name": "4MM single cable",
     "sku": "1",
     "price": 100,
-    "stock": 174
+    "stock": 174,
+    "img": "/products/4mm-single-cable.jpg"
   },
   {
     "id": "4you-stainless-kettle",
     "name": "4you Stainless Kettle",
     "sku": "1",
     "price": 1350,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/4you-stainless-kettle.jpg"
   },
   {
     "id": "5w-bulbs",
     "name": "5W Bulbs",
     "sku": "1 pc",
     "price": 100,
-    "stock": 77
+    "stock": 77,
+    "img": "/products/5w-bulbs.webp"
   },
   {
     "id": "6-mm-single-cable",
     "name": "6 MM Single Cable",
     "sku": "1",
     "price": 180,
-    "stock": 269
+    "stock": 269,
+    "img": "/products/6-mm-single-cable.png"
   },
   {
     "id": "6-35mm-male-audio-plug-connector",
     "name": "6.35mm male audio plug connector",
     "sku": "1",
     "price": 200,
-    "stock": 15
+    "stock": 15,
+    "img": "/products/6-35mm-male-audio-plug-connector.webp"
   },
   {
     "id": "6-6-4-metallic-adaptor",
     "name": "6*6*4 Metallic adaptor",
     "sku": "1",
     "price": 300,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/6-6-4-metallic-adaptor.webp"
   },
   {
     "id": "7w-bulbs",
