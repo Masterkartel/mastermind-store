@@ -203,14 +203,16 @@
     "name": "7W Bulbs",
     "sku": "1 pc",
     "price": 150,
-    "stock": 33
+    "stock": 33,
+    "img": "/products/7w-bulbs.jpg"
   },
   {
     "id": "9w-bulbs",
     "name": "9W Bulbs",
     "sku": "1 pc",
     "price": 200,
-    "stock": 20
+    "stock": 20,
+    "img": "/products/9w-bulbs.jpg"
   },
   {
     "id": "9x9",
@@ -224,49 +226,56 @@
     "name": "Adaptor Box",
     "sku": "1 pc",
     "price": 250,
-    "stock": 10
+    "stock": 10,
+    "img": "/products/adaptor-box.png"
   },
   {
     "id": "advance-64gb-flash",
     "name": "Advance 64GB Flash",
     "sku": "1 pc",
     "price": 1200,
-    "stock": 0
+    "stock": 0,
+    "img": "/products/advance-64gb-flash.png"
   },
   {
     "id": "advance-flash-16gb",
     "name": "ADVANCE FLASH 16GB",
     "sku": "1",
     "price": 900,
-    "stock": 5
+    "stock": 5,
+    "img": "/products/advance-flash-16gb.jpg"
   },
   {
     "id": "advance-flash-2gb",
     "name": "ADVANCE FLASH 2GB",
     "sku": "1",
     "price": 450,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/advance-flash-2gb.webp"
   },
   {
     "id": "advance-flash-32gb",
     "name": "ADVANCE FLASH 32GB",
     "sku": "1",
     "price": 950,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/advance-flash-32gb.jpg"
   },
   {
     "id": "advance-flash-4gb",
     "name": "ADVANCE FLASH 4GB",
     "sku": "1",
     "price": 600,
-    "stock": 3
+    "stock": 3,
+    "img": "/products/advance-flash-4gb.jpg"
   },
   {
     "id": "advance-flash-8gb",
     "name": "ADVANCE FLASH 8GB",
     "sku": "1",
     "price": 800,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/advance-flash-8gb.jpeg"
   },
   {
     "id": "ailyons-2-1ch-elp2404k",
