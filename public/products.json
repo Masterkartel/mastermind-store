@@ -51,28 +51,32 @@
     "name": "2.4 G Wireless Mouse",
     "sku": "1",
     "price": 650,
-    "stock": 9
+    "stock": 9,
+    "img": "/products/2-4-g-wireless-mouse.jpg"
   },
   {
     "id": "20w-led-bulkhead",
     "name": "20W LED bulkhead",
     "sku": "1",
     "price": 900,
-    "stock": 29
+    "stock": 29,
+    "img": "/products/20w-led-bulkhead.jpg"
   },
   {
     "id": "25w-pd-adapter-usb-c",
     "name": "25W PD Adapter USB-C",
     "sku": "1",
     "price": 850,
-    "stock": 2
+    "stock": 2,
+    "img": "/products/25w-pd-adapter-usb-c.jpg"
   },
   {
     "id": "25w-pd-charger",
     "name": "25W PD Charger",
     "sku": "1 pc",
     "price": 950,
-    "stock": 1
+    "stock": 1,
+    "img": "/products/25w-pd-charger.webp"
   },
   {
     "id": "25w-sundabest",
