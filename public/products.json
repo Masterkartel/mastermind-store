@@ -1,12 +1,23 @@
 [
   {
-    "id": "1-batt-torch",
-    "name": "1 batt Torch",
-    "sku": "1",
-    "price": 100,
-    "stock": 11,
-    "img": "/products/1-batt-torch.jpg"
-  },
+"id": "1-batt-torch",
+
+"product_code": "1-BATT-TORCH",
+
+"name": "1 batt Torch",
+
+"category": "Lighting",
+
+"cost_price": 0,
+
+"retail_price": 100,
+
+"stock": 11,
+
+"barcode": "1-BATT-TORCH",
+
+"img": "/products/1-batt-torch.jpg"
+}
   {
     "id": "12w-bulbs",
     "name": "12W Bulbs",
