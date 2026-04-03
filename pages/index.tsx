@@ -4,7 +4,6 @@ import Head from "next/head";
 
 type Product = {
   id: string;
-
   name: string;
 
   sku?: string;
@@ -24,473 +23,303 @@ type Product = {
 
 type CartLine = { product: Product; qty: number };
 
+// ---- LocalStorage keys ----
 const CART_KEY = "mm_cart";
 const ORDERS_KEY = "mm_orders";
 
 export default function Home() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [query, setQuery] = useState("");
+  const [showCart, setShowCart] = useState(false);
+  const [cartMap, setCartMap] = useState<Record<string, number>>({});
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
 
-  const [products,setProducts] = useState<Product[]>([]);
-
-  const [query,setQuery] = useState("");
-
-  const [showCart,setShowCart] = useState(false);
-
-  const [cartMap,setCartMap] = useState<Record<string,number>>({});
-
-  const [customerName,setCustomerName] = useState("");
-
-  const [customerPhone,setCustomerPhone] = useState("");
-
-  const [customerEmail,setCustomerEmail] = useState("");
-
-  useEffect(()=>{
-
-    (async()=>{
-
-      try{
-
-        const res = await fetch("/products.json",{cache:"no-store"});
-
-        const data = await res.json();
-
-        setProducts(Array.isArray(data)?data:[]);
-
-      }catch{
-
+  // ---- Load products.json ----
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/products.json", { cache: "no-store" });
+        const data: Product[] = await res.json();
+        setProducts(Array.isArray(data) ? data : []);
+      } catch {
         setProducts([]);
-
       }
-
     })();
+  }, []);
 
-  },[]);
-
-
-  useEffect(()=>{
-
-    try{
-
+  // ---- Cart persistence ----
+  useEffect(() => {
+    try {
       const saved = localStorage.getItem(CART_KEY);
+      if (saved) setCartMap(JSON.parse(saved));
+    } catch {}
+  }, []);
 
-      if(saved) setCartMap(JSON.parse(saved));
+  useEffect(() => {
+    try {
+      localStorage.setItem(CART_KEY, JSON.stringify(cartMap));
+    } catch {}
+  }, [cartMap]);
 
-    }catch{}
+  // ---- Cart helpers ----
+  const add = (id: string) =>
+    setCartMap((m) => ({ ...m, [id]: (m[id] ?? 0) + 1 }));
 
-  },[]);
-
-
-  useEffect(()=>{
-
-    try{
-
-      localStorage.setItem(CART_KEY,JSON.stringify(cartMap));
-
-    }catch{}
-
-  },[cartMap]);
-
-
-  const add = (id:string)=>
-
-    setCartMap(m=>({
-
-      ...m,
-
-      [id]:(m[id]??0)+1
-
-    }));
-
-
-  const sub = (id:string)=>
-
-    setCartMap(m=>{
-
-      const q=(m[id]??0)-1;
-
-      const next={...m};
-
-      if(q<=0) delete next[id];
-
-      else next[id]=q;
-
+  const sub = (id: string) =>
+    setCartMap((m) => {
+      const q = (m[id] ?? 0) - 1;
+      const next = { ...m };
+      if (q <= 0) delete next[id];
+      else next[id] = q;
       return next;
-
     });
 
-
-  const remove = (id:string)=>
-
-    setCartMap(m=>{
-
-      const n={...m};
-
+  const remove = (id: string) =>
+    setCartMap((m) => {
+      const n = { ...m };
       delete n[id];
-
       return n;
-
     });
 
+  const clear = () => setCartMap({});
 
-  const clear = ()=>setCartMap({});
-
-
-  const cartLines:CartLine[]=useMemo(()=>{
-
-    const byId:Record<string,Product>={};
-
-    products.forEach(p=>byId[p.id]=p);
-
+  const cartLines: CartLine[] = useMemo(() => {
+    const byId: Record<string, Product> = {};
+    products.forEach((p) => (byId[p.id] = p));
     return Object.entries(cartMap)
-
-      .map(([id,qty])=>byId[id]?{product:byId[id],qty}:null)
-
+      .map(([id, qty]) => (byId[id] ? { product: byId[id], qty } : null))
       .filter(Boolean) as CartLine[];
-
-  },[cartMap,products]);
-
+  }, [cartMap, products]);
 
   const cartCount = useMemo(
-
-    ()=>Object.values(cartMap).reduce((a,b)=>a+b,0),
-
+    () => Object.values(cartMap).reduce((a, b) => a + b, 0),
     [cartMap]
-
   );
-
 
   const cartTotal = useMemo(
-
-    ()=>cartLines.reduce(
-
-      (sum,l)=>
-
-        sum+(Number(l.product.retail_price ?? l.product.price)||0)*l.qty,
-
-      0
-
-    ),
-
+    () =>
+      cartLines.reduce(
+        (sum, l) =>
+          sum +
+          (Number(l.product.retail_price ?? l.product.price) || 0) * l.qty,
+        0
+      ),
     [cartLines]
-
   );
 
+  // ---- Search filter ----
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return products;
 
-  const filtered = useMemo(()=>{
-
-    const q=query.trim().toLowerCase();
-
-    if(!q) return products;
-
-    return products.filter(p=>{
-
-      const hay=
-
-        `${p.name} ${p.product_code??""} ${p.sku??""} ${p.id}`
-
-        .toLowerCase()
-
-        .replace(/\s+/g," ");
+    return products.filter((p) => {
+      const hay =
+        `${p.name} ${p.product_code ?? ""} ${p.sku ?? ""} ${p.id}`
+          .toLowerCase()
+          .replace(/\s+/g, " ");
 
       return hay.includes(q);
-
     });
+  }, [products, query]);
 
-  },[products,query]);
-
-
-  const currency=(n:number)=>
-
+  const currency = (n: number) =>
     `KES ${Math.round(n).toLocaleString("en-KE")}`;
 
+  // ---- Paystack handler ----
+  const handlePaystack = () => {
+    const PaystackPop =
+      typeof window !== "undefined"
+        ? (window as any)?.PaystackPop
+        : undefined;
 
-  const handlePaystack=()=>{
-
-    const PaystackPop=(window as any)?.PaystackPop;
-
-    if(!PaystackPop){
-
-      alert("Paystack failed to load");
-
+    if (!PaystackPop) {
+      alert("Couldn't start Paystack. Please refresh and try again.");
       return;
-
     }
 
-
-    if(!customerName||!customerPhone||!customerEmail){
-
-      alert("Enter name, phone, email");
-
+    if (!customerName || !customerPhone || !customerEmail) {
+      alert("Please enter your name, phone and email to continue.");
       return;
-
     }
 
-
-    if(cartLines.length===0){
-
-      alert("Cart empty");
-
+    if (cartLines.length === 0) {
+      alert("Your cart is empty.");
       return;
-
     }
 
+    const amountKES = Math.round(cartTotal);
 
-    const amountKES=Math.round(cartTotal);
-
-
-    const itemsPayload=cartLines.map(l=>({
-
-      id:l.product.id,
-
-      name:l.product.name,
-
-      price:Number(l.product.retail_price ?? l.product.price)||0,
-
-      qty:l.qty,
-
-      img:l.product.img||""
-
+    const itemsPayload = cartLines.map((l) => ({
+      id: l.product.id,
+      name: l.product.name,
+      price: Number(l.product.retail_price ?? l.product.price) || 0,
+      qty: l.qty,
+      img: l.product.img || "",
     }));
 
+    const handler = PaystackPop.setup({
+      key: "pk_live_10bc141ee6ae2ae48edcd102c06540ffe1cb3ae6",
+      email: customerEmail,
+      amount: amountKES * 100,
+      currency: "KES",
 
-    const handler=PaystackPop.setup({
-
-      key:"pk_live_10bc141ee6ae2ae48edcd102c06540ffe1cb3ae6",
-
-      email:customerEmail,
-
-      amount:amountKES*100,
-
-      currency:"KES",
-
-      metadata:{
-
-        custom_fields:[
-
+      metadata: {
+        custom_fields: [
           {
-
-            display_name:"Customer Name",
-
-            variable_name:"customer_name",
-
-            value:customerName
-
+            display_name: "Customer Name",
+            variable_name: "customer_name",
+            value: customerName,
           },
-
           {
-
-            display_name:"Phone",
-
-            variable_name:"phone",
-
-            value:customerPhone
-
+            display_name: "Phone",
+            variable_name: "phone",
+            value: customerPhone,
           },
-
           {
-
-            display_name:"Cart Items",
-
-            variable_name:"cart_items",
-
-            value:JSON.stringify(itemsPayload)
-
-          }
-
-        ]
-
+            display_name: "Cart Items",
+            variable_name: "cart_items",
+            value: JSON.stringify(itemsPayload),
+          },
+        ],
       },
 
+      callback: function (response: any) {
+        const now = new Date();
 
-      callback:(response:any)=>{
-
-        const now=new Date();
-
-
-        const newOrder={
-
-          id:`T${now.getTime()}`,
-
-          reference:response.reference,
-
-          createdAt:now.toISOString(),
-
-          total:amountKES,
-
-          status:"PENDING",
-
-          paymentStatus:"PENDING",
-
-          items:itemsPayload
-
+        const newOrder = {
+          id: `T${now.getTime()}`,
+          reference: response.reference as string,
+          createdAt: now.toISOString(),
+          total: amountKES,
+          status: "PENDING",
+          paymentStatus: "PENDING",
+          items: itemsPayload,
         };
 
-
-        try{
-
-          const raw=localStorage.getItem(ORDERS_KEY);
-
-          const arr=raw?JSON.parse(raw):[];
-
-          const next=Array.isArray(arr)?[...arr,newOrder]:[newOrder];
-
-          localStorage.setItem(ORDERS_KEY,JSON.stringify(next));
-
-        }catch{}
-
+        try {
+          const raw = localStorage.getItem(ORDERS_KEY);
+          const arr = raw ? JSON.parse(raw) : [];
+          const next = Array.isArray(arr) ? [...arr, newOrder] : [newOrder];
+          localStorage.setItem(ORDERS_KEY, JSON.stringify(next));
+        } catch {}
 
         clear();
-
         setShowCart(false);
 
-
-        window.location.href=`/orders?ref=${response.reference}`;
-
+        window.location.href = `/orders?ref=${encodeURIComponent(
+          response.reference
+        )}`;
       },
 
-
-      onClose:()=>{
-
-        alert("Payment cancelled");
-
-      }
-
+      onClose: function () {
+        alert("Transaction was not completed, window closed.");
+      },
     });
 
-
     handler.openIframe();
-
   };
 
+  return (
+    <div style={{ fontFamily: "Inter, ui-sans-serif", background: "#fafafa" }}>
 
-  return(
+      <Head>
+        <title>Mastermind Electricals & Electronics</title>
 
-<div style={{fontFamily:"Inter, sans-serif",background:"#fafafa"}}>
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1"
+        />
 
+        <link rel="icon" href="/favicon.ico" />
 
-<Head>
+        <script src="https://js.paystack.co/v1/inline.js" async></script>
+      </Head>
 
-<title>Mastermind Electricals & Electronics</title>
+      {/* ===== SEARCH ===== */}
 
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+      <div className="container" style={{ marginTop: 10 }}>
 
-<link rel="icon" href="/favicon.ico"/>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder='Search product or code'
+          className="search"
+        />
 
-<script src="https://js.paystack.co/v1/inline.js" async></script>
+      </div>
 
-</Head>
+      {/* ===== PRODUCT GRID ===== */}
 
+      <section className="container">
 
-<div className="container">
+        <div className="productGrid">
 
+          {filtered.map((p) => {
 
-<input
+            const price =
+              Number(p.retail_price ?? p.price) || 0;
 
-value={query}
+            const stock =
+              Number(p.stock) || 0;
 
-onChange={e=>setQuery(e.target.value)}
+            return (
 
-placeholder="Search product or code"
+              <article key={p.id} className="card">
 
-className="search"
+                <div className="card__img">
 
-/>
+                  {p.img ? (
+                    <img
+                      src={p.img}
+                      alt={p.name}
+                      loading="lazy"
+                    />
+                  ) : null}
 
+                </div>
 
-<div className="productGrid">
+                <div className="sku">
+                  {p.product_code ?? p.sku ?? ""}
+                </div>
 
+                <div className="name">
+                  {p.name}
+                </div>
 
-{filtered.map(p=>{
+                <div className="price">
+                  {currency(price)}
+                </div>
 
+                <div className="stock">
+                  Stock: {stock}
+                </div>
 
-const price=Number(p.retail_price ?? p.price)||0;
+                {stock > 0 ? (
+                  <button
+                    className="btn btn--accent small"
+                    onClick={() => add(p.id)}
+                  >
+                    Add to Cart
+                  </button>
+                ) : (
+                  <div className="btn btn--disabled small">
+                    Out of stock
+                  </div>
+                )}
 
-const stock=Number(p.stock)||0;
+              </article>
 
+            );
 
-return(
+          })}
 
-<article key={p.id} className="card">
+        </div>
 
+      </section>
 
-<div className="card__img">
-
-{p.img&&(
-
-<img src={p.img} alt={p.name}/>
-
-)}
-
-</div>
-
-
-<div className="sku">
-
-{p.product_code ?? p.sku ?? ""}
-
-</div>
-
-
-<div className="name">
-
-{p.name}
-
-</div>
-
-
-<div className="price">
-
-{currency(price)}
-
-</div>
-
-
-<div className="stock">
-
-Stock: {stock}
-
-</div>
-
-
-{stock>0?(
-
-<button
-
-className="btn"
-
-onClick={()=>add(p.id)}
-
->
-
-Add to Cart
-
-</button>
-
-):( 
-
-<div className="btn disabled">
-
-Out of stock
-
-</div>
-
-)}
-
-
-</article>
-
-);
-
-})}
-
-
-</div>
-
-
-</div>
-
-
-</div>
-
+    </div>
   );
 
 }
