@@ -94,7 +94,17 @@ export default function HomePage() {
   };
 
   useEffect(() => {
-    window.scrollTo(0, 0);
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+    const resetScroll = () => window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    resetScroll();
+    const raf = requestAnimationFrame(resetScroll);
+    const timer = setTimeout(resetScroll, 60);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(timer);
+    };
   }, []);
 
   useEffect(() => {
@@ -325,6 +335,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
     <>
       <Head>
         <title>Mastermind Electricals & Electronics</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       </Head>
 
       <main className="shop-shell">
@@ -636,14 +647,18 @@ Total: KES ${total.toLocaleString("en-KE")}`;
       </a>
 
       <style jsx>{`
+        html {
+          scroll-behavior: auto;
+        }
+
         .shop-shell {
           max-width: 1240px;
           margin: 0 auto;
           padding: 16px;
           background:
-            radial-gradient(circle at top left, rgba(250, 204, 21, 0.12), transparent 22%),
-            radial-gradient(circle at bottom right, rgba(22, 163, 74, 0.1), transparent 24%),
-            #f8fafc;
+            radial-gradient(circle at top left, rgba(250, 204, 21, 0.14), transparent 20%),
+            radial-gradient(circle at bottom right, rgba(17, 24, 39, 0.08), transparent 24%),
+            linear-gradient(180deg, #fffdf4 0%, #ffffff 100%);
           color: #111;
           min-height: 100vh;
           position: relative;
@@ -660,7 +675,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         .orb-a {
           width: 220px;
           height: 220px;
-          background: rgba(250, 204, 21, 0.12);
+          background: rgba(250, 204, 21, 0.14);
           top: -70px;
           left: -80px;
         }
@@ -668,7 +683,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         .orb-b {
           width: 260px;
           height: 260px;
-          background: rgba(22, 163, 74, 0.08);
+          background: rgba(17, 24, 39, 0.07);
           right: -100px;
           top: 320px;
         }
@@ -676,7 +691,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         .orb-c {
           width: 180px;
           height: 180px;
-          background: rgba(15, 23, 42, 0.05);
+          background: rgba(250, 204, 21, 0.08);
           left: 40%;
           bottom: -60px;
         }
@@ -688,7 +703,8 @@ Total: KES ${total.toLocaleString("en-KE")}`;
 
         .card {
           background: linear-gradient(180deg, #ffffff 0%, #fffdf5 100%);
-          border: 1px solid rgba(250, 204, 21, 0.22);
+          border: 1px solid rgba(250, 204, 21, 0.28);
+          border-top: 4px solid #111827;
           border-radius: 24px;
           padding: 16px;
           box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
@@ -705,7 +721,8 @@ Total: KES ${total.toLocaleString("en-KE")}`;
           grid-template-columns: 2fr 1.1fr;
           gap: 18px;
           margin-bottom: 14px;
-          background: linear-gradient(135deg, #fffdf4 0%, #ffffff 58%, #f0fdf4 100%);
+          background: linear-gradient(135deg, #111827 0%, #1f2937 45%, #2b2b2b 100%);
+          border-color: rgba(250, 204, 21, 0.35);
         }
 
         .hero-deco,
@@ -723,7 +740,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         .hero-deco-top {
           width: 180px;
           height: 180px;
-          background: rgba(250, 204, 21, 0.12);
+          background: rgba(250, 204, 21, 0.16);
           top: -80px;
           right: -50px;
         }
@@ -731,7 +748,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         .hero-deco-bottom {
           width: 140px;
           height: 140px;
-          background: rgba(22, 163, 74, 0.08);
+          background: rgba(250, 204, 21, 0.08);
           bottom: -60px;
           left: -30px;
         }
@@ -740,12 +757,12 @@ Total: KES ${total.toLocaleString("en-KE")}`;
           margin: 0 0 8px;
           font-size: 30px;
           line-height: 1.15;
-          color: #0f172a;
+          color: #facc15;
         }
 
         .hero-left p {
           margin: 0;
-          color: #475569;
+          color: #e5e7eb;
           line-height: 1.6;
         }
 
@@ -769,7 +786,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
           font-size: 13px;
           font-weight: 800;
           border: none;
-          box-shadow: 0 6px 14px rgba(250, 204, 21, 0.2);
+          box-shadow: 0 6px 14px rgba(250, 204, 21, 0.22);
         }
 
         .pill-btn {
@@ -789,16 +806,16 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         }
 
         .hours {
-          color: #64748b;
-          font-weight: 600;
+          color: #fde68a;
+          font-weight: 700;
         }
 
         .gas-card {
           display: grid;
-          grid-template-columns: 60px 1fr;
+          grid-template-columns: 56px 1fr;
           gap: 8px;
           align-items: center;
-          border: 1px solid #e5e7eb;
+          border: 1px solid rgba(250, 204, 21, 0.25);
           background: linear-gradient(180deg, #ffffff 0%, #fffbeb 100%);
           border-radius: 18px;
           padding: 10px;
@@ -807,8 +824,8 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         }
 
         .gas-card img {
-          width: 58px;
-          height: 58px;
+          width: 54px;
+          height: 54px;
           object-fit: contain;
         }
 
@@ -846,7 +863,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         .toolbar-deco-left {
           width: 120px;
           height: 120px;
-          background: rgba(250, 204, 21, 0.12);
+          background: rgba(250, 204, 21, 0.14);
           left: -40px;
           top: -35px;
         }
@@ -854,19 +871,26 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         .toolbar-deco-right {
           width: 100px;
           height: 100px;
-          background: rgba(22, 163, 74, 0.08);
+          background: rgba(17, 24, 39, 0.08);
           right: -25px;
           bottom: -30px;
         }
 
         .input {
           width: 100%;
-          border: 1px solid #e5e7eb;
+          border: 1px solid #d1d5db;
           border-radius: 14px;
           padding: 12px 13px;
           margin-bottom: 8px;
           font: inherit;
           background: #fff;
+          color: #111827;
+        }
+
+        .input:focus {
+          outline: none;
+          border-color: #facc15;
+          box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.18);
         }
 
         .chips {
@@ -876,13 +900,13 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         }
 
         .chip {
-          background: #fff;
-          border: 1px solid #e2e8f0;
+          background: #111827;
+          border: 1px solid #111827;
           border-radius: 999px;
           padding: 7px 11px;
           cursor: pointer;
           font-weight: 800;
-          color: #334155;
+          color: #f9fafb;
         }
 
         .chip-active {
@@ -893,13 +917,13 @@ Total: KES ${total.toLocaleString("en-KE")}`;
 
         .services-card {
           margin-bottom: 14px;
-          background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 52%, #fff7ed 100%);
+          background: linear-gradient(135deg, #fffef8 0%, #ffffff 52%, #fff7ed 100%);
         }
 
         .services-deco-left {
           width: 180px;
           height: 180px;
-          background: rgba(22, 163, 74, 0.08);
+          background: rgba(250, 204, 21, 0.14);
           left: -70px;
           top: -70px;
         }
@@ -907,7 +931,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         .services-deco-right {
           width: 150px;
           height: 150px;
-          background: rgba(250, 204, 21, 0.1);
+          background: rgba(17, 24, 39, 0.07);
           right: -50px;
           bottom: -50px;
         }
@@ -921,7 +945,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
 
         .services-pane h3 {
           margin: 0 0 10px;
-          color: #0f172a;
+          color: #111827;
         }
 
         .service-img-large {
@@ -946,7 +970,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
 
         .divider-vertical {
           width: 1px;
-          background: linear-gradient(180deg, transparent, #e2e8f0, transparent);
+          background: linear-gradient(180deg, transparent, #d1d5db, transparent);
           min-height: 100%;
         }
 
@@ -983,8 +1007,8 @@ Total: KES ${total.toLocaleString("en-KE")}`;
           padding: 10px 8px;
           border-radius: 16px;
           font-weight: 800;
-          color: #0f172a;
-          border: 1px solid #f3e8b3;
+          color: #111827;
+          border: 1px solid rgba(250, 204, 21, 0.28);
           background: linear-gradient(180deg, #fffdf4 0%, #ffffff 100%);
           box-shadow: 0 6px 14px rgba(15, 23, 42, 0.05);
         }
@@ -992,7 +1016,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         .many-more {
           margin: 12px 0 0;
           font-weight: 800;
-          color: #0f172a;
+          color: #111827;
         }
 
         .id-warning {
@@ -1036,7 +1060,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         .product-deco-top {
           width: 110px;
           height: 110px;
-          background: rgba(250, 204, 21, 0.1);
+          background: rgba(250, 204, 21, 0.12);
           top: -42px;
           right: -38px;
         }
@@ -1044,7 +1068,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         .product-deco-bottom {
           width: 78px;
           height: 78px;
-          background: rgba(22, 163, 74, 0.08);
+          background: rgba(17, 24, 39, 0.06);
           left: -24px;
           bottom: -24px;
         }
@@ -1066,7 +1090,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         .product-card h3 {
           margin: 0;
           font-size: 16px;
-          color: #0f172a;
+          color: #111827;
         }
 
         .price {
@@ -1116,9 +1140,9 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         }
 
         .btn-mpesa {
-          background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
-          color: #fff;
-          box-shadow: 0 8px 18px rgba(34, 197, 94, 0.18);
+          background: linear-gradient(180deg, #111827 0%, #1f2937 100%);
+          color: #facc15;
+          box-shadow: 0 8px 18px rgba(17, 24, 39, 0.18);
         }
 
         .clear-btn {
@@ -1138,7 +1162,13 @@ Total: KES ${total.toLocaleString("en-KE")}`;
           margin-top: 14px;
           color: #334155;
           font-size: 14px;
-          background: linear-gradient(135deg, #fffdf4 0%, #ffffff 100%);
+          background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+          border-color: rgba(250, 204, 21, 0.3);
+          color: #f3f4f6;
+        }
+
+        .footer-note a {
+          color: #facc15;
         }
 
         .footer-deco-left {
@@ -1152,7 +1182,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         .footer-deco-right {
           width: 90px;
           height: 90px;
-          background: rgba(22, 163, 74, 0.08);
+          background: rgba(250, 204, 21, 0.08);
           right: -25px;
           bottom: -30px;
         }
@@ -1160,13 +1190,13 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         .about-bottom {
           margin-top: 14px;
           color: #334155;
-          background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+          background: linear-gradient(135deg, #ffffff 0%, #fffdf4 100%);
         }
 
         .about-deco-left {
           width: 110px;
           height: 110px;
-          background: rgba(22, 163, 74, 0.08);
+          background: rgba(17, 24, 39, 0.06);
           left: -35px;
           bottom: -35px;
         }
@@ -1214,7 +1244,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         .checkout-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(15, 23, 42, 0.38);
+          background: rgba(15, 23, 42, 0.42);
           border: none;
           z-index: 1190;
         }
@@ -1243,7 +1273,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         .checkout-popup-deco-bottom {
           width: 100px;
           height: 100px;
-          background: rgba(22, 163, 74, 0.08);
+          background: rgba(17, 24, 39, 0.06);
           left: -20px;
           bottom: -20px;
         }
@@ -1258,12 +1288,12 @@ Total: KES ${total.toLocaleString("en-KE")}`;
 
         .checkout-head h2 {
           margin: 0;
-          color: #0f172a;
+          color: #111827;
         }
 
         .close-checkout {
           background: #111827;
-          color: #fff;
+          color: #facc15;
           width: 42px;
           min-width: 42px;
           padding: 10px 0;
@@ -1285,7 +1315,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
 
         .cart-line-info span {
           display: block;
-          color: #0f172a;
+          color: #111827;
           font-weight: 700;
         }
 
@@ -1336,7 +1366,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
           font-size: 18px;
           font-weight: 900;
           margin: 10px 0 8px;
-          color: #0f172a;
+          color: #111827;
         }
 
         .checkout-actions {
@@ -1360,12 +1390,13 @@ Total: KES ${total.toLocaleString("en-KE")}`;
           top: 16px;
           right: 16px;
           background: #111827;
-          color: #fff;
+          color: #f9fafb;
           padding: 10px 12px;
           border-radius: 12px;
           box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
           z-index: 1300;
           font-weight: 800;
+          border: 1px solid rgba(250, 204, 21, 0.25);
         }
 
         .wa-float {
@@ -1400,25 +1431,57 @@ Total: KES ${total.toLocaleString("en-KE")}`;
           .divider-vertical {
             display: none;
           }
+
+          .catalog {
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+          }
         }
 
         @media (max-width: 640px) {
           .shop-shell {
-            padding: 12px;
+            padding: 10px;
           }
 
-          .cart-fab {
-            top: auto;
-            bottom: 86px;
-            right: 12px;
-            min-width: 118px;
+          .card {
+            border-radius: 20px;
+            padding: 14px;
           }
 
-          .checkout-popup {
-            top: auto;
-            right: 12px;
-            bottom: 12px;
-            max-height: calc(100vh - 24px);
+          .hero-left h1 {
+            font-size: 24px;
+          }
+
+          .hero-left p {
+            font-size: 14px;
+          }
+
+          .info-row {
+            gap: 6px;
+          }
+
+          .pill {
+            font-size: 12px;
+            padding: 8px 10px;
+          }
+
+          .toolbar {
+            margin-bottom: 12px;
+          }
+
+          .chips {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            scrollbar-width: thin;
+          }
+
+          .chip {
+            white-space: nowrap;
+            flex: 0 0 auto;
+          }
+
+          .services-list li {
+            font-size: 14px;
           }
 
           .service-img-large {
@@ -1428,6 +1491,84 @@ Total: KES ${total.toLocaleString("en-KE")}`;
           .gas-brand-grid,
           .gas-actions-grid {
             grid-template-columns: 1fr 1fr;
+          }
+
+          .catalog {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+          }
+
+          .product-card {
+            padding: 12px;
+          }
+
+          .product-img,
+          .product-placeholder {
+            height: 116px;
+          }
+
+          .product-card h3 {
+            font-size: 14px;
+          }
+
+          .price {
+            font-size: 16px;
+          }
+
+          .cart-fab {
+            top: auto;
+            bottom: 84px;
+            right: 10px;
+            min-width: 116px;
+            padding: 11px 12px;
+          }
+
+          .checkout-popup {
+            top: auto;
+            right: 10px;
+            left: 10px;
+            bottom: 10px;
+            width: auto;
+            max-height: calc(100vh - 20px);
+            border-radius: 20px;
+          }
+
+          .wa-float {
+            right: 10px;
+            bottom: 14px;
+            width: 54px;
+            height: 54px;
+          }
+        }
+
+        @media (max-width: 420px) {
+          .shop-shell {
+            padding: 8px;
+          }
+
+          .catalog {
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+          }
+
+          .gas-brand-grid,
+          .gas-actions-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .mpesa-capsules {
+            gap: 6px;
+          }
+
+          .service-chip {
+            font-size: 11px;
+            padding: 7px 9px;
+          }
+
+          .checkout-popup {
+            left: 8px;
+            right: 8px;
+            bottom: 8px;
           }
         }
       `}</style>
