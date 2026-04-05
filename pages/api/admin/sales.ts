@@ -1,3 +1,5 @@
+export const config = { runtime: "edge" };
+
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireUser } from "../../../lib/admin-auth";
 import { makeId, readStore, writeStore } from "../../../lib/store-db";

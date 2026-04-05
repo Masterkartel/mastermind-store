@@ -1,3 +1,5 @@
+export const config = { runtime: "edge" };
+
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createToken, readStore } from "../../../lib/store-db";
 

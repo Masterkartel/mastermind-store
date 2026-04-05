@@ -1,0 +1,38 @@
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  role TEXT NOT NULL,
+  pin TEXT NOT NULL,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS products (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  product_code TEXT,
+  sku TEXT,
+  price REAL NOT NULL DEFAULT 0,
+  retail_price REAL NOT NULL DEFAULT 0,
+  stock INTEGER NOT NULL DEFAULT 0,
+  img TEXT
+);
+
+CREATE TABLE IF NOT EXISTS sales (
+  id TEXT PRIMARY KEY,
+  created_at TEXT NOT NULL,
+  sold_by TEXT NOT NULL,
+  customer_name TEXT,
+  total REAL NOT NULL,
+  type TEXT NOT NULL,
+  status TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sale_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  sale_id TEXT NOT NULL,
+  product_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  qty INTEGER NOT NULL,
+  price REAL NOT NULL
+);
