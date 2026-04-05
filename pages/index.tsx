@@ -32,7 +32,6 @@ const FIXED_CATEGORIES = [
   "Kitchen Appliances",
   "Chargers & Cables",
   "Gas Refills",
-  "M-Pesa Services",
 ];
 
 const MPESA_SERVICES = [
@@ -82,7 +81,6 @@ export default function HomePage() {
     const q = query.trim().toLowerCase();
     return products.filter((p) => {
       const text = `${p.name} ${p.product_code || ""} ${p.sku || ""}`.toLowerCase();
-
       const inSearch = !q || text.includes(q);
 
       const inCategory =
@@ -94,7 +92,6 @@ export default function HomePage() {
         (category === "Kitchen Appliances" && /(kettle|iron|cooker|appliance)/i.test(text)) ||
         (category === "Chargers & Cables" && /(charger|type-c|usb|adapter|pd)/i.test(text)) ||
         (category === "Gas Refills" && /(gas|6kg|13kg|cylinder|hose|refill)/i.test(text)) ||
-        (category === "M-Pesa Services" && /(mpesa|m-pesa|paybill|till|sim)/i.test(text)) ||
         (p.category || "").toLowerCase() === category.toLowerCase();
 
       return inSearch && inCategory;
@@ -123,7 +120,21 @@ export default function HomePage() {
   const cartCount = useMemo(() => Object.values(cart).reduce((a, b) => a + b, 0), [cart]);
 
   function addToCart(id: string) {
+    const found = products.find((p) => p.id === id);
+    if (!found) {
+      setNotice("Product not found in catalog.");
+      return;
+    }
+    const isGas = /(gas|6kg|13kg|refill)/i.test(found.name);
+    const stock = Number(found.stock || 0);
+
+    if (!isGas && stock <= 0) {
+      setNotice("Product out of stock.");
+      return;
+    }
+
     setCart((prev) => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
+    setNotice("");
   }
 
   function reduceFromCart(id: string) {
@@ -139,14 +150,20 @@ export default function HomePage() {
   function addGasByType(type: "6KG" | "13KG") {
     const matcher = type === "6KG" ? /(gas.*6|6kg)/i : /(gas.*13|13kg)/i;
     const found = products.find((p) => matcher.test(p.name));
-
     if (!found) {
-      setNotice(`Gas ${type} product not found in catalog. Add/update it in Admin when price changes.`);
+      setNotice("Product not found in catalog.");
       return;
     }
-
     addToCart(found.id);
-    setNotice(`${type} gas added to cart. Price can be adjusted from Admin anytime.`);
+  }
+
+  async function copyTill() {
+    try {
+      await navigator.clipboard.writeText(TILL);
+      setNotice("Till number copied.");
+    } catch {
+      setNotice("Could not copy till number.");
+    }
   }
 
   async function placeOrder() {
@@ -242,19 +259,23 @@ export default function HomePage() {
       </Head>
 
       <main className="shop-shell">
+        {/* Top cart summary */}
+        <section className="top-cart-bar">
+          <b>🛒 Cart:</b> {cartCount} item(s) • <b>KES {total.toLocaleString("en-KE")}</b>
+        </section>
+
         {/* HERO */}
         <section className="hero">
           <div className="hero-left">
             <h1>Mastermind Electricals & Electronics</h1>
             <p>
-              Your trusted shop in Sotik for electrical materials, appliances, gas refills and daily utility services.
-              We stock genuine, practical products for homes, businesses and institutions.
+              Electricals, appliances, M-Pesa services and gas refills in Sotik along Sotik-Kisii Highway.
             </p>
 
             <div className="info-row">
               <a href={`tel:${SHOP_PHONE}`} className="pill">📞 {SHOP_PHONE}</a>
-              <a href={MAPS_LINK} target="_blank" rel="noreferrer" className="pill">📍 Sotik-Kisii Highway</a>
-              <span className="pill">🏪 Till No: {TILL}</span>
+              <a href={MAPS_LINK} target="_blank" rel="noreferrer" className="pill">📍 Open Map</a>
+              <button className="pill pill-btn" onClick={copyTill}>🏪 Till No: {TILL} (Copy)</button>
               <a href={`mailto:${EMAIL}`} className="pill">✉️ {EMAIL}</a>
             </div>
 
@@ -262,9 +283,17 @@ export default function HomePage() {
           </div>
 
           <div className="hero-right">
-            <img src="/mpesa.png" alt="M-Pesa services" className="service-img" />
+            <div className="mpesa-card">
+              <img src="/mpesa.png" alt="M-Pesa services" className="service-img" />
+              <div className="service-chips">
+                {MPESA_SERVICES.map((s) => (
+                  <span key={s} className="service-chip">{s}</span>
+                ))}
+              </div>
+            </div>
+
             <div className="gas-pricing">
-              <button className="gas-card" onClick={() => addGasByType("6KG")} title="Click to add 6KG gas to cart">
+              <button className="gas-card" onClick={() => addGasByType("6KG")} title="Add 6KG gas to cart">
                 <img src="/gas-6kg.png" alt="6KG gas refill" />
                 <div>
                   <b>6KG Gas Refill</b>
@@ -272,34 +301,16 @@ export default function HomePage() {
                 </div>
               </button>
 
-              <button className="gas-card" onClick={() => addGasByType("13KG")} title="Click to add 13KG gas to cart">
+              <button className="gas-card" onClick={() => addGasByType("13KG")} title="Add 13KG gas to cart">
                 <img src="/gas-13kg.png" alt="13KG gas refill" />
                 <div>
                   <b>13KG Gas Refill</b>
                   <span>KES 2,850</span>
                 </div>
               </button>
+
+              <small className="gas-note">✅ Free gas delivery in Sotik environs.</small>
             </div>
-          </div>
-        </section>
-
-        {/* ABOUT */}
-        <section className="card about-card">
-          <h2>About Our Shop</h2>
-          <p>
-            We serve Sotik and surrounding areas with quality electrical and electronics products including:
-            cables, bulb holders, fixtures, bulbs, sound systems, electric kettles and more.
-            We also provide M-Pesa services and gas refills for both 6KG and 13KG cylinders.
-          </p>
-        </section>
-
-        {/* MPESA SERVICES */}
-        <section className="card mpesa-card">
-          <h3>M-Pesa Services</h3>
-          <div className="service-chips">
-            {MPESA_SERVICES.map((s) => (
-              <span key={s} className="service-chip">{s}</span>
-            ))}
           </div>
         </section>
 
@@ -329,17 +340,20 @@ export default function HomePage() {
           <div className="catalog">
             {catalog.map((p) => {
               const stock = Number(p.stock || 0);
-              const lowStock = stock > 0 && stock <= 3;
+              const isGas = /(gas|6kg|13kg|refill)/i.test(p.name);
+              const lowStock = !isGas && stock > 0 && stock <= 3;
+              const canBuy = isGas || stock > 0;
+
               return (
                 <article key={p.id} className="product-card">
                   {p.img ? <img src={p.img} alt={p.name} className="product-img" /> : <div className="product-placeholder" />}
                   <h3>{p.name}</h3>
                   <p className="price">KES {Math.round(Number(p.retail_price ?? p.price ?? 0)).toLocaleString("en-KE")}</p>
-                  <small className={stock > 0 ? "in-stock" : "out-stock"}>
-                    {stock > 0 ? `In stock: ${stock}` : "Out of stock"}
+                  <small className={canBuy ? "in-stock" : "out-stock"}>
+                    {isGas ? "Service available" : stock > 0 ? `In stock: ${stock}` : "Out of stock"}
                   </small>
                   {lowStock ? <span className="low-tag">Low stock</span> : null}
-                  <button className="btn-primary" onClick={() => addToCart(p.id)} disabled={stock <= 0}>
+                  <button className="btn-primary" onClick={() => addToCart(p.id)} disabled={!canBuy}>
                     Add to cart
                   </button>
                 </article>
@@ -369,7 +383,7 @@ export default function HomePage() {
 
             <input className="input" placeholder="Customer full name" value={customer.name} onChange={(e) => setCustomer((c) => ({ ...c, name: e.target.value }))} />
             <input className="input" placeholder="Phone number" value={customer.phone} onChange={(e) => setCustomer((c) => ({ ...c, phone: e.target.value }))} />
-            <input className="input" placeholder="Email (required for Paystack)" value={customer.email} onChange={(e) => setCustomer((c) => ({ ...c, email: e.target.value }))} />
+            <input className="input" placeholder="Email (required for pay)" value={customer.email} onChange={(e) => setCustomer((c) => ({ ...c, email: e.target.value }))} />
             <input className="input" placeholder="Delivery address / landmark" value={customer.address} onChange={(e) => setCustomer((c) => ({ ...c, address: e.target.value }))} />
             <textarea className="input" rows={3} placeholder="Order notes" value={customer.notes} onChange={(e) => setCustomer((c) => ({ ...c, notes: e.target.value }))} />
 
@@ -378,7 +392,7 @@ export default function HomePage() {
             </button>
 
             <button className="btn-dark" disabled={paying || !cartLines.length} onClick={checkoutPaystack}>
-              {paying ? "Initializing..." : "Pay with Paystack"}
+              {paying ? "Initializing..." : "Pay with M-pesa (Via Paystack)"}
             </button>
 
             {!!notice && <p className="notice">{notice}</p>}
@@ -392,35 +406,46 @@ export default function HomePage() {
           Location: <a href={MAPS_LINK} target="_blank" rel="noreferrer">Sotik, along Sotik-Kisii Highway</a><br />
           Till Number: {TILL}
         </footer>
+
+        {/* About below page as requested */}
+        <section className="card about-bottom">
+          <h3>About Our Shop</h3>
+          <p>
+            Mastermind Electricals & Electronics is a trusted local shop serving Sotik and nearby areas with
+            electrical materials, household appliances, gas refill services, and convenient M-Pesa services.
+            We focus on practical products, fair pricing, and reliable service.
+          </p>
+        </section>
       </main>
 
-      {/* WhatsApp floating button */}
       <a className="wa-float" href={WHATSAPP_LINK} target="_blank" rel="noreferrer" aria-label="WhatsApp chat">
         <img src="/whatsapp.svg" alt="WhatsApp" />
       </a>
 
       <style jsx>{`
         .shop-shell { max-width: 1240px; margin: 0 auto; padding: 16px; background: #f8fafc; color: #111; min-height: 100vh; }
+        .top-cart-bar { background: #111; color: #fff; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+
         .hero { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; background: #111; color: #fff; border-radius: 14px; padding: 16px; margin-bottom: 12px; }
         .hero p { color: #e2e8f0; line-height: 1.5; }
         .info-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
-        .pill { text-decoration: none; color: #111; background: #facc15; padding: 6px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; }
+        .pill { text-decoration: none; color: #111; background: #facc15; padding: 6px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; border: none; }
+        .pill-btn { cursor: pointer; }
         .hours { color: #cbd5e1; }
         .hero-right { display: grid; gap: 10px; align-content: start; }
-        .service-img { width: 100%; max-height: 110px; object-fit: contain; background: #fff; border-radius: 10px; padding: 8px; }
-        .gas-pricing { display: grid; grid-template-columns: 1fr; gap: 8px; }
+
+        .mpesa-card { background: #fff; border-radius: 10px; padding: 8px; }
+        .service-img { width: 100%; max-height: 110px; object-fit: contain; }
+        .service-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+        .service-chip { background: #111; color: #fff; padding: 5px 8px; border-radius: 999px; font-size: 12px; }
+
+        .gas-pricing { display: grid; gap: 8px; }
         .gas-card { display: grid; grid-template-columns: 84px 1fr; gap: 8px; align-items: center; border: 1px solid #e2e8f0; background: #fff; border-radius: 10px; padding: 8px; cursor: pointer; text-align: left; }
         .gas-card img { width: 80px; height: 80px; object-fit: contain; }
         .gas-card span { display: block; color: #b45309; font-weight: 800; margin-top: 2px; }
+        .gas-note { color: #fde68a; }
 
         .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px; }
-        .about-card { margin-bottom: 10px; }
-        .about-card p { color: #334155; line-height: 1.6; margin-bottom: 0; }
-
-        .mpesa-card { margin-bottom: 10px; }
-        .service-chips { display: flex; gap: 8px; flex-wrap: wrap; }
-        .service-chip { background: #111; color: #fff; padding: 6px 10px; border-radius: 999px; font-size: 13px; }
-
         .toolbar { margin-bottom: 12px; }
         .input { width: 100%; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; margin-bottom: 8px; font: inherit; }
         .chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -450,6 +475,7 @@ export default function HomePage() {
         .notice { color: #1e293b; font-weight: 600; }
 
         .footer-note { margin-top: 12px; color: #334155; font-size: 14px; }
+        .about-bottom { margin-top: 12px; color: #334155; }
 
         .wa-float { position: fixed; right: 16px; bottom: 16px; width: 56px; height: 56px; border-radius: 999px; background: #25d366; display: grid; place-items: center; box-shadow: 0 10px 24px rgba(0,0,0,.25); z-index: 999; }
         .wa-float img { width: 28px; height: 28px; }
