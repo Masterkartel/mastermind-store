@@ -310,11 +310,10 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         return;
       }
 
-      window.open(
-        authUrl,
-        "paystackPopup",
-        "width=520,height=760,left=100,top=60,scrollbars=yes,resizable=yes"
-      );
+      const payWindow = window.open(authUrl, "_blank", "noopener,noreferrer");
+      if (!payWindow) {
+        window.location.href = authUrl;
+      }
     } catch {
       setNotice("Could not initialize Paystack payment.");
     } finally {
@@ -422,25 +421,38 @@ Total: KES ${total.toLocaleString("en-KE")}`;
 
           <div className="services-split">
             <div className="services-pane services-pane-left">
-              <img src="/mpesa.png" alt="M-Pesa services" className="service-img-large" />
-              <h3>M-Pesa Services</h3>
+              <h3>Available Services</h3>
               <ul className="services-list">
                 {SERVICES.map((service) => (
                   <li key={service}>{service}</li>
                 ))}
               </ul>
+
+              <img src="/mpesa.png" alt="M-Pesa services" className="service-img-large" />
+
               <div className="id-warning wide-warning">NO TRANSACTION WITHOUT ORIGINAL ID.</div>
+
+              <div className="mpesa-capsules">
+                <span className="service-chip">Deposit Cash</span>
+                <span className="service-chip">Withdraw Cash</span>
+                <span className="service-chip">SIM Registration</span>
+                <span className="service-chip">SIM Replacement</span>
+              </div>
             </div>
 
             <div className="divider-vertical" />
 
             <div className="services-pane services-pane-right">
               <h3>Gas Brands Available</h3>
-              <ul className="gas-brand-list">
+
+              <div className="gas-brand-grid">
                 {GAS_BRANDS.map((brand) => (
-                  <li key={brand}>{brand}</li>
+                  <div key={brand} className="gas-brand-card">
+                    {brand}
+                  </div>
                 ))}
-              </ul>
+              </div>
+
               <p className="many-more">And many more</p>
             </div>
           </div>
@@ -898,7 +910,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
 
         .services-split {
           display: grid;
-          grid-template-columns: 1.2fr 1px 0.8fr;
+          grid-template-columns: 1.35fr 1px 0.65fr;
           gap: 18px;
           align-items: start;
         }
@@ -913,19 +925,17 @@ Total: KES ${total.toLocaleString("en-KE")}`;
           max-width: 180px;
           max-height: 95px;
           object-fit: contain;
-          margin-bottom: 12px;
+          margin: 14px 0 10px;
           display: block;
         }
 
-        .services-list,
-        .gas-brand-list {
+        .services-list {
           margin: 0;
           padding-left: 18px;
           color: #334155;
         }
 
-        .services-list li,
-        .gas-brand-list li {
+        .services-list li {
           margin-bottom: 8px;
           line-height: 1.45;
         }
@@ -936,6 +946,45 @@ Total: KES ${total.toLocaleString("en-KE")}`;
           min-height: 100%;
         }
 
+        .mpesa-capsules {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 10px;
+        }
+
+        .service-chip {
+          background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+          color: #fff;
+          border-radius: 999px;
+          padding: 8px 10px;
+          font-size: 12px;
+          font-weight: 800;
+          text-align: center;
+          box-shadow: 0 8px 18px rgba(34, 197, 94, 0.16);
+        }
+
+        .gas-brand-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+        }
+
+        .gas-brand-card {
+          min-height: 74px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          padding: 10px 8px;
+          border-radius: 16px;
+          font-weight: 800;
+          color: #0f172a;
+          border: 1px solid #f3e8b3;
+          background: linear-gradient(180deg, #fffdf4 0%, #ffffff 100%);
+          box-shadow: 0 6px 14px rgba(15, 23, 42, 0.05);
+        }
+
         .many-more {
           margin: 12px 0 0;
           font-weight: 800;
@@ -943,9 +992,10 @@ Total: KES ${total.toLocaleString("en-KE")}`;
         }
 
         .id-warning {
-          margin-top: 10px;
-          background: #111827;
-          color: #facc15;
+          margin-top: 8px;
+          background: rgba(239, 68, 68, 0.1);
+          color: #b91c1c;
+          border: 1px solid rgba(239, 68, 68, 0.18);
           border-radius: 12px;
           padding: 8px;
           font-size: 10px;
@@ -1369,6 +1419,10 @@ Total: KES ${total.toLocaleString("en-KE")}`;
 
           .service-img-large {
             max-width: 150px;
+          }
+
+          .gas-brand-grid {
+            grid-template-columns: 1fr 1fr;
           }
         }
       `}</style>
