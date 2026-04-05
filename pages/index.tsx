@@ -898,7 +898,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
 
         .services-split {
           display: grid;
-          grid-template-columns: 1.2fr 1px .8fr;
+          grid-template-columns: 1.2fr 1px 0.8fr;
           gap: 18px;
           align-items: start;
         }
