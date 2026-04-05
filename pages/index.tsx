@@ -245,31 +245,34 @@ export default function HomePage() {
 
     setPlacingOrder(true);
     try {
-      const res = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customerName: customer.name,
-          customerPhone: customer.phone,
-          customerEmail: customer.email,
-          deliveryAddress: customer.address,
-          notes: customer.notes,
-          items: cartLines.map((l) => ({ productId: l.product.id, qty: l.qty })),
-        }),
-      });
+      const itemsText = cartLines
+        .map((line) => {
+          const base = Number(line.product.retail_price ?? line.product.price ?? 0) || 0;
+          const unit = gasDisplayPrice(line.product.name || "", base);
+          return `• ${line.product.name} x${line.qty} - KES ${(unit * line.qty).toLocaleString("en-KE")}`;
+        })
+        .join("\n");
 
-      const data = await res.json();
-      if (!res.ok) {
-        setNotice(data?.error || "Could not place order.");
-        return;
-      }
+      const message = `Hello Mastermind Electricals, I would like to place an order.
 
-      setNotice(`Order ${data.id} placed successfully. We will contact you shortly.`);
-      setCart({});
-      setCustomer({ name: "", phone: "", email: "", address: "", notes: "" });
+Name: ${customer.name}
+Phone: ${customer.phone}
+Email: ${customer.email || "-"}
+Address: ${customer.address || "-"}
+Notes: ${customer.notes || "-"}
+
+Items:
+${itemsText}
+
+Total: KES ${total.toLocaleString("en-KE")}`;
+
+      const waLink = `https://wa.me/${SHOP_PHONE_INTL}?text=${encodeURIComponent(message)}`;
+      window.open(waLink, "_blank", "noopener,noreferrer");
+
+      setNotice("Redirecting to WhatsApp...");
       setShowCheckout(false);
     } catch {
-      setNotice("Network error while placing order.");
+      setNotice("Could not open WhatsApp.");
     } finally {
       setPlacingOrder(false);
     }
@@ -307,7 +310,11 @@ export default function HomePage() {
         return;
       }
 
-      window.location.href = authUrl;
+      window.open(
+        authUrl,
+        "paystackPopup",
+        "width=520,height=760,left=100,top=60,scrollbars=yes,resizable=yes"
+      );
     } catch {
       setNotice("Could not initialize Paystack payment.");
     } finally {
@@ -322,7 +329,14 @@ export default function HomePage() {
       </Head>
 
       <main className="shop-shell">
+        <div className="page-orb orb-a" />
+        <div className="page-orb orb-b" />
+        <div className="page-orb orb-c" />
+
         <section className="hero-card card">
+          <div className="hero-deco hero-deco-top" />
+          <div className="hero-deco hero-deco-bottom" />
+
           <div className="hero-left">
             <h1>Mastermind Electricals & Electronics</h1>
             <p>
@@ -358,64 +372,31 @@ export default function HomePage() {
 
           <div className="hero-right">
             <div className="hero-right-grid">
-              <div className="mpesa-card inner-card">
-                <img src="/mpesa.png" alt="M-Pesa services" className="service-img" />
-                <div className="mpesa-services-grid">
-                  <span className="service-chip">Deposit Cash</span>
-                  <span className="service-chip">Withdraw Cash</span>
-                  <span className="service-chip">SIM Replacement</span>
-                  <span className="service-chip">SIM Registration</span>
+              <button className="gas-card inner-card" onClick={() => addGasByType("6KG")}>
+                <img src="/gas-6kg.png" alt="6KG gas refill" />
+                <div>
+                  <b>6KG</b>
+                  <span>KES 1,250</span>
                 </div>
-                <div className="id-warning">NO TRANSACTION WITHOUT ORIGINAL ID.</div>
-              </div>
+              </button>
 
-              <div className="gas-block">
-                <button className="gas-card inner-card" onClick={() => addGasByType("6KG")}>
-                  <img src="/gas-6kg.png" alt="6KG gas refill" />
-                  <div>
-                    <b>6KG</b>
-                    <span>KES 1,250</span>
-                  </div>
-                </button>
-                <button className="gas-card inner-card" onClick={() => addGasByType("13KG")}>
-                  <img src="/gas-13kg.png" alt="13KG gas refill" />
-                  <div>
-                    <b>13KG</b>
-                    <span>KES 2,850</span>
-                  </div>
-                </button>
-                <small className="gas-note">✅ Free gas delivery in Sotik environs.</small>
-              </div>
-            </div>
-          </div>
-        </section>
+              <button className="gas-card inner-card" onClick={() => addGasByType("13KG")}>
+                <img src="/gas-13kg.png" alt="13KG gas refill" />
+                <div>
+                  <b>13KG</b>
+                  <span>KES 2,850</span>
+                </div>
+              </button>
 
-        <section className="services-grid">
-          <div className="card services-merged">
-            <div className="services-col">
-              <h3>Available Services</h3>
-              <ul>
-                {SERVICES.map((service) => (
-                  <li key={service}>{service}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          <div className="card services-merged">
-            <div className="services-col">
-              <h3>Gas Brands Available</h3>
-              <ul>
-                {GAS_BRANDS.map((brand) => (
-                  <li key={brand}>{brand}</li>
-                ))}
-              </ul>
-              <p className="many-more">And many more</p>
+              <small className="gas-note">✅ Free gas delivery in Sotik environs.</small>
             </div>
           </div>
         </section>
 
         <section className="toolbar card">
+          <div className="toolbar-deco toolbar-deco-left" />
+          <div className="toolbar-deco toolbar-deco-right" />
+
           <input
             className="input"
             placeholder="Search by product name, code or SKU..."
@@ -435,6 +416,36 @@ export default function HomePage() {
           </div>
         </section>
 
+        <section className="services-card card">
+          <div className="services-deco services-deco-left" />
+          <div className="services-deco services-deco-right" />
+
+          <div className="services-split">
+            <div className="services-pane services-pane-left">
+              <img src="/mpesa.png" alt="M-Pesa services" className="service-img-large" />
+              <h3>M-Pesa Services</h3>
+              <ul className="services-list">
+                {SERVICES.map((service) => (
+                  <li key={service}>{service}</li>
+                ))}
+              </ul>
+              <div className="id-warning wide-warning">NO TRANSACTION WITHOUT ORIGINAL ID.</div>
+            </div>
+
+            <div className="divider-vertical" />
+
+            <div className="services-pane services-pane-right">
+              <h3>Gas Brands Available</h3>
+              <ul className="gas-brand-list">
+                {GAS_BRANDS.map((brand) => (
+                  <li key={brand}>{brand}</li>
+                ))}
+              </ul>
+              <p className="many-more">And many more</p>
+            </div>
+          </div>
+        </section>
+
         <section className="layout">
           <div className="catalog">
             {catalog.map((p) => {
@@ -447,6 +458,9 @@ export default function HomePage() {
 
               return (
                 <article key={p.id} className="product-card card">
+                  <div className="product-deco product-deco-top" />
+                  <div className="product-deco product-deco-bottom" />
+
                   {p.img ? (
                     <img src={p.img} alt={p.name} className="product-img" />
                   ) : (
@@ -468,6 +482,8 @@ export default function HomePage() {
         </section>
 
         <footer className="card footer-note">
+          <div className="footer-deco footer-deco-left" />
+          <div className="footer-deco footer-deco-right" />
           <b>Mastermind Electricals & Electronics</b>
           <br />
           Phone: <a href={`tel:${SHOP_PHONE}`}>{SHOP_PHONE}</a>
@@ -483,6 +499,8 @@ export default function HomePage() {
         </footer>
 
         <section className="card about-bottom">
+          <div className="about-deco about-deco-left" />
+          <div className="about-deco about-deco-right" />
           <h3>About Our Shop</h3>
           <p>
             Mastermind Electricals & Electronics is a trusted local shop serving Sotik and nearby areas with
@@ -500,10 +518,15 @@ export default function HomePage() {
         <span className="cart-fab-total">KES {total.toLocaleString("en-KE")}</span>
       </button>
 
-      {showCheckout ? <button className="checkout-overlay" onClick={() => setShowCheckout(false)} aria-label="Close checkout" /> : null}
+      {showCheckout ? (
+        <button className="checkout-overlay" onClick={() => setShowCheckout(false)} aria-label="Close checkout" />
+      ) : null}
 
       {showCheckout && (
         <aside className="checkout-popup card">
+          <div className="checkout-popup-deco checkout-popup-deco-top" />
+          <div className="checkout-popup-deco checkout-popup-deco-bottom" />
+
           <div className="checkout-head">
             <h2>Checkout ({cartCount})</h2>
             <button className="close-checkout" onClick={() => setShowCheckout(false)}>
@@ -580,13 +603,15 @@ export default function HomePage() {
             onChange={(e) => setCustomer((c) => ({ ...c, notes: e.target.value }))}
           />
 
-          <button className="btn-primary" disabled={placingOrder || !cartLines.length} onClick={placeOrder}>
-            {placingOrder ? "Placing order..." : "Place Order"}
-          </button>
+          <div className="checkout-actions">
+            <button className="btn-primary" disabled={placingOrder || !cartLines.length} onClick={placeOrder}>
+              {placingOrder ? "Redirecting..." : "Place Order"}
+            </button>
 
-          <button className="btn-mpesa" disabled={paying || !cartLines.length} onClick={checkoutPaystack}>
-            {paying ? "Initializing..." : "Pay with M-pesa (Via Paystack)"}
-          </button>
+            <button className="btn-mpesa" disabled={paying || !cartLines.length} onClick={checkoutPaystack}>
+              {paying ? "Initializing..." : "Pay with M-pesa (Via Paystack)"}
+            </button>
+          </div>
 
           {!!notice && <p className="notice">{notice}</p>}
         </aside>
@@ -603,28 +628,100 @@ export default function HomePage() {
           max-width: 1240px;
           margin: 0 auto;
           padding: 16px;
-          background: #f8fafc;
+          background:
+            radial-gradient(circle at top left, rgba(250, 204, 21, 0.12), transparent 22%),
+            radial-gradient(circle at bottom right, rgba(22, 163, 74, 0.1), transparent 24%),
+            #f8fafc;
           color: #111;
           min-height: 100vh;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .page-orb {
+          position: absolute;
+          border-radius: 999px;
+          pointer-events: none;
+          z-index: 0;
+        }
+
+        .orb-a {
+          width: 220px;
+          height: 220px;
+          background: rgba(250, 204, 21, 0.12);
+          top: -70px;
+          left: -80px;
+        }
+
+        .orb-b {
+          width: 260px;
+          height: 260px;
+          background: rgba(22, 163, 74, 0.08);
+          right: -100px;
+          top: 320px;
+        }
+
+        .orb-c {
+          width: 180px;
+          height: 180px;
+          background: rgba(15, 23, 42, 0.05);
+          left: 40%;
+          bottom: -60px;
+        }
+
+        .shop-shell > * {
+          position: relative;
+          z-index: 1;
         }
 
         .card {
-          background: #fff;
-          border: 1px solid #e5e7eb;
-          border-radius: 18px;
-          padding: 14px;
-          box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+          background: linear-gradient(180deg, #ffffff 0%, #fffdf5 100%);
+          border: 1px solid rgba(250, 204, 21, 0.22);
+          border-radius: 24px;
+          padding: 16px;
+          box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+          position: relative;
+          overflow: hidden;
         }
 
         .inner-card {
-          box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+          box-shadow: 0 8px 22px rgba(15, 23, 42, 0.07);
         }
 
         .hero-card {
           display: grid;
           grid-template-columns: 2fr 1.1fr;
-          gap: 16px;
+          gap: 18px;
           margin-bottom: 14px;
+          background: linear-gradient(135deg, #fffdf4 0%, #ffffff 58%, #f0fdf4 100%);
+        }
+
+        .hero-deco,
+        .toolbar-deco,
+        .services-deco,
+        .product-deco,
+        .footer-deco,
+        .about-deco,
+        .checkout-popup-deco {
+          position: absolute;
+          border-radius: 999px;
+          pointer-events: none;
+        }
+
+        .hero-deco-top {
+          width: 180px;
+          height: 180px;
+          background: rgba(250, 204, 21, 0.12);
+          top: -80px;
+          right: -50px;
+        }
+
+        .hero-deco-bottom {
+          width: 140px;
+          height: 140px;
+          background: rgba(22, 163, 74, 0.08);
+          bottom: -60px;
+          left: -30px;
         }
 
         .hero-left h1 {
@@ -650,12 +747,13 @@ export default function HomePage() {
         .pill {
           text-decoration: none;
           color: #111827;
-          background: #facc15;
+          background: linear-gradient(180deg, #fde047 0%, #facc15 100%);
           padding: 8px 12px;
           border-radius: 999px;
           font-size: 13px;
           font-weight: 800;
           border: none;
+          box-shadow: 0 6px 14px rgba(250, 204, 21, 0.2);
         }
 
         .pill-btn {
@@ -690,62 +788,15 @@ export default function HomePage() {
           gap: 10px;
         }
 
-        .mpesa-card {
-          background: #fff;
-          border: 1px solid #e2e8f0;
-          border-radius: 14px;
-          padding: 10px;
-          display: grid;
-          gap: 8px;
-        }
-
-        .service-img {
-          width: 100%;
-          max-height: 88px;
-          object-fit: contain;
-        }
-
-        .mpesa-services-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 6px;
-        }
-
-        .service-chip {
-          background: #22c55e;
-          color: #fff;
-          border-radius: 10px;
-          padding: 7px 8px;
-          font-size: 11px;
-          font-weight: 800;
-          text-align: center;
-        }
-
-        .id-warning {
-          margin-top: 2px;
-          background: #111827;
-          color: #facc15;
-          border-radius: 10px;
-          padding: 7px;
-          font-size: 10px;
-          font-weight: 900;
-          text-align: center;
-        }
-
-        .gas-block {
-          display: grid;
-          gap: 8px;
-        }
-
         .gas-card {
           display: grid;
           grid-template-columns: 60px 1fr;
           gap: 8px;
           align-items: center;
-          border: 1px solid #e2e8f0;
-          background: #fff;
-          border-radius: 14px;
-          padding: 8px;
+          border: 1px solid #e5e7eb;
+          background: linear-gradient(180deg, #ffffff 0%, #fffbeb 100%);
+          border-radius: 18px;
+          padding: 10px;
           cursor: pointer;
           text-align: left;
         }
@@ -767,53 +818,36 @@ export default function HomePage() {
         .gas-note {
           color: #166534;
           font-size: 12px;
-          font-weight: 700;
-          padding-left: 2px;
-        }
-
-        .services-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 14px;
-          margin-bottom: 14px;
-        }
-
-        .services-merged {
-          min-height: 100%;
-        }
-
-        .services-col h3 {
-          margin-top: 0;
-          margin-bottom: 10px;
-          color: #0f172a;
-        }
-
-        .services-col ul {
-          margin: 0;
-          padding-left: 18px;
-          color: #334155;
-        }
-
-        .services-col li {
-          margin-bottom: 8px;
-          line-height: 1.45;
-        }
-
-        .many-more {
-          margin: 12px 0 0;
           font-weight: 800;
-          color: #0f172a;
+          padding-left: 2px;
         }
 
         .toolbar {
           margin-bottom: 14px;
+          background: linear-gradient(135deg, #ffffff 0%, #fffdf4 100%);
+        }
+
+        .toolbar-deco-left {
+          width: 120px;
+          height: 120px;
+          background: rgba(250, 204, 21, 0.12);
+          left: -40px;
+          top: -35px;
+        }
+
+        .toolbar-deco-right {
+          width: 100px;
+          height: 100px;
+          background: rgba(22, 163, 74, 0.08);
+          right: -25px;
+          bottom: -30px;
         }
 
         .input {
           width: 100%;
-          border: 1px solid #dbe2ea;
-          border-radius: 12px;
-          padding: 11px 12px;
+          border: 1px solid #e5e7eb;
+          border-radius: 14px;
+          padding: 12px 13px;
           margin-bottom: 8px;
           font: inherit;
           background: #fff;
@@ -836,9 +870,91 @@ export default function HomePage() {
         }
 
         .chip-active {
-          background: #facc15;
+          background: linear-gradient(180deg, #fde047 0%, #facc15 100%);
           border-color: #facc15;
           color: #111827;
+        }
+
+        .services-card {
+          margin-bottom: 14px;
+          background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 52%, #fff7ed 100%);
+        }
+
+        .services-deco-left {
+          width: 180px;
+          height: 180px;
+          background: rgba(22, 163, 74, 0.08);
+          left: -70px;
+          top: -70px;
+        }
+
+        .services-deco-right {
+          width: 150px;
+          height: 150px;
+          background: rgba(250, 204, 21, 0.1);
+          right: -50px;
+          bottom: -50px;
+        }
+
+        .services-split {
+          display: grid;
+          grid-template-columns: 1.2fr 1px .8fr;
+          gap: 18px;
+          align-items: start;
+        }
+
+        .services-pane h3 {
+          margin: 0 0 10px;
+          color: #0f172a;
+        }
+
+        .service-img-large {
+          width: 100%;
+          max-width: 180px;
+          max-height: 95px;
+          object-fit: contain;
+          margin-bottom: 12px;
+          display: block;
+        }
+
+        .services-list,
+        .gas-brand-list {
+          margin: 0;
+          padding-left: 18px;
+          color: #334155;
+        }
+
+        .services-list li,
+        .gas-brand-list li {
+          margin-bottom: 8px;
+          line-height: 1.45;
+        }
+
+        .divider-vertical {
+          width: 1px;
+          background: linear-gradient(180deg, transparent, #e2e8f0, transparent);
+          min-height: 100%;
+        }
+
+        .many-more {
+          margin: 12px 0 0;
+          font-weight: 800;
+          color: #0f172a;
+        }
+
+        .id-warning {
+          margin-top: 10px;
+          background: #111827;
+          color: #facc15;
+          border-radius: 12px;
+          padding: 8px;
+          font-size: 10px;
+          font-weight: 900;
+          text-align: center;
+        }
+
+        .wide-warning {
+          max-width: 320px;
         }
 
         .layout {
@@ -855,18 +971,35 @@ export default function HomePage() {
           display: grid;
           gap: 8px;
           transition: transform 0.15s ease, box-shadow 0.15s ease;
+          background: linear-gradient(180deg, #ffffff 0%, #fffef8 100%);
         }
 
         .product-card:hover {
           transform: translateY(-2px);
-          box-shadow: 0 14px 30px rgba(15, 23, 42, 0.1);
+          box-shadow: 0 18px 34px rgba(15, 23, 42, 0.11);
+        }
+
+        .product-deco-top {
+          width: 110px;
+          height: 110px;
+          background: rgba(250, 204, 21, 0.1);
+          top: -42px;
+          right: -38px;
+        }
+
+        .product-deco-bottom {
+          width: 78px;
+          height: 78px;
+          background: rgba(22, 163, 74, 0.08);
+          left: -24px;
+          bottom: -24px;
         }
 
         .product-img,
         .product-placeholder {
           width: 100%;
           height: 140px;
-          border-radius: 14px;
+          border-radius: 16px;
           object-fit: contain;
           background: #f8fafc;
           border: 1px solid #e2e8f0;
@@ -916,27 +1049,29 @@ export default function HomePage() {
         .clear-btn,
         .close-checkout {
           border: none;
-          border-radius: 12px;
+          border-radius: 14px;
           padding: 11px 12px;
           font-weight: 900;
           cursor: pointer;
-          margin-top: 6px;
         }
 
         .btn-primary {
-          background: #facc15;
+          background: linear-gradient(180deg, #fde047 0%, #facc15 100%);
           color: #111827;
+          box-shadow: 0 8px 18px rgba(250, 204, 21, 0.22);
         }
 
         .btn-mpesa {
-          background: #22c55e;
+          background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
           color: #fff;
+          box-shadow: 0 8px 18px rgba(34, 197, 94, 0.18);
         }
 
         .clear-btn {
           background: #ef4444;
           color: #fff;
           width: 100%;
+          margin-top: 8px;
         }
 
         .btn-primary:disabled,
@@ -949,11 +1084,45 @@ export default function HomePage() {
           margin-top: 14px;
           color: #334155;
           font-size: 14px;
+          background: linear-gradient(135deg, #fffdf4 0%, #ffffff 100%);
+        }
+
+        .footer-deco-left {
+          width: 100px;
+          height: 100px;
+          background: rgba(250, 204, 21, 0.12);
+          left: -30px;
+          top: -30px;
+        }
+
+        .footer-deco-right {
+          width: 90px;
+          height: 90px;
+          background: rgba(22, 163, 74, 0.08);
+          right: -25px;
+          bottom: -30px;
         }
 
         .about-bottom {
           margin-top: 14px;
           color: #334155;
+          background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+        }
+
+        .about-deco-left {
+          width: 110px;
+          height: 110px;
+          background: rgba(22, 163, 74, 0.08);
+          left: -35px;
+          bottom: -35px;
+        }
+
+        .about-deco-right {
+          width: 110px;
+          height: 110px;
+          background: rgba(250, 204, 21, 0.1);
+          right: -40px;
+          top: -30px;
         }
 
         .cart-fab {
@@ -962,7 +1131,7 @@ export default function HomePage() {
           right: 16px;
           z-index: 1100;
           border: none;
-          background: #111827;
+          background: linear-gradient(180deg, #111827 0%, #1f2937 100%);
           color: #fff;
           border-radius: 18px;
           padding: 12px 14px;
@@ -1004,8 +1173,25 @@ export default function HomePage() {
           max-height: calc(100vh - 100px);
           overflow: auto;
           z-index: 1200;
-          border-radius: 18px;
+          border-radius: 22px;
           box-shadow: 0 20px 50px rgba(15, 23, 42, 0.22);
+          background: linear-gradient(180deg, #ffffff 0%, #fffef8 100%);
+        }
+
+        .checkout-popup-deco-top {
+          width: 120px;
+          height: 120px;
+          background: rgba(250, 204, 21, 0.1);
+          right: -30px;
+          top: -30px;
+        }
+
+        .checkout-popup-deco-bottom {
+          width: 100px;
+          height: 100px;
+          background: rgba(22, 163, 74, 0.08);
+          left: -20px;
+          bottom: -20px;
         }
 
         .checkout-head {
@@ -1027,7 +1213,6 @@ export default function HomePage() {
           width: 42px;
           min-width: 42px;
           padding: 10px 0;
-          margin: 0;
         }
 
         .cart-line {
@@ -1100,6 +1285,12 @@ export default function HomePage() {
           color: #0f172a;
         }
 
+        .checkout-actions {
+          display: grid;
+          gap: 12px;
+          margin-top: 8px;
+        }
+
         .muted {
           color: #64748b;
         }
@@ -1107,6 +1298,7 @@ export default function HomePage() {
         .notice {
           color: #1e293b;
           font-weight: 700;
+          margin-top: 10px;
         }
 
         .toast {
@@ -1146,8 +1338,13 @@ export default function HomePage() {
             grid-template-columns: 1fr;
           }
 
-          .services-grid {
+          .services-split {
             grid-template-columns: 1fr;
+            gap: 14px;
+          }
+
+          .divider-vertical {
+            display: none;
           }
         }
 
@@ -1170,8 +1367,8 @@ export default function HomePage() {
             max-height: calc(100vh - 24px);
           }
 
-          .mpesa-services-grid {
-            grid-template-columns: 1fr 1fr;
+          .service-img-large {
+            max-width: 150px;
           }
         }
       `}</style>
