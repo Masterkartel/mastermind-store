@@ -34,15 +34,30 @@ const FIXED_CATEGORIES = [
 ];
 
 const SERVICES = [
-  "Token Purchase",
-  "New Electric Connection Guidance",
-  "Token Meter Applications",
-  "Electrical Accessories",
-  "Installation Support",
-  "Emergency Assistance",
+  "Satellite Installation Support (Zuku, StarTimes, DStv, GOtv, Azam)",
+  "CCTV Installation",
+  "Electrical Wiring Installation",
+  "M-Pesa Services",
+  "Gas Refill Services",
+  "Electrical Accessories Supply",
+  "Socket & Switch Installation",
+  "Lighting Installation",
+  "Cooker & Appliance Connection Support",
+  "Power Backup & Basic Troubleshooting",
+  "Home & Shop Electrical Maintenance",
+  "Emergency Electrical Assistance",
 ];
 
-const GAS_BRANDS = ["Pro Gas", "Total Gas", "Hashi Gas", "Ola Gas", "Sea Gas"];
+const GAS_BRANDS = [
+  "Pro Gas",
+  "Total Gas",
+  "Hashi Gas",
+  "Ola Gas",
+  "Sea Gas",
+  "Supa Gas (National)",
+  "K-Gas",
+  "Top Gas",
+];
 
 const isGas6 = (name = "") => /(gas.*6|6kg)/i.test(name);
 const isGas13 = (name = "") => /(gas.*13|13kg)/i.test(name);
@@ -60,7 +75,7 @@ export default function HomePage() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
   const [cart, setCart] = useState<Record<string, number>>({});
-  const [showCheckout, setShowCheckout] = useState(true);
+  const [showCheckout, setShowCheckout] = useState(false);
   const [customer, setCustomer] = useState({
     name: "",
     phone: "",
@@ -77,6 +92,10 @@ export default function HomePage() {
     setToast(text);
     setTimeout(() => setToast(""), 1700);
   };
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -248,6 +267,7 @@ export default function HomePage() {
       setNotice(`Order ${data.id} placed successfully. We will contact you shortly.`);
       setCart({});
       setCustomer({ name: "", phone: "", email: "", address: "", notes: "" });
+      setShowCheckout(false);
     } catch {
       setNotice("Network error while placing order.");
     } finally {
@@ -302,19 +322,7 @@ export default function HomePage() {
       </Head>
 
       <main className="shop-shell">
-        <div className="blob blob-a" />
-        <div className="blob blob-b" />
-
-        <button className="top-cart-bar" onClick={() => setShowCheckout((v) => !v)}>
-          <span>
-            <b>🛒 Cart:</b> {cartCount} item(s)
-          </span>
-          <span>
-            <b>KES {total.toLocaleString("en-KE")}</b> • {showCheckout ? "Hide" : "Show"} checkout
-          </span>
-        </button>
-
-        <section className="hero">
+        <section className="hero-card card">
           <div className="hero-left">
             <h1>Mastermind Electricals & Electronics</h1>
             <p>
@@ -339,6 +347,7 @@ export default function HomePage() {
               <button className="pill pill-btn" onClick={copyTill}>
                 ⧉ Till No: {TILL}
               </button>
+
               <a href={`mailto:${EMAIL}`} className="pill">
                 ✉️ {EMAIL}
               </a>
@@ -349,7 +358,7 @@ export default function HomePage() {
 
           <div className="hero-right">
             <div className="hero-right-grid">
-              <div className="mpesa-card">
+              <div className="mpesa-card inner-card">
                 <img src="/mpesa.png" alt="M-Pesa services" className="service-img" />
                 <div className="mpesa-services-grid">
                   <span className="service-chip">Deposit Cash</span>
@@ -361,14 +370,14 @@ export default function HomePage() {
               </div>
 
               <div className="gas-block">
-                <button className="gas-card" onClick={() => addGasByType("6KG")}>
+                <button className="gas-card inner-card" onClick={() => addGasByType("6KG")}>
                   <img src="/gas-6kg.png" alt="6KG gas refill" />
                   <div>
                     <b>6KG</b>
                     <span>KES 1,250</span>
                   </div>
                 </button>
-                <button className="gas-card" onClick={() => addGasByType("13KG")}>
+                <button className="gas-card inner-card" onClick={() => addGasByType("13KG")}>
                   <img src="/gas-13kg.png" alt="13KG gas refill" />
                   <div>
                     <b>13KG</b>
@@ -381,23 +390,28 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="card services-merged">
-          <div className="services-col">
-            <h3>Available Services</h3>
-            <ul>
-              {SERVICES.map((service) => (
-                <li key={service}>{service}</li>
-              ))}
-            </ul>
+        <section className="services-grid">
+          <div className="card services-merged">
+            <div className="services-col">
+              <h3>Available Services</h3>
+              <ul>
+                {SERVICES.map((service) => (
+                  <li key={service}>{service}</li>
+                ))}
+              </ul>
+            </div>
           </div>
 
-          <div className="services-col">
-            <h3>Gas Brands Available</h3>
-            <ul>
-              {GAS_BRANDS.map((brand) => (
-                <li key={brand}>{brand}</li>
-              ))}
-            </ul>
+          <div className="card services-merged">
+            <div className="services-col">
+              <h3>Gas Brands Available</h3>
+              <ul>
+                {GAS_BRANDS.map((brand) => (
+                  <li key={brand}>{brand}</li>
+                ))}
+              </ul>
+              <p className="many-more">And many more</p>
+            </div>
           </div>
         </section>
 
@@ -432,7 +446,7 @@ export default function HomePage() {
               const shown = gasDisplayPrice(p.name || "", base);
 
               return (
-                <article key={p.id} className="product-card">
+                <article key={p.id} className="product-card card">
                   {p.img ? (
                     <img src={p.img} alt={p.name} className="product-img" />
                   ) : (
@@ -451,95 +465,6 @@ export default function HomePage() {
               );
             })}
           </div>
-
-          {showCheckout && (
-            <aside className="checkout card">
-              <h2>Checkout ({cartCount})</h2>
-
-              {cartLines.length === 0 ? (
-                <p className="muted">No items yet.</p>
-              ) : (
-                <>
-                  {cartLines.map((line) => {
-                    const base = Number(line.product.retail_price ?? line.product.price ?? 0) || 0;
-                    const unit = gasDisplayPrice(line.product.name || "", base);
-                    return (
-                      <div key={line.product.id} className="cart-line">
-                        <div>
-                          <span>{line.product.name}</span>
-                          <small className="cart-line-price">
-                            KES {unit.toLocaleString("en-KE")} each
-                          </small>
-                        </div>
-                        <div>
-                          <button
-                            className="qty-btn"
-                            onClick={() => reduceFromCart(String(line.product.id))}
-                          >
-                            -
-                          </button>
-                          <b style={{ margin: "0 8px" }}>{line.qty}</b>
-                          <button className="qty-btn" onClick={() => addToCart(String(line.product.id))}>
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {cartLines.length >= 2 && (
-                    <button className="clear-btn" onClick={clearCart}>
-                      Remove All
-                    </button>
-                  )}
-                </>
-              )}
-
-              <p className="total">Total: KES {total.toLocaleString("en-KE")}</p>
-
-              <input
-                className="input"
-                placeholder="Customer full name"
-                value={customer.name}
-                onChange={(e) => setCustomer((c) => ({ ...c, name: e.target.value }))}
-              />
-              <input
-                className="input"
-                placeholder="Phone number"
-                value={customer.phone}
-                onChange={(e) => setCustomer((c) => ({ ...c, phone: e.target.value }))}
-              />
-              <input
-                className="input"
-                placeholder="Email (required for pay)"
-                value={customer.email}
-                onChange={(e) => setCustomer((c) => ({ ...c, email: e.target.value }))}
-              />
-              <input
-                className="input"
-                placeholder="Delivery address / landmark"
-                value={customer.address}
-                onChange={(e) => setCustomer((c) => ({ ...c, address: e.target.value }))}
-              />
-              <textarea
-                className="input"
-                rows={3}
-                placeholder="Order notes"
-                value={customer.notes}
-                onChange={(e) => setCustomer((c) => ({ ...c, notes: e.target.value }))}
-              />
-
-              <button className="btn-primary" disabled={placingOrder || !cartLines.length} onClick={placeOrder}>
-                {placingOrder ? "Placing order..." : "Place Order"}
-              </button>
-
-              <button className="btn-mpesa" disabled={paying || !cartLines.length} onClick={checkoutPaystack}>
-                {paying ? "Initializing..." : "Pay with M-pesa (Via Paystack)"}
-              </button>
-
-              {!!notice && <p className="notice">{notice}</p>}
-            </aside>
-          )}
         </section>
 
         <footer className="card footer-note">
@@ -561,10 +486,111 @@ export default function HomePage() {
           <h3>About Our Shop</h3>
           <p>
             Mastermind Electricals & Electronics is a trusted local shop serving Sotik and nearby areas with
-            electrical materials, household appliances, gas refill services, and convenient M-Pesa services.
+            electrical materials, household appliances, gas refill services, convenient M-Pesa services,
+            electrical installations, satellite support, and CCTV solutions.
           </p>
         </section>
       </main>
+
+      <button className="cart-fab" onClick={() => setShowCheckout(true)} aria-label="Open cart">
+        <span className="cart-fab-icon">🛒</span>
+        <span className="cart-fab-text">
+          <b>{cartCount}</b> item(s)
+        </span>
+        <span className="cart-fab-total">KES {total.toLocaleString("en-KE")}</span>
+      </button>
+
+      {showCheckout ? <button className="checkout-overlay" onClick={() => setShowCheckout(false)} aria-label="Close checkout" /> : null}
+
+      {showCheckout && (
+        <aside className="checkout-popup card">
+          <div className="checkout-head">
+            <h2>Checkout ({cartCount})</h2>
+            <button className="close-checkout" onClick={() => setShowCheckout(false)}>
+              ✕
+            </button>
+          </div>
+
+          {cartLines.length === 0 ? (
+            <p className="muted">No items yet.</p>
+          ) : (
+            <>
+              {cartLines.map((line) => {
+                const base = Number(line.product.retail_price ?? line.product.price ?? 0) || 0;
+                const unit = gasDisplayPrice(line.product.name || "", base);
+                return (
+                  <div key={line.product.id} className="cart-line">
+                    <div className="cart-line-info">
+                      <span>{line.product.name}</span>
+                      <small className="cart-line-price">KES {unit.toLocaleString("en-KE")} each</small>
+                    </div>
+
+                    <div className="qty-wrap">
+                      <button className="qty-btn qty-minus" onClick={() => reduceFromCart(String(line.product.id))}>
+                        -
+                      </button>
+                      <b className="qty-value">{line.qty}</b>
+                      <button className="qty-btn qty-plus" onClick={() => addToCart(String(line.product.id))}>
+                        +
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {cartLines.length >= 2 && (
+                <button className="clear-btn" onClick={clearCart}>
+                  Remove All
+                </button>
+              )}
+            </>
+          )}
+
+          <p className="total">Total: KES {total.toLocaleString("en-KE")}</p>
+
+          <input
+            className="input"
+            placeholder="Customer full name"
+            value={customer.name}
+            onChange={(e) => setCustomer((c) => ({ ...c, name: e.target.value }))}
+          />
+          <input
+            className="input"
+            placeholder="Phone number"
+            value={customer.phone}
+            onChange={(e) => setCustomer((c) => ({ ...c, phone: e.target.value }))}
+          />
+          <input
+            className="input"
+            placeholder="Email (required for pay)"
+            value={customer.email}
+            onChange={(e) => setCustomer((c) => ({ ...c, email: e.target.value }))}
+          />
+          <input
+            className="input"
+            placeholder="Delivery address / landmark"
+            value={customer.address}
+            onChange={(e) => setCustomer((c) => ({ ...c, address: e.target.value }))}
+          />
+          <textarea
+            className="input"
+            rows={3}
+            placeholder="Order notes"
+            value={customer.notes}
+            onChange={(e) => setCustomer((c) => ({ ...c, notes: e.target.value }))}
+          />
+
+          <button className="btn-primary" disabled={placingOrder || !cartLines.length} onClick={placeOrder}>
+            {placingOrder ? "Placing order..." : "Place Order"}
+          </button>
+
+          <button className="btn-mpesa" disabled={paying || !cartLines.length} onClick={checkoutPaystack}>
+            {paying ? "Initializing..." : "Pay with M-pesa (Via Paystack)"}
+          </button>
+
+          {!!notice && <p className="notice">{notice}</p>}
+        </aside>
+      )}
 
       {toast ? <div className="toast">{toast}</div> : null}
 
@@ -580,85 +606,55 @@ export default function HomePage() {
           background: #f8fafc;
           color: #111;
           min-height: 100vh;
-          position: relative;
-          overflow: hidden;
         }
 
-        .blob {
-          position: absolute;
-          border-radius: 999px;
-          opacity: 0.2;
-          z-index: 0;
+        .card {
+          background: #fff;
+          border: 1px solid #e5e7eb;
+          border-radius: 18px;
+          padding: 14px;
+          box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
         }
 
-        .blob-a {
-          width: 220px;
-          height: 220px;
-          background: #facc15;
-          top: -70px;
-          right: -80px;
-          border-bottom-left-radius: 200px;
+        .inner-card {
+          box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
         }
 
-        .blob-b {
-          width: 180px;
-          height: 180px;
-          background: #111;
-          bottom: -60px;
-          left: -60px;
-          border-top-right-radius: 200px;
-        }
-
-        .shop-shell > * {
-          position: relative;
-          z-index: 1;
-        }
-
-        .top-cart-bar {
-          width: 100%;
-          border: none;
-          background: #111;
-          color: #fff;
-          border-radius: 14px;
-          padding: 12px 14px;
-          margin-bottom: 12px;
-          display: flex;
-          justify-content: space-between;
-          cursor: pointer;
-          font-weight: 700;
-        }
-
-        .hero {
+        .hero-card {
           display: grid;
-          grid-template-columns: 2fr 1fr;
+          grid-template-columns: 2fr 1.1fr;
           gap: 16px;
-          background: #111;
-          color: #fff;
-          border-radius: 16px;
-          padding: 16px;
-          margin-bottom: 12px;
+          margin-bottom: 14px;
         }
 
-        .hero p {
-          color: #e2e8f0;
-          line-height: 1.5;
+        .hero-left h1 {
+          margin: 0 0 8px;
+          font-size: 30px;
+          line-height: 1.15;
+          color: #0f172a;
+        }
+
+        .hero-left p {
+          margin: 0;
+          color: #475569;
+          line-height: 1.6;
         }
 
         .info-row {
           display: flex;
           flex-wrap: wrap;
           gap: 8px;
-          margin: 10px 0;
+          margin: 12px 0 10px;
         }
 
         .pill {
           text-decoration: none;
-          color: #111;
+          color: #111827;
           background: #facc15;
-          padding: 6px 10px;
+          padding: 8px 12px;
           border-radius: 999px;
           font-size: 13px;
-          font-weight: 700;
+          font-weight: 800;
           border: none;
         }
 
@@ -679,7 +675,8 @@ export default function HomePage() {
         }
 
         .hours {
-          color: #cbd5e1;
+          color: #64748b;
+          font-weight: 600;
         }
 
         .hero-right {
@@ -689,21 +686,22 @@ export default function HomePage() {
 
         .hero-right-grid {
           display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 8px;
+          grid-template-columns: 1fr;
+          gap: 10px;
         }
 
         .mpesa-card {
           background: #fff;
-          border-radius: 10px;
-          padding: 8px;
+          border: 1px solid #e2e8f0;
+          border-radius: 14px;
+          padding: 10px;
           display: grid;
-          gap: 6px;
+          gap: 8px;
         }
 
         .service-img {
           width: 100%;
-          max-height: 80px;
+          max-height: 88px;
           object-fit: contain;
         }
 
@@ -716,78 +714,78 @@ export default function HomePage() {
         .service-chip {
           background: #22c55e;
           color: #fff;
-          border-radius: 9px;
-          padding: 6px 8px;
+          border-radius: 10px;
+          padding: 7px 8px;
           font-size: 11px;
-          font-weight: 700;
+          font-weight: 800;
           text-align: center;
         }
 
         .id-warning {
-          margin-top: 4px;
-          background: #111;
+          margin-top: 2px;
+          background: #111827;
           color: #facc15;
-          border-radius: 8px;
-          padding: 6px;
+          border-radius: 10px;
+          padding: 7px;
           font-size: 10px;
-          font-weight: 800;
+          font-weight: 900;
           text-align: center;
         }
 
         .gas-block {
           display: grid;
-          gap: 6px;
+          gap: 8px;
         }
 
         .gas-card {
           display: grid;
-          grid-template-columns: 58px 1fr;
-          gap: 6px;
+          grid-template-columns: 60px 1fr;
+          gap: 8px;
           align-items: center;
           border: 1px solid #e2e8f0;
           background: #fff;
-          border-radius: 10px;
-          padding: 6px;
+          border-radius: 14px;
+          padding: 8px;
           cursor: pointer;
           text-align: left;
         }
 
         .gas-card img {
-          width: 56px;
-          height: 56px;
+          width: 58px;
+          height: 58px;
           object-fit: contain;
         }
 
         .gas-card span {
           display: block;
           color: #b45309;
-          font-weight: 800;
+          font-weight: 900;
           margin-top: 2px;
           font-size: 12px;
         }
 
         .gas-note {
-          color: #fde68a;
-          font-size: 11px;
+          color: #166534;
+          font-size: 12px;
+          font-weight: 700;
+          padding-left: 2px;
         }
 
-        .card {
-          background: #fff;
-          border: 1px solid #e2e8f0;
-          border-radius: 14px;
-          padding: 12px;
+        .services-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 14px;
+          margin-bottom: 14px;
         }
 
         .services-merged {
-          margin-bottom: 12px;
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 16px;
+          min-height: 100%;
         }
 
         .services-col h3 {
           margin-top: 0;
           margin-bottom: 10px;
+          color: #0f172a;
         }
 
         .services-col ul {
@@ -797,20 +795,28 @@ export default function HomePage() {
         }
 
         .services-col li {
-          margin-bottom: 6px;
+          margin-bottom: 8px;
+          line-height: 1.45;
+        }
+
+        .many-more {
+          margin: 12px 0 0;
+          font-weight: 800;
+          color: #0f172a;
         }
 
         .toolbar {
-          margin-bottom: 12px;
+          margin-bottom: 14px;
         }
 
         .input {
           width: 100%;
-          border: 1px solid #e2e8f0;
-          border-radius: 10px;
-          padding: 10px;
+          border: 1px solid #dbe2ea;
+          border-radius: 12px;
+          padding: 11px 12px;
           margin-bottom: 8px;
           font: inherit;
+          background: #fff;
         }
 
         .chips {
@@ -823,43 +829,44 @@ export default function HomePage() {
           background: #fff;
           border: 1px solid #e2e8f0;
           border-radius: 999px;
-          padding: 6px 10px;
+          padding: 7px 11px;
           cursor: pointer;
-          font-weight: 700;
+          font-weight: 800;
+          color: #334155;
         }
 
         .chip-active {
           background: #facc15;
           border-color: #facc15;
-          color: #111;
+          color: #111827;
         }
 
         .layout {
-          display: grid;
-          grid-template-columns: 2fr 1fr;
-          gap: 14px;
+          display: block;
         }
 
         .catalog {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-          gap: 12px;
+          gap: 14px;
         }
 
         .product-card {
-          background: #fff;
-          border: 1px solid #e2e8f0;
-          border-radius: 16px;
-          padding: 10px;
           display: grid;
-          gap: 6px;
+          gap: 8px;
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .product-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 14px 30px rgba(15, 23, 42, 0.1);
         }
 
         .product-img,
         .product-placeholder {
           width: 100%;
-          height: 130px;
-          border-radius: 12px;
+          height: 140px;
+          border-radius: 14px;
           object-fit: contain;
           background: #f8fafc;
           border: 1px solid #e2e8f0;
@@ -869,17 +876,27 @@ export default function HomePage() {
           display: block;
         }
 
+        .product-card h3 {
+          margin: 0;
+          font-size: 16px;
+          color: #0f172a;
+        }
+
         .price {
           margin: 0;
-          font-weight: 800;
+          font-weight: 900;
+          font-size: 18px;
+          color: #111827;
         }
 
         .in-stock {
           color: #166534;
+          font-weight: 700;
         }
 
         .out-stock {
           color: #b91c1c;
+          font-weight: 700;
         }
 
         .low-tag {
@@ -889,31 +906,26 @@ export default function HomePage() {
           border: 1px solid #fecaca;
           border-radius: 999px;
           font-size: 12px;
-          font-weight: 700;
-          padding: 2px 8px;
+          font-weight: 800;
+          padding: 3px 9px;
           width: fit-content;
         }
 
         .btn-primary,
-        .btn-dark,
         .btn-mpesa,
-        .clear-btn {
+        .clear-btn,
+        .close-checkout {
           border: none;
-          border-radius: 10px;
-          padding: 10px;
-          font-weight: 800;
+          border-radius: 12px;
+          padding: 11px 12px;
+          font-weight: 900;
           cursor: pointer;
           margin-top: 6px;
         }
 
         .btn-primary {
           background: #facc15;
-          color: #111;
-        }
-
-        .btn-dark {
-          background: #111;
-          color: #fff;
+          color: #111827;
         }
 
         .btn-mpesa {
@@ -928,46 +940,164 @@ export default function HomePage() {
         }
 
         .btn-primary:disabled,
-        .btn-dark:disabled,
         .btn-mpesa:disabled {
           opacity: 0.6;
           cursor: not-allowed;
         }
 
-        .checkout {
-          position: sticky;
-          top: 10px;
-          height: fit-content;
-          border-radius: 16px;
+        .footer-note {
+          margin-top: 14px;
+          color: #334155;
+          font-size: 14px;
+        }
+
+        .about-bottom {
+          margin-top: 14px;
+          color: #334155;
+        }
+
+        .cart-fab {
+          position: fixed;
+          top: 90px;
+          right: 16px;
+          z-index: 1100;
+          border: none;
+          background: #111827;
+          color: #fff;
+          border-radius: 18px;
+          padding: 12px 14px;
+          display: grid;
+          gap: 3px;
+          min-width: 130px;
+          box-shadow: 0 14px 28px rgba(0, 0, 0, 0.22);
+          cursor: pointer;
+          text-align: left;
+        }
+
+        .cart-fab-icon {
+          font-size: 18px;
+        }
+
+        .cart-fab-text,
+        .cart-fab-total {
+          font-size: 13px;
+        }
+
+        .cart-fab-total {
+          color: #facc15;
+          font-weight: 900;
+        }
+
+        .checkout-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.38);
+          border: none;
+          z-index: 1190;
+        }
+
+        .checkout-popup {
+          position: fixed;
+          top: 84px;
+          right: 16px;
+          width: min(410px, calc(100vw - 24px));
+          max-height: calc(100vh - 100px);
+          overflow: auto;
+          z-index: 1200;
+          border-radius: 18px;
+          box-shadow: 0 20px 50px rgba(15, 23, 42, 0.22);
+        }
+
+        .checkout-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          margin-bottom: 8px;
+        }
+
+        .checkout-head h2 {
+          margin: 0;
+          color: #0f172a;
+        }
+
+        .close-checkout {
+          background: #111827;
+          color: #fff;
+          width: 42px;
+          min-width: 42px;
+          padding: 10px 0;
+          margin: 0;
         }
 
         .cart-line {
           display: flex;
           justify-content: space-between;
+          align-items: center;
+          gap: 12px;
           border-bottom: 1px dashed #e2e8f0;
-          padding-bottom: 6px;
-          margin-bottom: 6px;
+          padding: 10px 0;
+        }
+
+        .cart-line-info {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .cart-line-info span {
+          display: block;
+          color: #0f172a;
+          font-weight: 700;
         }
 
         .cart-line-price {
           display: block;
           color: #64748b;
           font-size: 12px;
+          margin-top: 3px;
+        }
+
+        .qty-wrap {
+          display: flex;
+          align-items: center;
+          gap: 8px;
         }
 
         .qty-btn {
           border: 1px solid #cbd5e1;
           background: #fff;
-          border-radius: 8px;
-          width: 26px;
-          height: 26px;
+          border-radius: 10px;
+          width: 30px;
+          height: 30px;
           cursor: pointer;
+          font-size: 20px;
+          line-height: 1;
+          font-weight: 900;
+          display: grid;
+          place-items: center;
+        }
+
+        .qty-minus {
+          color: #dc2626;
+          font-weight: 900;
+        }
+
+        .qty-plus {
+          color: #16a34a;
+          font-weight: 900;
+        }
+
+        .qty-value {
+          min-width: 18px;
+          text-align: center;
+          color: #111827;
         }
 
         .total {
           font-size: 18px;
-          font-weight: 800;
-          margin: 8px 0;
+          font-weight: 900;
+          margin: 10px 0 8px;
+          color: #0f172a;
         }
 
         .muted {
@@ -976,45 +1106,34 @@ export default function HomePage() {
 
         .notice {
           color: #1e293b;
-          font-weight: 600;
-        }
-
-        .footer-note {
-          margin-top: 12px;
-          color: #334155;
-          font-size: 14px;
-        }
-
-        .about-bottom {
-          margin-top: 12px;
-          color: #334155;
+          font-weight: 700;
         }
 
         .toast {
           position: fixed;
           top: 16px;
           right: 16px;
-          background: #111;
+          background: #111827;
           color: #fff;
           padding: 10px 12px;
-          border-radius: 10px;
+          border-radius: 12px;
           box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-          z-index: 1200;
-          font-weight: 700;
+          z-index: 1300;
+          font-weight: 800;
         }
 
         .wa-float {
           position: fixed;
           right: 16px;
           bottom: 16px;
-          width: 56px;
-          height: 56px;
+          width: 58px;
+          height: 58px;
           border-radius: 999px;
           background: #25d366;
           display: grid;
           place-items: center;
           box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
-          z-index: 999;
+          z-index: 1100;
         }
 
         .wa-float img {
@@ -1023,30 +1142,36 @@ export default function HomePage() {
         }
 
         @media (max-width: 980px) {
-          .hero {
+          .hero-card {
             grid-template-columns: 1fr;
           }
 
-          .hero-right-grid {
+          .services-grid {
             grid-template-columns: 1fr;
           }
+        }
 
-          .services-merged {
-            grid-template-columns: 1fr;
+        @media (max-width: 640px) {
+          .shop-shell {
+            padding: 12px;
           }
 
-          .layout {
-            grid-template-columns: 1fr;
+          .cart-fab {
+            top: auto;
+            bottom: 86px;
+            right: 12px;
+            min-width: 118px;
           }
 
-          .checkout {
-            position: static;
+          .checkout-popup {
+            top: auto;
+            right: 12px;
+            bottom: 12px;
+            max-height: calc(100vh - 24px);
           }
 
-          .top-cart-bar {
-            flex-direction: column;
-            gap: 4px;
-            text-align: left;
+          .mpesa-services-grid {
+            grid-template-columns: 1fr 1fr;
           }
         }
       `}</style>
