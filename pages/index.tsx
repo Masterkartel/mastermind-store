@@ -104,9 +104,12 @@ export default function Home() {
       </Head>
 
       <main className="shop-page">
+        <section className="page-head hero">
+          <h1 style={{ margin: 0 }}>Mastermind Electricals & Electronics</h1>
+          <p style={{ margin: "6px 0 0" }}>Shop online with fast order processing and trusted in-store pickup.</p>
+        </section>
+
         <section className="hero card">
-          <h1>Mastermind Electricals & Electronics</h1>
-          <p>Quality electronics and accessories delivered fast.</p>
           <input
             className="input"
             placeholder="Search products"
