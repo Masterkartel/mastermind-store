@@ -369,27 +369,7 @@ Total: KES ${total.toLocaleString("en-KE")}`;
             <small className="hours">Open Mon-Sat 8:00am–9:00pm • Sun 10:00am–9:00pm</small>
           </div>
 
-          <div className="hero-right">
-            <div className="hero-right-grid">
-              <button className="gas-card inner-card" onClick={() => addGasByType("6KG")}>
-                <img src="/gas-6kg.png" alt="6KG gas refill" />
-                <div>
-                  <b>6KG</b>
-                  <span>KES 1,250</span>
-                </div>
-              </button>
-
-              <button className="gas-card inner-card" onClick={() => addGasByType("13KG")}>
-                <img src="/gas-13kg.png" alt="13KG gas refill" />
-                <div>
-                  <b>13KG</b>
-                  <span>KES 2,850</span>
-                </div>
-              </button>
-
-              <small className="gas-note">✅ Free gas delivery in Sotik environs.</small>
-            </div>
-          </div>
+          <div className="hero-right" />
         </section>
 
         <section className="toolbar card">
@@ -444,6 +424,26 @@ Total: KES ${total.toLocaleString("en-KE")}`;
 
             <div className="services-pane services-pane-right">
               <h3>Gas Brands Available</h3>
+
+              <div className="gas-actions-grid">
+                <button className="gas-card inner-card" onClick={() => addGasByType("6KG")}>
+                  <img src="/gas-6kg.png" alt="6KG gas refill" />
+                  <div>
+                    <b>6KG</b>
+                    <span>KES 1,250</span>
+                  </div>
+                </button>
+
+                <button className="gas-card inner-card" onClick={() => addGasByType("13KG")}>
+                  <img src="/gas-13kg.png" alt="13KG gas refill" />
+                  <div>
+                    <b>13KG</b>
+                    <span>KES 2,850</span>
+                  </div>
+                </button>
+              </div>
+
+              <small className="gas-note gas-note-section">✅ Free gas delivery in Sotik environs.</small>
 
               <div className="gas-brand-grid">
                 {GAS_BRANDS.map((brand) => (
@@ -749,6 +749,10 @@ Total: KES ${total.toLocaleString("en-KE")}`;
           line-height: 1.6;
         }
 
+        .hero-right {
+          min-height: 1px;
+        }
+
         .info-row {
           display: flex;
           flex-wrap: wrap;
@@ -789,17 +793,6 @@ Total: KES ${total.toLocaleString("en-KE")}`;
           font-weight: 600;
         }
 
-        .hero-right {
-          display: grid;
-          align-content: start;
-        }
-
-        .hero-right-grid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 10px;
-        }
-
         .gas-card {
           display: grid;
           grid-template-columns: 60px 1fr;
@@ -827,11 +820,22 @@ Total: KES ${total.toLocaleString("en-KE")}`;
           font-size: 12px;
         }
 
+        .gas-actions-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          margin-bottom: 8px;
+        }
+
         .gas-note {
           color: #166534;
           font-size: 12px;
           font-weight: 800;
-          padding-left: 2px;
+        }
+
+        .gas-note-section {
+          display: block;
+          margin-bottom: 12px;
         }
 
         .toolbar {
@@ -1421,7 +1425,8 @@ Total: KES ${total.toLocaleString("en-KE")}`;
             max-width: 150px;
           }
 
-          .gas-brand-grid {
+          .gas-brand-grid,
+          .gas-actions-grid {
             grid-template-columns: 1fr 1fr;
           }
         }
