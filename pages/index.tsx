@@ -34,15 +34,11 @@ const FIXED_CATEGORIES = [
   "Gas Refills",
 ];
 
-const MPESA_SERVICES = [
-  "Deposit",
-  "Withdrawal",
-  "SIM Replacement",
-  "SIM Registration",
-];
+const isGasProduct = (name = "") => /(gas|6kg|13kg|refill|cylinder)/i.test(name);
 
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [seedProducts, setSeedProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -57,6 +53,7 @@ export default function HomePage() {
   const [placingOrder, setPlacingOrder] = useState(false);
   const [paying, setPaying] = useState(false);
 
+  // Load visible catalog
   useEffect(() => {
     (async () => {
       try {
@@ -68,6 +65,25 @@ export default function HomePage() {
       }
     })();
   }, []);
+
+  // Load raw seed list as fallback for gas IDs (service should still be orderable)
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/products.json", { cache: "no-store" });
+        const data = await res.json();
+        setSeedProducts(Array.isArray(data) ? data : []);
+      } catch {
+        setSeedProducts([]);
+      }
+    })();
+  }, []);
+
+  const productById = useMemo(() => {
+    const map = new Map<string, Product>();
+    [...seedProducts, ...products].forEach((p) => map.set(String(p.id), p));
+    return map;
+  }, [products, seedProducts]);
 
   const categories = useMemo(() => {
     const set = new Set<string>(FIXED_CATEGORIES);
@@ -91,7 +107,7 @@ export default function HomePage() {
         (category === "Audio & Entertainment" && /(woofer|speaker|sound|mouse|xlr|audio)/i.test(text)) ||
         (category === "Kitchen Appliances" && /(kettle|iron|cooker|appliance)/i.test(text)) ||
         (category === "Chargers & Cables" && /(charger|type-c|usb|adapter|pd)/i.test(text)) ||
-        (category === "Gas Refills" && /(gas|6kg|13kg|cylinder|hose|refill)/i.test(text)) ||
+        (category === "Gas Refills" && isGasProduct(text)) ||
         (p.category || "").toLowerCase() === category.toLowerCase();
 
       return inSearch && inCategory;
@@ -103,9 +119,9 @@ export default function HomePage() {
   const cartLines = useMemo(
     () =>
       Object.entries(cart)
-        .map(([id, qty]) => ({ product: products.find((p) => p.id === id), qty }))
+        .map(([id, qty]) => ({ product: productById.get(id), qty }))
         .filter((l) => l.product) as { product: Product; qty: number }[],
-    [cart, products]
+    [cart, productById]
   );
 
   const total = useMemo(
@@ -120,15 +136,14 @@ export default function HomePage() {
   const cartCount = useMemo(() => Object.values(cart).reduce((a, b) => a + b, 0), [cart]);
 
   function addToCart(id: string) {
-    const found = products.find((p) => p.id === id);
+    const found = productById.get(id);
     if (!found) {
       setNotice("Product not found in catalog.");
       return;
     }
-    const isGas = /(gas|6kg|13kg|refill)/i.test(found.name);
-    const stock = Number(found.stock || 0);
 
-    if (!isGas && stock <= 0) {
+    const stock = Number(found.stock || 0);
+    if (!isGasProduct(found.name) && stock <= 0) {
       setNotice("Product out of stock.");
       return;
     }
@@ -149,12 +164,17 @@ export default function HomePage() {
 
   function addGasByType(type: "6KG" | "13KG") {
     const matcher = type === "6KG" ? /(gas.*6|6kg)/i : /(gas.*13|13kg)/i;
-    const found = products.find((p) => matcher.test(p.name));
+    const source = [...seedProducts, ...products];
+    const found = source.find((p) => matcher.test(p.name || ""));
+
     if (!found) {
       setNotice("Product not found in catalog.");
       return;
     }
-    addToCart(found.id);
+
+    // Gas service is always orderable
+    setCart((prev) => ({ ...prev, [String(found.id)]: (prev[String(found.id)] || 0) + 1 }));
+    setNotice("");
   }
 
   async function copyTill() {
@@ -259,7 +279,7 @@ export default function HomePage() {
       </Head>
 
       <main className="shop-shell">
-        {/* Top cart summary */}
+        {/* TOP CART */}
         <section className="top-cart-bar">
           <b>🛒 Cart:</b> {cartCount} item(s) • <b>KES {total.toLocaleString("en-KE")}</b>
         </section>
@@ -274,8 +294,15 @@ export default function HomePage() {
 
             <div className="info-row">
               <a href={`tel:${SHOP_PHONE}`} className="pill">📞 {SHOP_PHONE}</a>
-              <a href={MAPS_LINK} target="_blank" rel="noreferrer" className="pill">📍 Open Map</a>
-              <button className="pill pill-btn" onClick={copyTill}>🏪 Till No: {TILL} (Copy)</button>
+
+              <a href={MAPS_LINK} target="_blank" rel="noreferrer" className="pill location-pill">
+                <span className="red-pin">📍</span> Location
+              </a>
+
+              <button className="pill pill-btn" onClick={copyTill}>
+                🏪 Till No: {TILL} (Copy)
+              </button>
+
               <a href={`mailto:${EMAIL}`} className="pill">✉️ {EMAIL}</a>
             </div>
 
@@ -285,11 +312,14 @@ export default function HomePage() {
           <div className="hero-right">
             <div className="mpesa-card">
               <img src="/mpesa.png" alt="M-Pesa services" className="service-img" />
-              <div className="service-chips">
-                {MPESA_SERVICES.map((s) => (
-                  <span key={s} className="service-chip">{s}</span>
-                ))}
+              {/* required layout */}
+              <div className="mpesa-services-grid">
+                <span className="service-chip">Deposit Cash</span>
+                <span className="service-chip">Withdraw Cash</span>
+                <span className="service-chip">SIM Replacement</span>
+                <span className="service-chip">SIM Registration</span>
               </div>
+              <div className="id-warning">NO TRANSACTION WITHOUT ORIGINAL ID.</div>
             </div>
 
             <div className="gas-pricing">
@@ -314,7 +344,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* SEARCH + CATEGORIES */}
+        {/* TOOLBAR */}
         <section className="toolbar card">
           <input
             className="input"
@@ -340,9 +370,9 @@ export default function HomePage() {
           <div className="catalog">
             {catalog.map((p) => {
               const stock = Number(p.stock || 0);
-              const isGas = /(gas|6kg|13kg|refill)/i.test(p.name);
-              const lowStock = !isGas && stock > 0 && stock <= 3;
-              const canBuy = isGas || stock > 0;
+              const gas = isGasProduct(p.name || "");
+              const lowStock = !gas && stock > 0 && stock <= 3;
+              const canBuy = gas || stock > 0;
 
               return (
                 <article key={p.id} className="product-card">
@@ -350,10 +380,10 @@ export default function HomePage() {
                   <h3>{p.name}</h3>
                   <p className="price">KES {Math.round(Number(p.retail_price ?? p.price ?? 0)).toLocaleString("en-KE")}</p>
                   <small className={canBuy ? "in-stock" : "out-stock"}>
-                    {isGas ? "Service available" : stock > 0 ? `In stock: ${stock}` : "Out of stock"}
+                    {gas ? "Service available" : stock > 0 ? `In stock: ${stock}` : "Out of stock"}
                   </small>
                   {lowStock ? <span className="low-tag">Low stock</span> : null}
-                  <button className="btn-primary" onClick={() => addToCart(p.id)} disabled={!canBuy}>
+                  <button className="btn-primary" onClick={() => addToCart(String(p.id))} disabled={!canBuy}>
                     Add to cart
                   </button>
                 </article>
@@ -371,9 +401,9 @@ export default function HomePage() {
                 <div key={line.product.id} className="cart-line">
                   <span>{line.product.name}</span>
                   <div>
-                    <button className="qty-btn" onClick={() => reduceFromCart(line.product.id)}>-</button>
+                    <button className="qty-btn" onClick={() => reduceFromCart(String(line.product.id))}>-</button>
                     <b style={{ margin: "0 8px" }}>{line.qty}</b>
-                    <button className="qty-btn" onClick={() => addToCart(line.product.id)}>+</button>
+                    <button className="qty-btn" onClick={() => addToCart(String(line.product.id))}>+</button>
                   </div>
                 </div>
               ))
@@ -407,7 +437,7 @@ export default function HomePage() {
           Till Number: {TILL}
         </footer>
 
-        {/* About below page as requested */}
+        {/* About moved below page */}
         <section className="card about-bottom">
           <h3>About Our Shop</h3>
           <p>
@@ -431,13 +461,41 @@ export default function HomePage() {
         .info-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
         .pill { text-decoration: none; color: #111; background: #facc15; padding: 6px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; border: none; }
         .pill-btn { cursor: pointer; }
+        .location-pill { display: inline-flex; align-items: center; gap: 5px; }
+        .red-pin { color: #dc2626; }
         .hours { color: #cbd5e1; }
         .hero-right { display: grid; gap: 10px; align-content: start; }
 
         .mpesa-card { background: #fff; border-radius: 10px; padding: 8px; }
         .service-img { width: 100%; max-height: 110px; object-fit: contain; }
-        .service-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-        .service-chip { background: #111; color: #fff; padding: 5px 8px; border-radius: 999px; font-size: 12px; }
+
+        .mpesa-services-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+          margin-top: 8px;
+        }
+
+        .service-chip {
+          background: #22c55e;
+          color: #fff;
+          border-radius: 10px;
+          padding: 8px 10px;
+          font-size: 13px;
+          font-weight: 700;
+          text-align: center;
+        }
+
+        .id-warning {
+          margin-top: 8px;
+          background: #111;
+          color: #facc15;
+          border-radius: 10px;
+          padding: 8px 10px;
+          font-size: 12px;
+          font-weight: 800;
+          text-align: center;
+        }
 
         .gas-pricing { display: grid; gap: 8px; }
         .gas-card { display: grid; grid-template-columns: 84px 1fr; gap: 8px; align-items: center; border: 1px solid #e2e8f0; background: #fff; border-radius: 10px; padding: 8px; cursor: pointer; text-align: left; }
