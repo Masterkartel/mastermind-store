@@ -1,3 +1,5 @@
+import productsSeed from "../public/products.json";
+
 type Product = {
   id: string;
   name: string;
@@ -30,16 +32,31 @@ type Sale = {
   createdAt: string;
   soldBy: string;
   customerName?: string;
+  customerPhone?: string;
   items: SaleItem[];
   total: number;
   type: "sale" | "quotation";
   status: "completed" | "quoted";
 };
 
+export type CustomerOrder = {
+  id: string;
+  createdAt: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+  deliveryAddress?: string;
+  notes?: string;
+  items: SaleItem[];
+  total: number;
+  status: "new" | "processing" | "completed";
+};
+
 export type StoreDB = {
   products: Product[];
   users: User[];
   sales: Sale[];
+  orders: CustomerOrder[];
 };
 
 declare global {
@@ -47,9 +64,23 @@ declare global {
   var __MM_STORE__: StoreDB | undefined;
 }
 
+function seedProducts(): Product[] {
+  const arr = Array.isArray(productsSeed) ? productsSeed : [];
+  return arr.slice(0, 5000).map((p: any, idx: number) => ({
+    id: String(p.id || p.product_code || p.sku || `P-${idx + 1}`),
+    name: String(p.name || `Product ${idx + 1}`),
+    product_code: p.product_code ? String(p.product_code) : undefined,
+    sku: p.sku ? String(p.sku) : undefined,
+    price: Number(p.retail_price ?? p.price ?? 0) || 0,
+    retail_price: Number(p.retail_price ?? p.price ?? 0) || 0,
+    stock: Number(p.stock ?? 0) || 0,
+    img: p.img ? String(p.img) : undefined,
+  }));
+}
+
 function seedStore(): StoreDB {
   return {
-    products: [],
+    products: seedProducts(),
     users: [
       {
         id: "admin-1",
@@ -61,7 +92,18 @@ function seedStore(): StoreDB {
       },
     ],
     sales: [],
+    orders: [],
   };
+}
+
+function encodeBase64(value: string) {
+  if (typeof btoa === "function") return btoa(value);
+  return Buffer.from(value, "utf8").toString("base64");
+}
+
+function decodeBase64(value: string) {
+  if (typeof atob === "function") return atob(value);
+  return Buffer.from(value, "base64").toString("utf8");
 }
 
 export async function ensureStoreFile() {
@@ -80,14 +122,14 @@ export async function writeStore(next: StoreDB) {
 }
 
 export function createToken(user: { id: string; role: string; pin: string }) {
-  return btoa(`${user.id}|${user.role}|${user.pin}`);
+  return encodeBase64(`${user.id}|${user.role}|${user.pin}`);
 }
 
 export function parseBearerToken(value = "") {
   const token = value.replace(/^Bearer\s+/i, "").trim();
   if (!token) return null;
   try {
-    const decoded = atob(token);
+    const decoded = decodeBase64(token);
     const [id, role, pin] = decoded.split("|");
     if (!id || !role || !pin) return null;
     return { id, role, pin };
