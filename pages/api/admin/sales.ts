@@ -28,25 +28,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       let total = 0;
+      let costTotal = 0;
+
       const normalized = items.map((line: any) => {
         const product = db.products.find((p) => p.id === line.productId);
         if (!product) throw new Error(`Product not found: ${line.productId}`);
 
         const qty = Math.max(1, Number(line.qty) || 1);
         const price = Number(line.price ?? product.price) || 0;
+        const costPrice = Number(product.cost_price ?? 0) || 0;
 
         if (type === "sale" && Number(product.stock) < qty) {
           throw new Error(`Insufficient stock for ${product.name}`);
         }
 
         total += qty * price;
-        return { productId: product.id, name: product.name, qty, price };
+        costTotal += qty * costPrice;
+
+        return {
+          productId: product.id,
+          name: product.name,
+          qty,
+          price,
+          cost_price: costPrice,
+        };
       });
 
       if (type === "sale") {
         for (const item of normalized) {
           const product = db.products.find((p) => p.id === item.productId);
-          if (product) product.stock = Math.max(0, Number(product.stock) - item.qty);
+          if (product) {
+            product.stock = Math.max(0, Number(product.stock) - item.qty);
+            product.updatedAt = new Date().toISOString();
+          }
         }
       }
 
@@ -58,9 +72,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         customerPhone: customerPhone ? String(customerPhone) : undefined,
         items: normalized,
         total,
+        costTotal,
         type: type === "quotation" ? "quotation" : "sale",
         status: type === "quotation" ? "quoted" : "completed",
-      } as const;
+      };
 
       db.sales.push(sale as any);
       await writeStore(db);
