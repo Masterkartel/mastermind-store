@@ -10,12 +10,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const db = await readStore();
 
-  if (req.method === "GET") return res.status(200).json(db.sales.slice().reverse());
+  if (req.method === "GET") {
+    return res.status(200).json(db.sales.slice().reverse());
+  }
 
   if (req.method === "POST") {
     try {
-      const { items = [], customerName = "", type = "sale" } = req.body || {};
-      if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ error: "Items required" });
+      const {
+        items = [],
+        customerName = "",
+        customerPhone = "",
+        type = "sale",
+      } = req.body || {};
+
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: "Items required" });
+      }
 
       let total = 0;
       const normalized = items.map((line: any) => {
@@ -24,7 +34,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const qty = Math.max(1, Number(line.qty) || 1);
         const price = Number(line.price ?? product.price) || 0;
-        if (type === "sale" && Number(product.stock) < qty) throw new Error(`Insufficient stock for ${product.name}`);
+
+        if (type === "sale" && Number(product.stock) < qty) {
+          throw new Error(`Insufficient stock for ${product.name}`);
+        }
 
         total += qty * price;
         return { productId: product.id, name: product.name, qty, price };
@@ -42,6 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         createdAt: new Date().toISOString(),
         soldBy: user.name,
         customerName: customerName ? String(customerName) : undefined,
+        customerPhone: customerPhone ? String(customerPhone) : undefined,
         items: normalized,
         total,
         type: type === "quotation" ? "quotation" : "sale",
