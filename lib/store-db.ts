@@ -1,21 +1,27 @@
 import productsSeed from "../public/products.json";
 
+export type Role = "admin" | "clerk";
+
 export type Product = {
   id: string;
   name: string;
   product_code?: string;
   sku?: string;
+  category?: string;
+  cost_price?: number;
   price: number;
   retail_price?: number;
   stock: number;
   img?: string;
-  category?: string;
+  active?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type User = {
   id: string;
   name: string;
-  role: "admin" | "clerk";
+  role: Role;
   pin: string;
   active: boolean;
   createdAt: string;
@@ -26,6 +32,7 @@ export type SaleItem = {
   name: string;
   qty: number;
   price: number;
+  cost_price?: number;
 };
 
 export type Sale = {
@@ -36,6 +43,7 @@ export type Sale = {
   customerPhone?: string;
   items: SaleItem[];
   total: number;
+  costTotal: number;
   type: "sale" | "quotation";
   status: "completed" | "quoted";
 };
@@ -65,28 +73,37 @@ declare global {
   var __MM_STORE__: StoreDB | undefined;
 }
 
-function seedProducts(): Product[] {
+function normalizeSeedProducts(): Product[] {
   const arr = Array.isArray(productsSeed) ? productsSeed : [];
 
-  return arr.slice(0, 5000).map((p: any, idx: number) => ({
-    id: String(p.id || p.product_code || p.sku || `P-${idx + 1}`),
-    name: String(p.name || `Product ${idx + 1}`),
-    product_code: p.product_code ? String(p.product_code) : undefined,
-    sku: p.sku ? String(p.sku) : undefined,
-    price: Number(p.retail_price ?? p.price ?? 0) || 0,
-    retail_price: Number(p.retail_price ?? p.price ?? 0) || 0,
-    stock: Number(p.stock ?? 0) || 0,
-    img: p.img ? String(p.img) : undefined,
-    category: p.category ? String(p.category) : undefined,
-  }));
+  return arr.slice(0, 5000).map((p: any, idx: number) => {
+    const retail = Number(p.retail_price ?? p.price ?? 0) || 0;
+    const cost = Number(p.cost_price ?? 0) || 0;
+
+    return {
+      id: String(p.id || p.product_code || p.sku || `P-${idx + 1}`),
+      name: String(p.name || `Product ${idx + 1}`),
+      product_code: p.product_code ? String(p.product_code) : undefined,
+      sku: p.sku ? String(p.sku) : undefined,
+      category: p.category ? String(p.category) : undefined,
+      cost_price: cost,
+      price: retail,
+      retail_price: retail,
+      stock: Number(p.stock ?? 0) || 0,
+      img: p.img ? String(p.img) : undefined,
+      active: p.active !== false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  });
 }
 
 function seedStore(): StoreDB {
   return {
-    products: seedProducts(),
+    products: normalizeSeedProducts(),
     users: [
       {
-        id: "admin-1",
+        id: "admin-mastermind",
         name: "Mastermind",
         role: "admin",
         pin: "Oury2933#",
