@@ -5,7 +5,6 @@ type Role = "admin" | "clerk";
 type User = {
   id: string;
   name: string;
-  pin: string;
   role: Role;
   active: boolean;
 };
@@ -14,6 +13,7 @@ type Product = {
   id: string;
   name: string;
   price: number;
+  retail_price?: number;
   stock: number;
   sku?: string;
   product_code?: string;
@@ -50,14 +50,6 @@ type CustomerOrder = {
   items: { name: string; qty: number }[];
 };
 
-const ADMIN_NAME = "Mastermind";
-const ADMIN_PIN = "Oury2933#";
-
-const LS_USERS = "mastermind_users_v1";
-const LS_PRODUCTS = "mastermind_products_v1";
-const LS_SALES = "mastermind_sales_v1";
-const LS_ORDERS = "mastermind_orders_v1";
-
 const initialDraft = {
   name: "",
   price: "",
@@ -68,38 +60,11 @@ const initialDraft = {
   category: "",
 };
 
-function safeRead<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function safeWrite<T>(key: string, value: T) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(key, JSON.stringify(value));
-}
-
-function seedUsers(): User[] {
-  return [
-    {
-      id: "admin-mastermind",
-      name: ADMIN_NAME,
-      pin: ADMIN_PIN,
-      role: "admin",
-      active: true,
-    },
-  ];
-}
-
 export default function AdminPage() {
   const [loginName, setLoginName] = useState("");
   const [loginPin, setLoginPin] = useState("");
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [me, setMe] = useState<User | null>(null);
+  const [token, setToken] = useState("");
+  const [me, setMe] = useState<{ id: string; name: string; role: Role } | null>(null);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -113,27 +78,19 @@ export default function AdminPage() {
   const [tab, setTab] = useState<"overview" | "inventory" | "orders" | "sales" | "users">("overview");
   const [productSearch, setProductSearch] = useState("");
 
+  const authHeaders = useMemo(
+    () => ({
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    }),
+    [token]
+  );
+
   useEffect(() => {
-    if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-
-    const existingUsers = safeRead<User[]>(LS_USERS, []);
-    if (!existingUsers.length) safeWrite(LS_USERS, seedUsers());
-
-    setUsers(safeRead<User[]>(LS_USERS, seedUsers()));
-    setProducts(safeRead<Product[]>(LS_PRODUCTS, []));
-    setSales(safeRead<Sale[]>(LS_SALES, []));
-    setOrders(safeRead<CustomerOrder[]>(LS_ORDERS, []));
-
-    const onStorage = () => {
-      setUsers(safeRead<User[]>(LS_USERS, seedUsers()));
-      setProducts(safeRead<Product[]>(LS_PRODUCTS, []));
-      setSales(safeRead<Sale[]>(LS_SALES, []));
-      setOrders(safeRead<CustomerOrder[]>(LS_ORDERS, []));
-    };
-
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   const stats = useMemo(() => {
@@ -163,52 +120,63 @@ export default function AdminPage() {
   const filteredProducts = useMemo(() => {
     const q = productSearch.trim().toLowerCase();
     if (!q) return products;
+
     return products.filter((p) =>
       `${p.name} ${p.sku || ""} ${p.product_code || ""} ${p.category || ""}`.toLowerCase().includes(q)
     );
   }, [products, productSearch]);
 
-  function persistProducts(next: Product[]) {
-    setProducts(next);
-    safeWrite(LS_PRODUCTS, next);
+  async function loadData(nextToken = token) {
+    const headers = { Authorization: `Bearer ${nextToken}` };
+
+    const [productsRes, usersRes, ordersRes, salesRes] = await Promise.all([
+      fetch("/api/admin/products", { headers }),
+      fetch("/api/admin/users", { headers }),
+      fetch("/api/admin/orders", { headers }),
+      fetch("/api/admin/sales", { headers }),
+    ]);
+
+    if (productsRes.ok) setProducts(await productsRes.json());
+    if (usersRes.ok) setUsers(await usersRes.json());
+    if (ordersRes.ok) setOrders(await ordersRes.json());
+    if (salesRes.ok) setSales(await salesRes.json());
   }
 
-  function persistUsers(next: User[]) {
-    setUsers(next);
-    safeWrite(LS_USERS, next);
-  }
-
-  function persistOrders(next: CustomerOrder[]) {
-    setOrders(next);
-    safeWrite(LS_ORDERS, next);
-  }
-
-  function login() {
+  async function login() {
     setFeedback("");
 
-    const allUsers = safeRead<User[]>(LS_USERS, seedUsers());
-    const match = allUsers.find((u) => u.name === loginName && u.pin === loginPin && u.active);
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: loginName, pin: loginPin }),
+      });
 
-    if (!match) {
-      setFeedback("Invalid login credentials.");
-      return;
+      const data = await res.json();
+
+      if (!res.ok) {
+        setFeedback(data.error || "Login failed");
+        return;
+      }
+
+      if (data.user.role !== "admin") {
+        setFeedback("Only admin can access this page.");
+        return;
+      }
+
+      setToken(data.token);
+      setMe(data.user);
+      await loadData(data.token);
+      setFeedback(`Welcome ${data.user.name}`);
+    } catch {
+      setFeedback("Network error during login.");
     }
-
-    if (match.role !== "admin") {
-      setFeedback("Only admin can access this page.");
-      return;
-    }
-
-    setLoggedIn(true);
-    setMe(match);
-    setFeedback(`Welcome ${match.name}`);
   }
 
-  function saveProduct() {
+  async function saveProduct() {
     setFeedback("");
 
-    const payload: Product = {
-      id: editingId || `prd-${Date.now()}`,
+    const payload = {
       name: draft.name.trim(),
       price: Number(draft.price),
       stock: Number(draft.stock),
@@ -223,19 +191,41 @@ export default function AdminPage() {
       return;
     }
 
-    if (!editingId) {
-      const next = [payload, ...products];
-      persistProducts(next);
-      setDraft(initialDraft);
-      setFeedback("Product created.");
-      return;
-    }
+    try {
+      if (!editingId) {
+        const res = await fetch("/api/admin/products", {
+          method: "POST",
+          headers: authHeaders,
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setFeedback(data.error || "Could not add product");
+          return;
+        }
+        setProducts((prev) => [data, ...prev]);
+        setDraft(initialDraft);
+        setFeedback("Product created.");
+        return;
+      }
 
-    const next = products.map((p) => (p.id === editingId ? payload : p));
-    persistProducts(next);
-    setEditingId("");
-    setDraft(initialDraft);
-    setFeedback("Product updated.");
+      const res = await fetch("/api/admin/products", {
+        method: "PUT",
+        headers: authHeaders,
+        body: JSON.stringify({ id: editingId, ...payload }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFeedback(data.error || "Could not update product");
+        return;
+      }
+      setProducts((prev) => prev.map((p) => (p.id === editingId ? data : p)));
+      setEditingId("");
+      setDraft(initialDraft);
+      setFeedback("Product updated.");
+    } catch {
+      setFeedback("Network error while saving product.");
+    }
   }
 
   function editProduct(product: Product) {
@@ -253,45 +243,96 @@ export default function AdminPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function deleteProduct(id: string) {
+  async function deleteProduct(id: string) {
     const ok = window.confirm("Delete this product?");
     if (!ok) return;
-    persistProducts(products.filter((p) => p.id !== id));
-    setFeedback("Product deleted.");
+
+    try {
+      const res = await fetch("/api/admin/products", {
+        method: "DELETE",
+        headers: authHeaders,
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFeedback(data.error || "Could not delete product");
+        return;
+      }
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      setFeedback("Product deleted.");
+    } catch {
+      setFeedback("Network error while deleting product.");
+    }
   }
 
-  function createClerk() {
+  async function createClerk() {
     if (!clerk.name.trim() || !clerk.pin.trim()) {
       setFeedback("Enter clerk name and password.");
       return;
     }
 
-    const nextUser: User = {
-      id: `usr-${Date.now()}`,
-      name: clerk.name.trim(),
-      pin: clerk.pin.trim(),
-      role: "clerk",
-      active: true,
-    };
-
-    const next = [...users, nextUser];
-    persistUsers(next);
-    setClerk({ name: "", pin: "" });
-    setFeedback("Clerk account created.");
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({
+          name: clerk.name.trim(),
+          pin: clerk.pin.trim(),
+          role: "clerk",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFeedback(data.error || "Could not create clerk");
+        return;
+      }
+      setUsers((prev) => [...prev, data]);
+      setClerk({ name: "", pin: "" });
+      setFeedback("Clerk account created.");
+    } catch {
+      setFeedback("Network error while creating clerk.");
+    }
   }
 
-  function removeUser(id: string) {
+  async function removeUser(id: string) {
     const ok = window.confirm("Delete this clerk?");
     if (!ok) return;
-    const next = users.filter((u) => u.id !== id);
-    persistUsers(next);
-    setFeedback("User deleted.");
+
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "DELETE",
+        headers: authHeaders,
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFeedback(data.error || "Could not delete user");
+        return;
+      }
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+      setFeedback("User deleted.");
+    } catch {
+      setFeedback("Network error while deleting clerk.");
+    }
   }
 
-  function setOrderStatus(id: string, status: CustomerOrder["status"]) {
-    const next = orders.map((o) => (o.id === id ? { ...o, status } : o));
-    persistOrders(next);
-    setFeedback(`Order ${id} updated to ${status}.`);
+  async function setOrderStatus(id: string, status: CustomerOrder["status"]) {
+    try {
+      const res = await fetch("/api/admin/orders", {
+        method: "PUT",
+        headers: authHeaders,
+        body: JSON.stringify({ id, status }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFeedback(data.error || "Could not update order");
+        return;
+      }
+      setOrders((prev) => prev.map((o) => (o.id === id ? data : o)));
+      setFeedback(`Order ${id} updated to ${status}.`);
+    } catch {
+      setFeedback("Network error while updating order.");
+    }
   }
 
   return (
@@ -310,7 +351,7 @@ export default function AdminPage() {
         </div>
       </section>
 
-      {!loggedIn ? (
+      {!token ? (
         <section className="card login-card">
           <h2>Admin Login</h2>
           <input
@@ -521,7 +562,7 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <p className="muted">
-                    Products added here sync into POS immediately in the same shared browser storage.
+                    Products added here sync into the customer page and POS because all three use the same live store API.
                   </p>
                 </div>
               </section>
@@ -652,7 +693,7 @@ export default function AdminPage() {
                   Create Clerk
                 </button>
                 <p className="muted">
-                  Clerks can log into <b>/pos</b> and make sales with the accounts created here.
+                  Clerks created here can log into <b>/pos</b> immediately.
                 </p>
               </div>
 
