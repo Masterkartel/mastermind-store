@@ -19,22 +19,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(403).json({ error: "Only admin can add products" });
     }
 
-    const { name, price, stock, product_code, sku, img, category } = req.body || {};
+    const {
+      name,
+      price,
+      retail_price,
+      cost_price,
+      stock,
+      product_code,
+      sku,
+      img,
+      category,
+      active,
+    } = req.body || {};
 
     if (!name) {
       return res.status(400).json({ error: "name is required" });
     }
 
+    const retail = Number(retail_price ?? price) || 0;
+
     const product = {
       id: makeId("prd"),
       name: String(name),
-      price: Number(price) || 0,
-      retail_price: Number(price) || 0,
+      price: retail,
+      retail_price: retail,
+      cost_price: Number(cost_price) || 0,
       stock: Number(stock) || 0,
       product_code: product_code ? String(product_code) : undefined,
       sku: sku ? String(sku) : undefined,
       img: img ? String(img) : undefined,
       category: category ? String(category) : undefined,
+      active: active !== false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     db.products.unshift(product);
@@ -55,13 +72,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const current = db.products[idx];
+    const retail = Number((patch as any).retail_price ?? (patch as any).price ?? current.retail_price ?? current.price) || 0;
 
     db.products[idx] = {
       ...current,
       ...patch,
-      price: Number((patch as any).price ?? current.price) || 0,
-      retail_price:
-        Number((patch as any).retail_price ?? (patch as any).price ?? current.retail_price ?? current.price) || 0,
+      name: String((patch as any).name ?? current.name),
+      price: retail,
+      retail_price: retail,
+      cost_price: Number((patch as any).cost_price ?? current.cost_price ?? 0) || 0,
       stock: Number((patch as any).stock ?? current.stock) || 0,
       product_code:
         typeof (patch as any).product_code === "string"
@@ -78,7 +97,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       category:
         typeof (patch as any).category === "string"
           ? String((patch as any).category) || undefined
-          : (current as any).category,
+          : current.category,
+      active:
+        typeof (patch as any).active === "boolean"
+          ? Boolean((patch as any).active)
+          : current.active,
+      updatedAt: new Date().toISOString(),
     };
 
     await writeStore(db);
