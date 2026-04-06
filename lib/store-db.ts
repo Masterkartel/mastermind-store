@@ -1,6 +1,6 @@
 import productsSeed from "../public/products.json";
 
-type Product = {
+export type Product = {
   id: string;
   name: string;
   product_code?: string;
@@ -9,9 +9,10 @@ type Product = {
   retail_price?: number;
   stock: number;
   img?: string;
+  category?: string;
 };
 
-type User = {
+export type User = {
   id: string;
   name: string;
   role: "admin" | "clerk";
@@ -20,14 +21,14 @@ type User = {
   createdAt: string;
 };
 
-type SaleItem = {
+export type SaleItem = {
   productId: string;
   name: string;
   qty: number;
   price: number;
 };
 
-type Sale = {
+export type Sale = {
   id: string;
   createdAt: string;
   soldBy: string;
@@ -75,6 +76,7 @@ function seedProducts(): Product[] {
     retail_price: Number(p.retail_price ?? p.price ?? 0) || 0,
     stock: Number(p.stock ?? 0) || 0,
     img: p.img ? String(p.img) : undefined,
+    category: p.category ? String(p.category) : undefined,
   }));
 }
 
@@ -84,9 +86,9 @@ function seedStore(): StoreDB {
     users: [
       {
         id: "admin-1",
-        name: "Administrator",
+        name: "Mastermind",
         role: "admin",
-        pin: "1234",
+        pin: "Oury2933#",
         active: true,
         createdAt: new Date().toISOString(),
       },
