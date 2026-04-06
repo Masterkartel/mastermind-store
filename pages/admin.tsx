@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { barcodePattern } from "../lib/barcode";
+
+type Role = "admin" | "clerk";
 
 type User = {
   id: string;
   name: string;
-  role: "admin" | "clerk";
+  pin: string;
+  role: Role;
   active: boolean;
 };
 
@@ -19,14 +21,23 @@ type Product = {
   category?: string;
 };
 
+type SaleItem = {
+  productId: string;
+  name: string;
+  qty: number;
+  price: number;
+};
+
 type Sale = {
   id: string;
   createdAt: string;
   soldBy: string;
   customerName?: string;
+  customerPhone?: string;
   total: number;
   type: "sale" | "quotation";
   status: string;
+  items: SaleItem[];
 };
 
 type CustomerOrder = {
@@ -39,6 +50,14 @@ type CustomerOrder = {
   items: { name: string; qty: number }[];
 };
 
+const ADMIN_NAME = "Mastermind";
+const ADMIN_PIN = "Oury2933#";
+
+const LS_USERS = "mastermind_users_v1";
+const LS_PRODUCTS = "mastermind_products_v1";
+const LS_SALES = "mastermind_sales_v1";
+const LS_ORDERS = "mastermind_orders_v1";
+
 const initialDraft = {
   name: "",
   price: "",
@@ -49,11 +68,38 @@ const initialDraft = {
   category: "",
 };
 
+function safeRead<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function safeWrite<T>(key: string, value: T) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(key, JSON.stringify(value));
+}
+
+function seedUsers(): User[] {
+  return [
+    {
+      id: "admin-mastermind",
+      name: ADMIN_NAME,
+      pin: ADMIN_PIN,
+      role: "admin",
+      active: true,
+    },
+  ];
+}
+
 export default function AdminPage() {
-  const [name, setName] = useState("Administrator");
-  const [pin, setPin] = useState("1234");
-  const [token, setToken] = useState("");
-  const [me, setMe] = useState<{ name: string; role: "admin" | "clerk" } | null>(null);
+  const [loginName, setLoginName] = useState("");
+  const [loginPin, setLoginPin] = useState("");
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [me, setMe] = useState<User | null>(null);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -67,14 +113,27 @@ export default function AdminPage() {
   const [tab, setTab] = useState<"overview" | "inventory" | "orders" | "sales" | "users">("overview");
   const [productSearch, setProductSearch] = useState("");
 
-  const authHeaders = useMemo(
-    () => ({ Authorization: `Bearer ${token}`, "Content-Type": "application/json" }),
-    [token]
-  );
-
   useEffect(() => {
     if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+
+    const existingUsers = safeRead<User[]>(LS_USERS, []);
+    if (!existingUsers.length) safeWrite(LS_USERS, seedUsers());
+
+    setUsers(safeRead<User[]>(LS_USERS, seedUsers()));
+    setProducts(safeRead<Product[]>(LS_PRODUCTS, []));
+    setSales(safeRead<Sale[]>(LS_SALES, []));
+    setOrders(safeRead<CustomerOrder[]>(LS_ORDERS, []));
+
+    const onStorage = () => {
+      setUsers(safeRead<User[]>(LS_USERS, seedUsers()));
+      setProducts(safeRead<Product[]>(LS_PRODUCTS, []));
+      setSales(safeRead<Sale[]>(LS_SALES, []));
+      setOrders(safeRead<CustomerOrder[]>(LS_ORDERS, []));
+    };
+
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   const stats = useMemo(() => {
@@ -109,89 +168,71 @@ export default function AdminPage() {
     );
   }, [products, productSearch]);
 
-  async function login() {
-    setFeedback("");
-    try {
-      const res = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, pin }),
-      });
-      const data = await res.json();
-      if (!res.ok) return setFeedback(data.error || "Login failed");
-      if (data.user.role !== "admin") return setFeedback("Only admins can access this page.");
+  function persistProducts(next: Product[]) {
+    setProducts(next);
+    safeWrite(LS_PRODUCTS, next);
+  }
 
-      setToken(data.token);
-      setMe(data.user);
-      await loadData(data.token);
-      setFeedback(`Welcome ${data.user.name}`);
-    } catch {
-      setFeedback("Network error during login.");
+  function persistUsers(next: User[]) {
+    setUsers(next);
+    safeWrite(LS_USERS, next);
+  }
+
+  function persistOrders(next: CustomerOrder[]) {
+    setOrders(next);
+    safeWrite(LS_ORDERS, next);
+  }
+
+  function login() {
+    setFeedback("");
+
+    const allUsers = safeRead<User[]>(LS_USERS, seedUsers());
+    const match = allUsers.find((u) => u.name === loginName && u.pin === loginPin && u.active);
+
+    if (!match) {
+      setFeedback("Invalid login credentials.");
+      return;
     }
+
+    if (match.role !== "admin") {
+      setFeedback("Only admin can access this page.");
+      return;
+    }
+
+    setLoggedIn(true);
+    setMe(match);
+    setFeedback(`Welcome ${match.name}`);
   }
 
-  async function loadData(t = token) {
-    const headers = { Authorization: `Bearer ${t}` };
-    const [pRes, uRes, oRes, sRes] = await Promise.all([
-      fetch("/api/admin/products", { headers }),
-      fetch("/api/admin/users", { headers }),
-      fetch("/api/admin/orders", { headers }),
-      fetch("/api/admin/sales", { headers }),
-    ]);
-
-    if (pRes.ok) setProducts(await pRes.json());
-    if (uRes.ok) setUsers(await uRes.json());
-    if (oRes.ok) setOrders(await oRes.json());
-    if (sRes.ok) setSales(await sRes.json());
-  }
-
-  async function setOrderStatus(id: string, status: CustomerOrder["status"]) {
-    const res = await fetch("/api/admin/orders", {
-      method: "PUT",
-      headers: authHeaders,
-      body: JSON.stringify({ id, status }),
-    });
-    const data = await res.json();
-    if (!res.ok) return setFeedback(data.error || "Could not update order");
-    setOrders((prev) => prev.map((o) => (o.id === id ? data : o)));
-    setFeedback(`Order ${id} updated to ${status}.`);
-  }
-
-  async function saveProduct() {
+  function saveProduct() {
     setFeedback("");
 
-    const payload = {
-      ...draft,
+    const payload: Product = {
+      id: editingId || `prd-${Date.now()}`,
+      name: draft.name.trim(),
       price: Number(draft.price),
       stock: Number(draft.stock),
+      sku: draft.sku.trim() || undefined,
+      product_code: draft.product_code.trim() || undefined,
+      img: draft.img.trim() || undefined,
+      category: draft.category.trim() || undefined,
     };
 
     if (!payload.name || Number.isNaN(payload.price) || Number.isNaN(payload.stock)) {
-      return setFeedback("Enter valid product name, price and stock.");
+      setFeedback("Enter valid product name, price and stock.");
+      return;
     }
 
     if (!editingId) {
-      const res = await fetch("/api/admin/products", {
-        method: "POST",
-        headers: authHeaders,
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) return setFeedback(data.error || "Could not add product");
-      setProducts((prev) => [data, ...prev]);
+      const next = [payload, ...products];
+      persistProducts(next);
       setDraft(initialDraft);
       setFeedback("Product created.");
       return;
     }
 
-    const res = await fetch("/api/admin/products", {
-      method: "PUT",
-      headers: authHeaders,
-      body: JSON.stringify({ id: editingId, ...payload }),
-    });
-    const data = await res.json();
-    if (!res.ok) return setFeedback(data.error || "Could not update product");
-    setProducts((prev) => prev.map((p) => (p.id === editingId ? data : p)));
+    const next = products.map((p) => (p.id === editingId ? payload : p));
+    persistProducts(next);
     setEditingId("");
     setDraft(initialDraft);
     setFeedback("Product updated.");
@@ -212,75 +253,45 @@ export default function AdminPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  async function deleteProduct(id: string) {
+  function deleteProduct(id: string) {
     const ok = window.confirm("Delete this product?");
     if (!ok) return;
-
-    const res = await fetch("/api/admin/products", {
-      method: "DELETE",
-      headers: authHeaders,
-      body: JSON.stringify({ id }),
-    });
-
-    if (!res.ok) return setFeedback("Could not delete product");
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+    persistProducts(products.filter((p) => p.id !== id));
     setFeedback("Product deleted.");
   }
 
-  async function createClerk() {
-    const res = await fetch("/api/admin/users", {
-      method: "POST",
-      headers: authHeaders,
-      body: JSON.stringify({ name: clerk.name, pin: clerk.pin, role: "clerk" }),
-    });
-    const data = await res.json();
-    if (!res.ok) return setFeedback(data.error || "Could not create clerk");
+  function createClerk() {
+    if (!clerk.name.trim() || !clerk.pin.trim()) {
+      setFeedback("Enter clerk name and password.");
+      return;
+    }
+
+    const nextUser: User = {
+      id: `usr-${Date.now()}`,
+      name: clerk.name.trim(),
+      pin: clerk.pin.trim(),
+      role: "clerk",
+      active: true,
+    };
+
+    const next = [...users, nextUser];
+    persistUsers(next);
     setClerk({ name: "", pin: "" });
-    setUsers((prev) => [...prev, data]);
     setFeedback("Clerk account created.");
   }
 
-  async function removeUser(id: string) {
+  function removeUser(id: string) {
     const ok = window.confirm("Delete this clerk?");
     if (!ok) return;
-
-    const res = await fetch("/api/admin/users", {
-      method: "DELETE",
-      headers: authHeaders,
-      body: JSON.stringify({ id }),
-    });
-
-    if (!res.ok) return setFeedback("Could not delete user");
-    setUsers((prev) => prev.filter((u) => u.id !== id));
+    const next = users.filter((u) => u.id !== id);
+    persistUsers(next);
     setFeedback("User deleted.");
   }
 
-  function printBarcode(product: Product) {
-    const pattern = barcodePattern(product.product_code || product.sku || product.id);
-    const w = window.open("", "_blank", "width=420,height=320");
-    if (!w) return;
-
-    w.document.write(`
-      <html>
-        <body style="font-family:Arial,sans-serif;padding:20px;">
-          <h3>${product.name}</h3>
-          <div style="display:flex;align-items:flex-end;height:80px;gap:1px;">
-            ${pattern
-              .split("")
-              .map(
-                (b) =>
-                  `<span style="display:inline-block;width:2px;height:${b === "1" ? 80 : 35}px;background:#000;"></span>`
-              )
-              .join("")}
-          </div>
-          <p>${product.product_code || product.sku || product.id}</p>
-          <p>Price: KES ${Number(product.price).toLocaleString()}</p>
-        </body>
-      </html>
-    `);
-    w.document.close();
-    w.focus();
-    w.print();
+  function setOrderStatus(id: string, status: CustomerOrder["status"]) {
+    const next = orders.map((o) => (o.id === id ? { ...o, status } : o));
+    persistOrders(next);
+    setFeedback(`Order ${id} updated to ${status}.`);
   }
 
   return (
@@ -289,24 +300,29 @@ export default function AdminPage() {
         <div className="orb orb-a" />
         <div className="orb orb-b" />
         <div>
-          <h1>Admin Dashboard</h1>
-          <p>Inventory, POS analytics, orders, product publishing, clerk management and sales control.</p>
+          <h1>Mastermind Admin</h1>
+          <p>Inventory, users, orders, POS analysis and product publishing.</p>
           <div className="hero-mini">
-            <span className="hero-pill">Admin URL: /admin</span>
-            <span className="hero-pill">POS URL: /pos</span>
-            <span className="hero-pill">Theme matches customer page</span>
+            <span className="hero-pill">Admin login only</span>
+            <span className="hero-pill">Creates clerk accounts</span>
+            <span className="hero-pill">Matches customer tone</span>
           </div>
         </div>
       </section>
 
-      {!token ? (
+      {!loggedIn ? (
         <section className="card login-card">
           <h2>Admin Login</h2>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Admin name" className="input" />
           <input
-            value={pin}
-            onChange={(e) => setPin(e.target.value)}
-            placeholder="PIN"
+            value={loginName}
+            onChange={(e) => setLoginName(e.target.value)}
+            placeholder="Admin name"
+            className="input"
+          />
+          <input
+            value={loginPin}
+            onChange={(e) => setLoginPin(e.target.value)}
+            placeholder="Password"
             type="password"
             className="input"
           />
@@ -365,8 +381,8 @@ export default function AdminPage() {
                   <strong>{stats.lowStock}</strong>
                 </div>
                 <div className="card stat-card">
-                  <span className="stat-label">Open Orders</span>
-                  <strong>{stats.openOrders}</strong>
+                  <span className="stat-label">Clerks</span>
+                  <strong>{stats.clerks}</strong>
                 </div>
               </section>
 
@@ -505,12 +521,12 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <p className="muted">
-                    Products added here can appear on the customer page, including image URLs for product cards.
+                    Products added here sync into POS immediately in the same shared browser storage.
                   </p>
                 </div>
               </section>
 
-              <section className="card table-wrap">
+              <section className="card">
                 <div className="split-head">
                   <h2>Products ({filteredProducts.length})</h2>
                   <input
@@ -539,9 +555,6 @@ export default function AdminPage() {
                         <b>KES {Number(p.price).toLocaleString()}</b>
                         <button className="btn btn-soft" onClick={() => editProduct(p)}>
                           Edit
-                        </button>
-                        <button className="btn btn-soft" onClick={() => printBarcode(p)}>
-                          Barcode
                         </button>
                         <button className="btn btn-danger" onClick={() => deleteProduct(p.id)}>
                           Delete
@@ -631,7 +644,7 @@ export default function AdminPage() {
                 />
                 <input
                   className="input"
-                  placeholder="PIN"
+                  placeholder="Password"
                   value={clerk.pin}
                   onChange={(e) => setClerk((c) => ({ ...c, pin: e.target.value }))}
                 />
@@ -639,7 +652,7 @@ export default function AdminPage() {
                   Create Clerk
                 </button>
                 <p className="muted">
-                  Clerks can log into <b>/pos</b> and make sales using their own credentials.
+                  Clerks can log into <b>/pos</b> and make sales with the accounts created here.
                 </p>
               </div>
 
@@ -684,12 +697,7 @@ export default function AdminPage() {
             linear-gradient(180deg, #fffdf4 0%, #ffffff 100%);
           color: #111827;
         }
-
-        .stack {
-          display: grid;
-          gap: 16px;
-        }
-
+        .stack { display: grid; gap: 16px; }
         .card {
           background: linear-gradient(180deg, #ffffff 0%, #fffdf5 100%);
           border: 1px solid rgba(250, 204, 21, 0.28);
@@ -700,28 +708,13 @@ export default function AdminPage() {
           position: relative;
           overflow: hidden;
         }
-
         .dark-card {
           background: linear-gradient(135deg, #111827 0%, #1f2937 46%, #2b2b2b 100%);
           color: #fff;
         }
-
-        .hero h1 {
-          margin: 0 0 8px;
-          color: #facc15;
-        }
-
-        .hero p {
-          margin: 0 0 12px;
-          color: #e5e7eb;
-        }
-
-        .hero-mini {
-          display: flex;
-          gap: 8px;
-          flex-wrap: wrap;
-        }
-
+        .hero h1 { margin: 0 0 8px; color: #facc15; }
+        .hero p { margin: 0 0 12px; color: #e5e7eb; }
+        .hero-mini { display: flex; gap: 8px; flex-wrap: wrap; }
         .hero-pill {
           background: rgba(250, 204, 21, 0.14);
           color: #fde68a;
@@ -731,86 +724,43 @@ export default function AdminPage() {
           font-size: 12px;
           font-weight: 700;
         }
-
         .orb {
           position: absolute;
           border-radius: 999px;
           pointer-events: none;
         }
-
         .orb-a {
-          width: 180px;
-          height: 180px;
-          right: -60px;
-          top: -70px;
+          width: 180px; height: 180px; right: -60px; top: -70px;
           background: rgba(250, 204, 21, 0.12);
         }
-
         .orb-b {
-          width: 120px;
-          height: 120px;
-          left: -30px;
-          bottom: -30px;
+          width: 120px; height: 120px; left: -30px; bottom: -30px;
           background: rgba(250, 204, 21, 0.07);
         }
-
-        .login-card {
-          max-width: 420px;
-        }
-
-        .topbar {
-          display: grid;
-          gap: 12px;
-        }
-
-        .tabs {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-        }
-
+        .login-card { max-width: 420px; }
+        .topbar { display: grid; gap: 12px; }
+        .tabs { display: flex; flex-wrap: wrap; gap: 8px; }
         .tab-btn {
-          border: none;
-          cursor: pointer;
-          background: #111827;
-          color: #f9fafb;
-          border-radius: 999px;
-          padding: 8px 12px;
-          font-weight: 800;
+          border: none; cursor: pointer; background: #111827; color: #f9fafb;
+          border-radius: 999px; padding: 8px 12px; font-weight: 800;
         }
-
         .tab-active {
           background: linear-gradient(180deg, #fde047 0%, #facc15 100%);
           color: #111827;
         }
-
         .stats-grid {
           display: grid;
           grid-template-columns: repeat(6, minmax(0, 1fr));
           gap: 12px;
         }
-
-        .stat-card {
-          display: grid;
-          gap: 8px;
-        }
-
-        .stat-label {
-          color: #6b7280;
-          font-size: 13px;
-          font-weight: 700;
-        }
-
-        .stat-card strong {
-          font-size: 22px;
-        }
-
+        .stat-card { display: grid; gap: 8px; }
+        .stat-label { color: #6b7280; font-size: 13px; font-weight: 700; }
+        .stat-card strong { font-size: 22px; }
         .grid-2 {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 16px;
         }
-
         .input {
           width: 100%;
           border: 1px solid #d1d5db;
@@ -822,68 +772,37 @@ export default function AdminPage() {
           color: #111827;
           box-sizing: border-box;
         }
-
         .input:focus {
           outline: none;
           border-color: #facc15;
           box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.18);
         }
-
         .form-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 10px;
         }
-
-        .input-span {
-          grid-column: span 2;
-        }
-
+        .input-span { grid-column: span 2; }
         .btn {
-          border: none;
-          border-radius: 14px;
-          padding: 11px 14px;
-          font-weight: 900;
-          cursor: pointer;
+          border: none; border-radius: 14px; padding: 11px 14px; font-weight: 900; cursor: pointer;
         }
-
         .btn-primary {
           background: linear-gradient(180deg, #fde047 0%, #facc15 100%);
           color: #111827;
-          box-shadow: 0 8px 18px rgba(250, 204, 21, 0.22);
         }
-
         .btn-dark {
           background: linear-gradient(180deg, #111827 0%, #1f2937 100%);
           color: #facc15;
         }
-
         .btn-soft {
           background: #fff;
           color: #111827;
           border: 1px solid rgba(250, 204, 21, 0.28);
         }
-
-        .btn-danger {
-          background: #ef4444;
-          color: #fff;
-        }
-
-        .feedback {
-          margin: 0;
-          color: #334155;
-          font-weight: 700;
-        }
-
-        .muted {
-          color: #64748b;
-        }
-
-        .muted-small {
-          color: #64748b;
-          font-size: 13px;
-        }
-
+        .btn-danger { background: #ef4444; color: #fff; }
+        .feedback { margin: 0; color: #334155; font-weight: 700; }
+        .muted { color: #64748b; }
+        .muted-small { color: #64748b; font-size: 13px; }
         .preview-card {
           border: 1px dashed #d1d5db;
           border-radius: 18px;
@@ -891,21 +810,15 @@ export default function AdminPage() {
           margin: 4px 0 10px;
           background: #fff;
         }
-
         .preview-img {
-          width: 100%;
-          max-height: 220px;
-          object-fit: contain;
-          border-radius: 12px;
+          width: 100%; max-height: 220px; object-fit: contain; border-radius: 12px;
         }
-
         .mini-stats {
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 10px;
           margin-bottom: 10px;
         }
-
         .mini-box {
           background: linear-gradient(180deg, #fffef8 0%, #ffffff 100%);
           border: 1px solid rgba(250, 204, 21, 0.22);
@@ -914,197 +827,65 @@ export default function AdminPage() {
           display: grid;
           gap: 4px;
         }
-
-        .mini-box span {
-          font-size: 12px;
-          color: #64748b;
-          font-weight: 700;
-        }
-
-        .mini-box strong {
-          font-size: 20px;
-        }
-
+        .mini-box span { font-size: 12px; color: #64748b; font-weight: 700; }
+        .mini-box strong { font-size: 20px; }
         .split-head {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 12px;
-          margin-bottom: 12px;
+          display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px;
         }
-
-        .split-head h2 {
-          margin: 0;
-        }
-
-        .search-input {
-          max-width: 280px;
-          margin: 0;
-        }
-
-        .product-list {
-          display: grid;
-          gap: 12px;
-        }
-
-        .product-row,
-        .row-card,
-        .order-card {
+        .split-head h2 { margin: 0; }
+        .search-input { max-width: 280px; margin: 0; }
+        .product-list { display: grid; gap: 12px; }
+        .product-row, .row-card, .order-card {
           border: 1px solid #eceff3;
           border-radius: 18px;
           padding: 12px;
           background: #fff;
         }
-
-        .product-row,
-        .row-card {
-          display: flex;
-          justify-content: space-between;
-          gap: 12px;
-          align-items: center;
+        .product-row, .row-card {
+          display: flex; justify-content: space-between; gap: 12px; align-items: center;
         }
-
-        .order-card {
-          display: grid;
-          gap: 10px;
-        }
-
+        .order-card { display: grid; gap: 10px; }
         .order-top {
-          display: flex;
-          justify-content: space-between;
-          gap: 12px;
-          align-items: flex-start;
+          display: flex; justify-content: space-between; gap: 12px; align-items: flex-start;
         }
-
         .product-main {
-          display: flex;
-          gap: 12px;
-          align-items: center;
-          min-width: 0;
+          display: flex; gap: 12px; align-items: center; min-width: 0;
         }
-
         .row-img {
-          width: 58px;
-          height: 58px;
-          border-radius: 12px;
-          object-fit: cover;
-          background: #f8fafc;
-          border: 1px solid #e5e7eb;
-          flex: 0 0 auto;
+          width: 58px; height: 58px; border-radius: 12px; object-fit: cover;
+          background: #f8fafc; border: 1px solid #e5e7eb; flex: 0 0 auto;
         }
-
-        .row-img.empty {
-          background: linear-gradient(180deg, #fff7cc 0%, #fff 100%);
+        .row-img.empty { background: linear-gradient(180deg, #fff7cc 0%, #fff 100%); }
+        .product-actions, .right, .action-row {
+          display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end;
         }
-
-        .product-actions,
-        .right,
-        .action-row {
-          display: flex;
-          gap: 8px;
-          align-items: center;
-          flex-wrap: wrap;
-          justify-content: flex-end;
-        }
-
-        .product-actions {
-          flex-direction: column;
-          align-items: flex-end;
-        }
-
-        .wrap {
-          justify-content: flex-start;
-        }
-
+        .product-actions { flex-direction: column; align-items: flex-end; }
+        .wrap { justify-content: flex-start; }
         .badge {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          padding: 6px 10px;
-          border-radius: 999px;
-          background: #111827;
-          color: #facc15;
-          font-size: 12px;
-          font-weight: 800;
+          display: inline-flex; align-items: center; justify-content: center;
+          padding: 6px 10px; border-radius: 999px;
+          background: #111827; color: #facc15; font-size: 12px; font-weight: 800;
         }
-
         @media (max-width: 1100px) {
-          .stats-grid {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-          }
+          .stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         }
-
         @media (max-width: 900px) {
-          .grid-2 {
-            grid-template-columns: 1fr;
-          }
-
-          .form-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .input-span {
-            grid-column: span 1;
-          }
-
-          .split-head {
-            flex-direction: column;
-            align-items: stretch;
-          }
-
-          .search-input {
-            max-width: none;
-          }
+          .grid-2 { grid-template-columns: 1fr; }
+          .form-grid { grid-template-columns: 1fr; }
+          .input-span { grid-column: span 1; }
+          .split-head { flex-direction: column; align-items: stretch; }
+          .search-input { max-width: none; }
         }
-
         @media (max-width: 640px) {
-          .page-shell {
-            padding: 10px;
-          }
-
-          .card {
-            border-radius: 20px;
-            padding: 14px;
-          }
-
-          .stats-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
-          }
-
-          .mini-stats {
-            grid-template-columns: 1fr;
-          }
-
-          .product-row,
-          .row-card,
-          .order-top {
-            flex-direction: column;
-            align-items: stretch;
-          }
-
-          .product-actions,
-          .right,
-          .action-row {
-            justify-content: flex-start;
-            align-items: stretch;
-          }
-
-          .product-actions .btn,
-          .action-row .btn {
-            width: 100%;
-          }
-
-          .tabs {
-            flex-wrap: nowrap;
-            overflow-x: auto;
-            padding-bottom: 4px;
-          }
-
-          .tab-btn {
-            white-space: nowrap;
-            flex: 0 0 auto;
-          }
+          .page-shell { padding: 10px; }
+          .card { border-radius: 20px; padding: 14px; }
+          .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+          .mini-stats { grid-template-columns: 1fr; }
+          .product-row, .row-card, .order-top { flex-direction: column; align-items: stretch; }
+          .product-actions, .right, .action-row { justify-content: flex-start; align-items: stretch; }
+          .product-actions .btn, .action-row .btn { width: 100%; }
+          .tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+          .tab-btn { white-space: nowrap; flex: 0 0 auto; }
         }
       `}</style>
     </main>
