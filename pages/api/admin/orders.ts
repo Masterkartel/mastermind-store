@@ -1,4 +1,3 @@
-export const runtime = "edge";
 export const config = { runtime: "edge" };
 
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -12,21 +11,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const db = await readStore();
 
   if (req.method === "GET") {
-    return res.status(200).json(db.orders);
+    return res.status(200).json(db.orders.slice().reverse());
   }
 
   if (req.method === "PUT") {
     const { id, status } = req.body || {};
-    if (!id || !status) return res.status(400).json({ error: "id and status required" });
-
-    const idx = db.orders.findIndex((o) => o.id === id);
-    if (idx < 0) return res.status(404).json({ error: "Order not found" });
-
-    if (!["new", "processing", "completed"].includes(String(status))) {
-      return res.status(400).json({ error: "Invalid status" });
+    if (!id || !status) {
+      return res.status(400).json({ error: "id and status are required" });
     }
 
-    db.orders[idx].status = status;
+    const idx = db.orders.findIndex((o) => o.id === id);
+    if (idx < 0) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    db.orders[idx] = {
+      ...db.orders[idx],
+      status,
+    };
+
     await writeStore(db);
     return res.status(200).json(db.orders[idx]);
   }
