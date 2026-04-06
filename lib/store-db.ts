@@ -67,6 +67,7 @@ declare global {
 
 function seedProducts(): Product[] {
   const arr = Array.isArray(productsSeed) ? productsSeed : [];
+
   return arr.slice(0, 5000).map((p: any, idx: number) => ({
     id: String(p.id || p.product_code || p.sku || `P-${idx + 1}`),
     name: String(p.name || `Product ${idx + 1}`),
@@ -130,6 +131,7 @@ export function createToken(user: { id: string; role: string; pin: string }) {
 export function parseBearerToken(value = "") {
   const token = value.replace(/^Bearer\s+/i, "").trim();
   if (!token) return null;
+
   try {
     const decoded = decodeBase64(token);
     const [id, role, pin] = decoded.split("|");
