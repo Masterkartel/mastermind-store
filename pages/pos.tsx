@@ -2,22 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 
 type Role = "admin" | "clerk";
 
-type User = {
-  id: string;
-  name: string;
-  pin: string;
-  role: Role;
-  active: boolean;
-};
-
 type Product = {
   id: string;
   name: string;
   price: number;
+  retail_price?: number;
   stock: number;
   img?: string;
   sku?: string;
   product_code?: string;
+  category?: string;
 };
 
 type CustomerOrder = {
@@ -48,63 +42,52 @@ type Sale = {
   items: SaleItem[];
 };
 
-type CartMap = Record<string, number>;
-
-const LS_USERS = "mastermind_users_v1";
-const LS_PRODUCTS = "mastermind_products_v1";
-const LS_SALES = "mastermind_sales_v1";
-const LS_ORDERS = "mastermind_orders_v1";
-
-function safeRead<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function safeWrite<T>(key: string, value: T) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(key, JSON.stringify(value));
-}
-
 export default function PosPage() {
-  const [name, setName] = useState("");
-  const [pin, setPin] = useState("");
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [loginName, setLoginName] = useState("");
+  const [loginPin, setLoginPin] = useState("");
+  const [token, setToken] = useState("");
   const [role, setRole] = useState<Role | "">("");
 
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [cart, setCart] = useState<CartMap>({});
+  const [cart, setCart] = useState<Record<string, number>>({});
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [msg, setMsg] = useState("");
   const [search, setSearch] = useState("");
 
+  const authHeaders = useMemo(
+    () => ({
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    }),
+    [token]
+  );
+
   useEffect(() => {
-    setProducts(safeRead<Product[]>(LS_PRODUCTS, []));
-    setOrders(safeRead<CustomerOrder[]>(LS_ORDERS, []));
-    setSales(safeRead<Sale[]>(LS_SALES, []));
-
-    const onStorage = () => {
-      setProducts(safeRead<Product[]>(LS_PRODUCTS, []));
-      setOrders(safeRead<CustomerOrder[]>(LS_ORDERS, []));
-      setSales(safeRead<Sale[]>(LS_SALES, []));
-    };
-
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, []);
+
+  async function loadAll(nextToken = token) {
+    const headers = { Authorization: `Bearer ${nextToken}` };
+
+    const [productsRes, ordersRes] = await Promise.all([
+      fetch("/api/admin/products", { headers }),
+      fetch("/api/admin/orders", { headers }),
+    ]);
+
+    if (productsRes.ok) setProducts(await productsRes.json());
+    if (ordersRes.ok) setOrders(await ordersRes.json());
+  }
 
   const visibleProducts = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return products;
     return products.filter((p) =>
-      `${p.name} ${p.sku || ""} ${p.product_code || ""}`.toLowerCase().includes(q)
+      `${p.name} ${p.sku || ""} ${p.product_code || ""} ${p.category || ""}`.toLowerCase().includes(q)
     );
   }, [products, search]);
 
@@ -118,34 +101,35 @@ export default function PosPage() {
 
   const total = useMemo(() => lines.reduce((s, l) => s + Number(l.product.price) * l.qty, 0), [lines]);
 
-  function persistProducts(next: Product[]) {
-    setProducts(next);
-    safeWrite(LS_PRODUCTS, next);
-  }
-
-  function persistSales(next: Sale[]) {
-    setSales(next);
-    safeWrite(LS_SALES, next);
-  }
-
-  function persistOrders(next: CustomerOrder[]) {
-    setOrders(next);
-    safeWrite(LS_ORDERS, next);
-  }
-
-  function login() {
+  async function login() {
     setMsg("");
-    const users = safeRead<User[]>(LS_USERS, []);
-    const match = users.find((u) => u.name === name && u.pin === pin && u.active);
 
-    if (!match) {
-      setMsg("Invalid login credentials");
-      return;
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: loginName, pin: loginPin }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setMsg(data.error || "Login failed");
+        return;
+      }
+
+      if (!["admin", "clerk"].includes(data.user.role)) {
+        setMsg("Only admin or clerk can use POS");
+        return;
+      }
+
+      setToken(data.token);
+      setRole(data.user.role);
+      await loadAll(data.token);
+      setMsg(`Welcome ${data.user.name}`);
+    } catch {
+      setMsg("Network error during login.");
     }
-
-    setLoggedIn(true);
-    setRole(match.role);
-    setMsg(`Welcome ${match.name}`);
   }
 
   const add = (id: string) => setCart((c) => ({ ...c, [id]: (c[id] || 0) + 1 }));
@@ -159,60 +143,58 @@ export default function PosPage() {
       return next;
     });
 
-  function submit(type: "sale" | "quotation") {
+  async function submit(type: "sale" | "quotation") {
     if (!lines.length) return;
 
-    const updatedProducts = [...products];
+    try {
+      const res = await fetch("/api/admin/sales", {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({
+          items: lines.map((l) => ({
+            productId: l.product.id,
+            qty: l.qty,
+            price: l.product.price,
+          })),
+          customerName,
+          customerPhone,
+          type,
+        }),
+      });
 
-    if (type === "sale") {
-      for (const line of lines) {
-        const idx = updatedProducts.findIndex((p) => p.id === line.product.id);
-        if (idx >= 0) {
-          const current = Number(updatedProducts[idx].stock || 0);
-          if (current < line.qty) {
-            setMsg(`Not enough stock for ${line.product.name}`);
-            return;
-          }
-          updatedProducts[idx] = { ...updatedProducts[idx], stock: current - line.qty };
-        }
+      const data = await res.json();
+
+      if (!res.ok) {
+        setMsg(data.error || "Could not complete transaction");
+        return;
       }
+
+      printSlip(data, type === "sale" ? "SALE RECEIPT" : "QUOTATION");
+      setCart({});
+      setCustomerName("");
+      setCustomerPhone("");
+      setMsg(`${type === "sale" ? "Sale" : "Quotation"} ${data.id} created.`);
+      await loadAll(token);
+    } catch {
+      setMsg("Network error while creating transaction.");
     }
-
-    const nextSale: Sale = {
-      id: `TXN-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      soldBy: name,
-      customerName: customerName || "Walk-in",
-      customerPhone: customerPhone || "",
-      total,
-      type,
-      status: type === "sale" ? "completed" : "quoted",
-      items: lines.map((l) => ({
-        productId: l.product.id,
-        name: l.product.name,
-        qty: l.qty,
-        price: l.product.price,
-      })),
-    };
-
-    if (type === "sale") {
-      persistProducts(updatedProducts);
-    }
-
-    const nextSales = [nextSale, ...sales];
-    persistSales(nextSales);
-
-    printSlip(nextSale, type === "sale" ? "SALE RECEIPT" : "QUOTATION");
-
-    setCart({});
-    setCustomerName("");
-    setCustomerPhone("");
-    setMsg(`${type === "sale" ? "Sale" : "Quotation"} ${nextSale.id} created.`);
   }
 
-  function updateOrder(id: string, status: CustomerOrder["status"]) {
-    const next = orders.map((o) => (o.id === id ? { ...o, status } : o));
-    persistOrders(next);
+  async function updateOrder(id: string, status: CustomerOrder["status"]) {
+    try {
+      const res = await fetch("/api/admin/orders", {
+        method: "PUT",
+        headers: authHeaders,
+        body: JSON.stringify({ id, status }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) return;
+
+      setOrders((prev) => prev.map((o) => (o.id === id ? data : o)));
+    } catch {
+      // ignore
+    }
   }
 
   function printSlip(doc: Sale, title: string) {
@@ -258,21 +240,21 @@ export default function PosPage() {
         </div>
       </section>
 
-      {!loggedIn ? (
+      {!token ? (
         <section className="card login-card">
           <h2>POS Login</h2>
           <input
             className="input"
             placeholder="Admin or Clerk name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={loginName}
+            onChange={(e) => setLoginName(e.target.value)}
           />
           <input
             className="input"
             placeholder="Password"
             type="password"
-            value={pin}
-            onChange={(e) => setPin(e.target.value)}
+            value={loginPin}
+            onChange={(e) => setLoginPin(e.target.value)}
           />
           <button className="btn btn-primary" onClick={login}>
             Login
@@ -283,7 +265,7 @@ export default function PosPage() {
         <div className="stack">
           <section className="card top-strip">
             <div>
-              <b>Logged in as:</b> {name}
+              <b>Logged in as:</b> {loginName}
               <div className="muted">Role: {role}</div>
             </div>
             <div className="pill-dark">Live POS Session</div>
